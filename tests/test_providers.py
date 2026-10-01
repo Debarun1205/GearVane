@@ -1,16 +1,13 @@
 """Tests for provider clients and the provider factory."""
 
-import json
 import pytest
 
 from waypoint.providers import (
     AnthropicClient,
-    Completion,
     OllamaClient,
     OpenAICompatClient,
     ProviderError,
     ProviderFactory,
-    Usage,
 )
 from waypoint.router import ModelProvider
 
@@ -19,9 +16,7 @@ class TestOllamaClient:
     """Ollama /api/generate wire format."""
 
     def setup_method(self):
-        self.client = OllamaClient(
-            base_url="http://localhost:11434", model="llama3.2"
-        )
+        self.client = OllamaClient(base_url="http://localhost:11434", model="llama3.2")
 
     def test_complete_parses_response(self, monkeypatch):
         captured = {}
@@ -62,9 +57,7 @@ class TestOllamaClient:
         assert "system" not in captured
 
     def test_health_check_detects_models_key(self, monkeypatch):
-        monkeypatch.setattr(
-            self.client, "_get", lambda url, headers=None: {"models": []}
-        )
+        monkeypatch.setattr(self.client, "_get", lambda url, headers=None: {"models": []})
         assert self.client.health_check() is True
 
     def test_health_check_false_on_error(self, monkeypatch):
@@ -242,7 +235,8 @@ class TestProviderFactory:
 
     def test_anthropic_maps_to_anthropic_client(self):
         provider = ModelProvider(
-            name="anthropic", models=["claude-sonnet-4-20250514"],
+            name="anthropic",
+            models=["claude-sonnet-4-20250514"],
             api_key_env="ANTHROPIC_API_KEY",
         )
         client = self.factory.create(provider)
@@ -251,7 +245,8 @@ class TestProviderFactory:
 
     def test_openrouter_maps_to_openai_compat(self):
         provider = ModelProvider(
-            name="openrouter", models=["anthropic/claude-3-haiku"],
+            name="openrouter",
+            models=["anthropic/claude-3-haiku"],
             api_key_env="OPENROUTER_API_KEY",
         )
         client = self.factory.create(provider)
@@ -260,7 +255,9 @@ class TestProviderFactory:
 
     def test_api_key_read_from_env(self, monkeypatch):
         monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-real")
-        provider = ModelProvider(name="anthropic", models=["claude-opus-4"], api_key_env="ANTHROPIC_API_KEY")
+        provider = ModelProvider(
+            name="anthropic", models=["claude-opus-4"], api_key_env="ANTHROPIC_API_KEY"
+        )
         client = self.factory.create(provider)
         assert client.api_key == "sk-ant-real"
 

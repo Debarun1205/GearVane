@@ -19,7 +19,6 @@ from .model_manager import ModelManager
 from .orchestrator import Orchestrator
 from .router import TierRouter
 
-
 DEFAULT_CONFIG_NAMES = ("config.yaml", "waypoint.yaml", "config.example.yaml")
 
 
@@ -36,21 +35,18 @@ def load_config(config_path: str) -> dict:
             candidate = Path(name)
             if candidate.exists():
                 path = candidate
-                print(f"Config {config_path} not found, using {name}",
-                      file=sys.stderr)
+                print(f"Config {config_path} not found, using {name}", file=sys.stderr)
                 break
         else:
             print(f"Config file not found: {config_path}", file=sys.stderr)
-            print("Run 'cp config.example.yaml config.yaml' or pass --config.",
-                  file=sys.stderr)
+            print("Run 'cp config.example.yaml config.yaml' or pass --config.", file=sys.stderr)
             sys.exit(1)
 
     with open(path) as f:
         config = yaml.safe_load(f) or {}
 
     if not isinstance(config, dict):
-        print(f"Config must be a YAML mapping, got {type(config).__name__}",
-              file=sys.stderr)
+        print(f"Config must be a YAML mapping, got {type(config).__name__}", file=sys.stderr)
         sys.exit(1)
 
     return config
@@ -134,28 +130,32 @@ def cmd_run(args):
     )
 
     if args.json:
-        print(json.dumps({
-            "task_id": result.task_id,
-            "success": result.success,
-            "tier": result.tier,
-            "provider": result.provider,
-            "model": result.model,
-            "attempts": result.attempts,
-            "escalated": result.escalated,
-            "cost_usd": result.cost_usd,
-            "tokens_in": result.tokens_in,
-            "tokens_out": result.tokens_out,
-            "duration_seconds": result.duration_seconds,
-            "error": result.error,
-            "history": result.history,
-        }, indent=2))
+        print(
+            json.dumps(
+                {
+                    "task_id": result.task_id,
+                    "success": result.success,
+                    "tier": result.tier,
+                    "provider": result.provider,
+                    "model": result.model,
+                    "attempts": result.attempts,
+                    "escalated": result.escalated,
+                    "cost_usd": result.cost_usd,
+                    "tokens_in": result.tokens_in,
+                    "tokens_out": result.tokens_out,
+                    "duration_seconds": result.duration_seconds,
+                    "error": result.error,
+                    "history": result.history,
+                },
+                indent=2,
+            )
+        )
     else:
         status = "OK" if result.success else "FAILED"
         print(f"[{status}] {result.task_id}")
         if result.tier:
             print(f"Tier: {result.tier} / {result.provider}/{result.model}")
-        print(f"Attempts: {result.attempts}"
-              f"{' (escalated)' if result.escalated else ''}")
+        print(f"Attempts: {result.attempts}" f"{' (escalated)' if result.escalated else ''}")
         print(f"Tokens: {result.tokens_in} in / {result.tokens_out} out")
         print(f"Cost: ${result.cost_usd:.4f}")
         print(f"Duration: {result.duration_seconds:.2f}s")
@@ -179,6 +179,7 @@ def cmd_health(args):
     router = TierRouter(config)
 
     from .providers import ProviderFactory
+
     factory = ProviderFactory(timeout=5.0)
 
     for tier, tier_config in router.tiers.items():
@@ -194,6 +195,7 @@ def cmd_health(args):
                         return factory.create(p).health_check()
                     except Exception:
                         return False
+
                 return probe
 
             for model in provider.models:
@@ -205,19 +207,25 @@ def cmd_health(args):
                 )
 
     import asyncio
+
     results = asyncio.run(checker.check_all())
 
     if args.json:
-        print(json.dumps([
-            {
-                "model": r.model,
-                "provider": r.provider,
-                "status": r.status.value,
-                "latency_ms": round(r.latency_ms, 2),
-                "message": r.message,
-            }
-            for r in results
-        ], indent=2))
+        print(
+            json.dumps(
+                [
+                    {
+                        "model": r.model,
+                        "provider": r.provider,
+                        "status": r.status.value,
+                        "latency_ms": round(r.latency_ms, 2),
+                        "message": r.message,
+                    }
+                    for r in results
+                ],
+                indent=2,
+            )
+        )
     else:
         for r in results:
             marker = {
@@ -250,16 +258,24 @@ def cmd_models(args):
 
     if args.json:
         models = manager.list_all_models()
-        print(json.dumps([
-            {"name": m.name, "provider": m.provider,
-             "size_mb": m.size_mb, "status": m.status.value}
-            for m in models
-        ], indent=2))
+        print(
+            json.dumps(
+                [
+                    {
+                        "name": m.name,
+                        "provider": m.provider,
+                        "size_mb": m.size_mb,
+                        "status": m.status.value,
+                    }
+                    for m in models
+                ],
+                indent=2,
+            )
+        )
         return
 
     stats = manager.get_stats()
-    print(f"Local models: {stats['total_models']} "
-          f"({stats['total_size_gb']} GB)")
+    print(f"Local models: {stats['total_models']} " f"({stats['total_size_gb']} GB)")
     print("\nProviders:")
     for provider, running in stats["providers_running"].items():
         print(f"  {'running ' if running else 'stopped '} {provider}")
@@ -271,8 +287,7 @@ def cmd_models(args):
             size = f"{m.size_mb} MB" if m.size_mb else "-"
             print(f"  {m.name:<40} {m.provider:<12} {size}")
     else:
-        print("\nNo local models found. Start Ollama or LM Studio, then pull a "
-              "model.")
+        print("\nNo local models found. Start Ollama or LM Studio, then pull a " "model.")
 
 
 def cmd_cost(args):
@@ -286,8 +301,10 @@ def cmd_cost(args):
         return
 
     print(f"Calls:    {stats.get('total_calls', 0)}")
-    print(f"Tokens:   {stats.get('total_tokens_in', 0)} in / "
-          f"{stats.get('total_tokens_out', 0)} out")
+    print(
+        f"Tokens:   {stats.get('total_tokens_in', 0)} in / "
+        f"{stats.get('total_tokens_out', 0)} out"
+    )
     print(f"Cost:     ${stats.get('total_cost_usd', 0.0)}")
     print(f"Session:  ${stats.get('session_spend_usd', 0.0)}")
     print(f"Day:      ${stats.get('day_spend_usd', 0.0)}")
@@ -332,8 +349,7 @@ def cmd_feedback(args):
     if by_tier:
         print("\nBy tier:")
         for tier, data in sorted(by_tier.items()):
-            print(f"  {tier:<12} {data['correct']}/{data['total']} "
-                  f"({data['accuracy']:.0%})")
+            print(f"  {tier:<12} {data['correct']}/{data['total']} " f"({data['accuracy']:.0%})")
 
     suggestions = loop.get_adjustment_suggestions()
     if suggestions:
@@ -374,7 +390,6 @@ def cmd_train(args):
     print(f"Samples:  {classifier.weights.trained_on}")
     print(f"Accuracy: {classifier.weights.accuracy:.1%}")
     print("\nStrongest features per tier:")
-    from .classifier import Tier
     for tier in Tier:
         features = classifier.top_features(tier, n=5)
         if features:
@@ -470,8 +485,7 @@ def cmd_approve(args):
         if deployer.approve_operation(args.approve_command):
             print(f"Approved: {args.approve_command}")
         else:
-            print(f"No pending approval matching: {args.approve_command}",
-                  file=sys.stderr)
+            print(f"No pending approval matching: {args.approve_command}", file=sys.stderr)
             print("\nPending:", file=sys.stderr)
             for p in pending:
                 print(f"  {p['command']}", file=sys.stderr)
@@ -484,7 +498,7 @@ def cmd_approve(args):
         print("Pending approvals:")
         for i, p in enumerate(pending, 1):
             print(f"  {i}. [{p['operation']}] {p['command']}")
-        print("\nUse --command \"<command>\" or --all")
+        print('\nUse --command "<command>" or --all')
         sys.exit(1)
 
 
@@ -524,10 +538,11 @@ def cmd_safety(args):
         if args.json:
             print(json.dumps(status, indent=2))
         else:
-            print(f"Session: ${status['session_spend']} / "
-                  f"${status['session_remaining']} remaining")
-            print(f"Task:    ${status['task_spend']} / "
-                  f"${status['task_remaining']} remaining")
+            print(
+                f"Session: ${status['session_spend']} / "
+                f"${status['session_remaining']} remaining"
+            )
+            print(f"Task:    ${status['task_spend']} / " f"${status['task_remaining']} remaining")
         return
 
     if action == "pending":
@@ -546,9 +561,7 @@ def cmd_safety(args):
         if not args.safety_command:
             print("safety check requires --command", file=sys.stderr)
             sys.exit(1)
-        result = deployer.safety.execute_sandboxed(
-            args.safety_command, dry_run=True
-        )
+        result = deployer.safety.execute_sandboxed(args.safety_command, dry_run=True)
         print(json.dumps(result, indent=2))
         if not result["executed"]:
             sys.exit(1)
@@ -559,8 +572,7 @@ def build_parser() -> argparse.ArgumentParser:
         prog="waypoint",
         description="Waypoint - Open-source AI harness with intelligent task routing",
     )
-    parser.add_argument("--config", default="config.yaml",
-                        help="Path to config file")
+    parser.add_argument("--config", default="config.yaml", help="Path to config file")
     subparsers = parser.add_subparsers(dest="command", help="Command to run")
 
     # route
@@ -588,8 +600,9 @@ def build_parser() -> argparse.ArgumentParser:
     # health
     p = subparsers.add_parser("health", help="Check model availability")
     p.add_argument("--json", action="store_true")
-    p.add_argument("--offline", action="store_true",
-                   help="Only check local providers, skip hosted APIs")
+    p.add_argument(
+        "--offline", action="store_true", help="Only check local providers, skip hosted APIs"
+    )
 
     # models
     p = subparsers.add_parser("models", help="List local models")
@@ -621,17 +634,17 @@ def build_parser() -> argparse.ArgumentParser:
 
     # safety
     p = subparsers.add_parser("safety", help="Check safety status")
-    p.add_argument("safety_action", choices=["spend", "pending", "check"],
-                   help="spend: budget state, pending: gated operations, "
-                        "check: dry-run a command")
-    p.add_argument("--command", dest="safety_command",
-                   help="Command to check (for 'check')")
+    p.add_argument(
+        "safety_action",
+        choices=["spend", "pending", "check"],
+        help="spend: budget state, pending: gated operations, " "check: dry-run a command",
+    )
+    p.add_argument("--command", dest="safety_command", help="Command to check (for 'check')")
     p.add_argument("--json", action="store_true")
 
     # approve
     p = subparsers.add_parser("approve", help="Approve a pending operation")
-    p.add_argument("--command", dest="approve_command",
-                   help="Exact command to approve")
+    p.add_argument("--command", dest="approve_command", help="Exact command to approve")
     p.add_argument("--all", action="store_true", help="Approve all pending")
 
     # deploy

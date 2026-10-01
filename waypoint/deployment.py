@@ -1,20 +1,18 @@
 """Deployment tools: GitHub, Docker, Fly.io, Vercel, Cloudflare."""
 
-import os
 import subprocess
-import json
 from dataclasses import dataclass
-from typing import Optional, Dict, Any, List
-from pathlib import Path
+from typing import Any, Dict, List, Optional
 
-from .safety import SafetyManager, ApprovalStatus
+from .safety import ApprovalStatus, SafetyManager
 
 
 @dataclass
 class DeployResult:
     success: bool
     tool: str
-    message: str
+    # Optional because most call sites only set success/output/error.
+    message: str = ""
     output: str = ""
     error: str = ""
     approval_required: bool = False
@@ -33,7 +31,7 @@ class GitHubDeployer:
     def _run_git(self, command: str, dry_run: bool = False) -> DeployResult:
         """Run a git command with safety checks."""
         approval = self.safety.check_command(command)
-        
+
         if approval.status == ApprovalStatus.DENIED:
             return DeployResult(
                 success=False,
@@ -82,11 +80,12 @@ class GitHubDeployer:
         branch = branch or self.default_branch
         return self._run_git(f"push origin {branch}", dry_run=dry_run)
 
-    def create_pr(self, title: str, body: str = "", branch: Optional[str] = None,
-                  dry_run: bool = False) -> DeployResult:
+    def create_pr(
+        self, title: str, body: str = "", branch: Optional[str] = None, dry_run: bool = False
+    ) -> DeployResult:
         """Create a pull request."""
         branch = branch or self.default_branch
-        
+
         if dry_run:
             return DeployResult(
                 success=True,
@@ -135,8 +134,9 @@ class DockerDeployer:
         self.require_build_approval = config.get("require_approval_for_build", False)
         self.require_push_approval = config.get("require_approval_for_push", True)
 
-    def build(self, tag: str, dockerfile: str = "Dockerfile",
-              dry_run: bool = False) -> DeployResult:
+    def build(
+        self, tag: str, dockerfile: str = "Dockerfile", dry_run: bool = False
+    ) -> DeployResult:
         """Build a Docker image."""
         command = f"docker build -t {tag} -f {dockerfile} ."
         approval = self.safety.check_command(command)
@@ -232,7 +232,7 @@ class FlyioDeployer:
         cmd = "fly deploy"
         if app:
             cmd += f" --app {app}"
-        
+
         approval = self.safety.check_command(cmd)
 
         if approval.status == ApprovalStatus.PENDING:
@@ -285,7 +285,7 @@ class VercelDeployer:
         cmd = "vercel deploy"
         if prod:
             cmd += " --prod"
-        
+
         approval = self.safety.check_command(cmd)
 
         if approval.status == ApprovalStatus.PENDING:
@@ -336,7 +336,7 @@ class CloudflareDeployer:
     def deploy(self, dry_run: bool = False) -> DeployResult:
         """Deploy to Cloudflare Workers."""
         cmd = "wrangler deploy"
-        
+
         approval = self.safety.check_command(cmd)
 
         if approval.status == ApprovalStatus.PENDING:
@@ -382,28 +382,38 @@ class DeploymentManager:
     def __init__(self, config: Dict[str, Any]):
         self.config = config
         self.safety = SafetyManager(config)
-        
+
         deploy_config = config.get("deployment", {})
-        
-        self.github = GitHubDeployer(
-            self.safety, deploy_config.get("github", {})
-        ) if deploy_config.get("github", {}).get("enabled", False) else None
-        
-        self.docker = DockerDeployer(
-            self.safety, deploy_config.get("docker", {})
-        ) if deploy_config.get("docker", {}).get("enabled", False) else None
-        
-        self.flyio = FlyioDeployer(
-            self.safety, deploy_config.get("flyio", {})
-        ) if deploy_config.get("flyio", {}).get("enabled", False) else None
-        
-        self.vercel = VercelDeployer(
-            self.safety, deploy_config.get("vercel", {})
-        ) if deploy_config.get("vercel", {}).get("enabled", False) else None
-        
-        self.cloudflare = CloudflareDeployer(
-            self.safety, deploy_config.get("cloudflare", {})
-        ) if deploy_config.get("cloudflare", {}).get("enabled", False) else None
+
+        self.github = (
+            GitHubDeployer(self.safety, deploy_config.get("github", {}))
+            if deploy_config.get("github", {}).get("enabled", False)
+            else None
+        )
+
+        self.docker = (
+            DockerDeployer(self.safety, deploy_config.get("docker", {}))
+            if deploy_config.get("docker", {}).get("enabled", False)
+            else None
+        )
+
+        self.flyio = (
+            FlyioDeployer(self.safety, deploy_config.get("flyio", {}))
+            if deploy_config.get("flyio", {}).get("enabled", False)
+            else None
+        )
+
+        self.vercel = (
+            VercelDeployer(self.safety, deploy_config.get("vercel", {}))
+            if deploy_config.get("vercel", {}).get("enabled", False)
+            else None
+        )
+
+        self.cloudflare = (
+            CloudflareDeployer(self.safety, deploy_config.get("cloudflare", {}))
+            if deploy_config.get("cloudflare", {}).get("enabled", False)
+            else None
+        )
 
     def get_pending_approvals(self) -> List[Dict[str, Any]]:
         """Get all pending approval requests."""

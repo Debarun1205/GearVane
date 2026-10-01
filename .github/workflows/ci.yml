@@ -10,6 +10,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         python-version: ["3.9", "3.10", "3.11", "3.12"]
 
@@ -24,14 +25,14 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install pytest pytest-cov
-
-      - name: Install package
-        run: pip install -e .
+          pip install -r requirements-dev.txt
+          pip install -e .
 
       - name: Run tests
-        run: pytest tests/ --cov=waypoint --cov-report=xml
+        run: pytest tests/ -v --tb=short
+
+      - name: Coverage
+        run: pytest tests/ --cov=waypoint --cov-report=xml --cov-report=term
 
       - name: Upload coverage
         uses: codecov/codecov-action@v4
@@ -50,24 +51,25 @@ jobs:
           python-version: "3.11"
 
       - name: Install linting tools
-        run: |
-          pip install flake8 black isort mypy
+        run: pip install flake8 black isort mypy
 
-      - name: Run flake8
-        run: flake8 waypoint/ --max-line-length=120
+      - name: flake8
+        run: flake8 waypoint/ tests/
 
-      - name: Run black check
-        run: black --check waypoint/
+      - name: black
+        run: black --check waypoint/ tests/
 
-      - name: Run isort check
-        run: isort --check-only waypoint/
+      - name: isort
+        run: isort --check-only waypoint/ tests/
 
-      - name: Run mypy
+      - name: mypy
         run: mypy waypoint/ --ignore-missing-imports
 
-  build:
+  cli-smoke:
+    # Asserts the shipped CLI actually runs, which unit tests alone missed:
+    # a subparser dest collision made every safety/approve call print help
+    # while the test suite stayed green.
     runs-on: ubuntu-latest
-    needs: [test, lint]
     steps:
       - uses: actions/checkout@v4
 
@@ -76,7 +78,42 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Build package
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -e .
+
+      - name: Route a simple task
+        run: python -m waypoint route --task "Fix a typo in README" --files README.md
+
+      - name: Route a complex task
+        run: |
+          python -m waypoint route \
+            --task "Refactor the auth architecture" \
+            --files a.py b.py c.py --json
+
+      - name: Safety spend
+        run: python -m waypoint safety spend
+
+      - name: Safety check
+        run: python -m waypoint safety check --command "git status"
+
+      - name: Stats
+        run: python -m waypoint stats
+
+  build:
+    runs-on: ubuntu-latest
+    needs: [test, lint, cli-smoke]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Build distributions
         run: |
           pip install build
           python -m build

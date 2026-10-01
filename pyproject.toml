@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.black]
+line-length = 100
+target-version = ["py39"]
+
+[tool.isort]
+profile = "black"
+line_length = 100
+
+[tool.mypy]
+# The package still supports 3.9 at runtime, but mypy itself
+# requires 3.10+, so no python_version pin here.
+ignore_missing_imports = true
+warn_unused_configs = true
+# The codebase uses duck-typed provider configs, so strict typing on
+# Dict[str, Any] boundaries would add noise without catching defects.
+disallow_untyped_defs = false

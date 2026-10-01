@@ -1,13 +1,10 @@
 """Safety module: approval gates, spend limits, and sandboxing."""
 
-import os
-import re
 import subprocess
 import time
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import List, Optional, Set, Dict, Any
-from pathlib import Path
+from typing import Any, Dict, List, Optional, Set
 
 
 class ApprovalStatus(Enum):
@@ -30,10 +27,11 @@ class ApprovalRequest:
 @dataclass
 class SpendTracker:
     """Track spending against limits."""
+
     per_session_limit: float = 10.0
     per_day_limit: float = 50.0
     per_task_limit: float = 5.0
-    
+
     session_spend: float = 0.0
     day_spend: float = 0.0
     task_spend: float = 0.0
@@ -94,12 +92,10 @@ class SafetyManager:
     def __init__(self, config: Optional[Dict[str, Any]] = None):
         self.config = config or {}
         safety_config = self.config.get("safety", {})
-        
+
         # Approval settings
-        self.require_approval: Set[str] = set(
-            safety_config.get("require_approval", [])
-        )
-        
+        self.require_approval: Set[str] = set(safety_config.get("require_approval", []))
+
         # Spend limits
         spend_config = safety_config.get("spend_limits", {})
         self.spend_tracker = SpendTracker(
@@ -107,11 +103,11 @@ class SafetyManager:
             per_day_limit=spend_config.get("per_day", 50.0),
             per_task_limit=spend_config.get("per_task", 5.0),
         )
-        
+
         # Sandbox settings
         self.sandbox_allowed: List[str] = safety_config.get("sandbox_allowed", [])
         self.blocked_commands: List[str] = safety_config.get("blocked_commands", [])
-        
+
         # Pending approvals
         self._pending_approvals: List[ApprovalRequest] = []
 
@@ -208,8 +204,8 @@ class SafetyManager:
     def execute_sandboxed(self, command: str, dry_run: bool = False) -> Dict[str, Any]:
         """Execute a command in sandbox mode (or dry run)."""
         approval = self.check_command(command)
-        
-        result = {
+
+        result: Dict[str, Any] = {
             "command": command,
             "approval_status": approval.status.value,
             "executed": False,

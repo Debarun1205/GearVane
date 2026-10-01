@@ -2,7 +2,6 @@
 
 import pytest
 
-from waypoint.classifier import Tier
 from waypoint.opencode_plugin import (
     WaypointPlugin,
     find_config,
@@ -21,25 +20,38 @@ def make_config():
         "tiers": {
             "local": {
                 "description": "Local",
-                "providers": [{"name": "ollama", "models": ["llama3.2"],
-                               "base_url": "http://localhost:11434"}],
+                "providers": [
+                    {"name": "ollama", "models": ["llama3.2"], "base_url": "http://localhost:11434"}
+                ],
                 "cost_per_token": 0.0,
             },
             "mid": {
                 "description": "Mid",
-                "providers": [{"name": "openrouter", "models": ["haiku"],
-                               "base_url": "https://openrouter.ai/api"}],
+                "providers": [
+                    {
+                        "name": "openrouter",
+                        "models": ["haiku"],
+                        "base_url": "https://openrouter.ai/api",
+                    }
+                ],
                 "cost_per_token": 0.0,
             },
             "frontier": {
                 "description": "Frontier",
-                "providers": [{"name": "anthropic", "models": ["claude-x"],
-                               "base_url": "https://api.anthropic.com"}],
+                "providers": [
+                    {
+                        "name": "anthropic",
+                        "models": ["claude-x"],
+                        "base_url": "https://api.anthropic.com",
+                    }
+                ],
                 "cost_per_token": 0.0,
             },
         },
-        "router": {"default_tier": "mid",
-                   "escalation": {"enabled": True, "max_attempts_per_tier": 2}},
+        "router": {
+            "default_tier": "mid",
+            "escalation": {"enabled": True, "max_attempts_per_tier": 2},
+        },
     }
 
 
@@ -50,8 +62,9 @@ def config():
 
 class FakeClient:
     def __init__(self, content="ok", tin=5, tout=7):
-        self.result = Completion(content=content, model="m",
-                                 usage=Usage(tokens_in=tin, tokens_out=tout))
+        self.result = Completion(
+            content=content, model="m", usage=Usage(tokens_in=tin, tokens_out=tout)
+        )
 
     def complete(self, prompt, system=None, temperature=0.0, max_tokens=2048):
         return self.result
@@ -77,8 +90,10 @@ class TestConfigDiscovery:
     def test_returns_none_when_absent(self, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         # Guard against picking up a config outside the sandbox.
-        assert find_config(start_dir=str(tmp_path)) is None or \
-            find_config(start_dir=str(tmp_path)).parent != tmp_path
+        assert (
+            find_config(start_dir=str(tmp_path)) is None
+            or find_config(start_dir=str(tmp_path)).parent != tmp_path
+        )
 
     def test_load_yaml_config_explicit_path(self, tmp_path):
         path = tmp_path / "c.yaml"
@@ -127,14 +142,11 @@ class TestClassification:
 
     def test_classify_returns_expected_shape(self):
         result = self.plugin.classify_task("fix a typo in the readme")
-        assert set(result) == {"tier", "provider", "model", "confidence",
-                               "escalated", "reasons"}
+        assert set(result) == {"tier", "provider", "model", "confidence", "escalated", "reasons"}
         assert result["tier"] == "local"
 
     def test_classify_accepts_files(self):
-        result = self.plugin.classify_task(
-            "update", files=["src/a.py", "src/b.py", "src/c.py"]
-        )
+        result = self.plugin.classify_task("update", files=["src/a.py", "src/b.py", "src/c.py"])
         assert result["tier"] in ("mid", "frontier")
 
     def test_classify_honours_manual_override(self):
@@ -142,12 +154,16 @@ class TestClassification:
             "tiers": {
                 "frontier": {
                     "description": "F",
-                    "providers": [{"name": "anthropic", "models": ["claude-x"],
-                                   "base_url": "https://api.anthropic.com"}],
+                    "providers": [
+                        {
+                            "name": "anthropic",
+                            "models": ["claude-x"],
+                            "base_url": "https://api.anthropic.com",
+                        }
+                    ],
                 }
             },
-            "router": {"default_tier": "frontier",
-                       "manual_override": "anthropic/claude-x"},
+            "router": {"default_tier": "frontier", "manual_override": "anthropic/claude-x"},
         }
         plugin = WaypointPlugin(config=cfg)
         result = plugin.classify_task("fix a typo")
@@ -162,9 +178,7 @@ class TestClassification:
 class TestExecution:
     def setup_method(self):
         self.plugin = WaypointPlugin(config=make_config())
-        self.plugin.orchestrator.providers.create = (
-            lambda p, m=None: FakeClient("executed")
-        )
+        self.plugin.orchestrator.providers.create = lambda p, m=None: FakeClient("executed")
 
     def test_execute_returns_flat_dict(self):
         result = self.plugin.execute_task("fix a typo in the readme")
@@ -176,6 +190,7 @@ class TestExecution:
     def test_execute_result_has_no_internal_objects(self):
         # Hosts typically serialize this to JSON.
         import json
+
         result = self.plugin.execute_task("fix a typo in the readme")
         json.dumps(result)
 
@@ -201,9 +216,7 @@ class TestExecution:
             def complete(self, *args, **kwargs):
                 raise ProviderError("down", retryable=False)
 
-        self.plugin.orchestrator.providers.create = (
-            lambda p, m=None: Failing()
-        )
+        self.plugin.orchestrator.providers.create = lambda p, m=None: Failing()
         result = self.plugin.execute_task("fix a typo")
         assert result["success"] is False
         assert result["error"]

@@ -1,11 +1,10 @@
 """Tier router that selects models and manages escalation."""
 
 import logging
-from dataclasses import dataclass, field
-from typing import List, Optional, Dict, Any
+from dataclasses import dataclass
+from typing import Any, Dict, List, Optional
 
-from .classifier import TaskClassifier, TaskContext, Tier, ClassificationResult
-
+from .classifier import TaskClassifier, TaskContext, Tier
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +52,7 @@ class TierRouter:
         self.classifier = self._build_classifier(learned_config)
 
         self._load_tiers(config.get("tiers", {}))
-        
+
         # Track attempts per task
         self._task_attempts: Dict[str, Dict[str, Any]] = {}
 
@@ -92,8 +91,9 @@ class TierRouter:
                 blend=learned_config.get("blend", 0.5),
             )
         except Exception as e:
-            logger.warning(f"Could not load learned classifier: {e}. "
-                           f"Falling back to heuristics.")
+            logger.warning(
+                f"Could not load learned classifier: {e}. " f"Falling back to heuristics."
+            )
             return heuristic
 
     def _load_tiers(self, tiers_config: dict):
@@ -102,12 +102,14 @@ class TierRouter:
             tier = Tier(tier_name)
             providers = []
             for prov_data in tier_data.get("providers", []):
-                providers.append(ModelProvider(
-                    name=prov_data["name"],
-                    models=prov_data.get("models", []),
-                    base_url=prov_data.get("base_url"),
-                    api_key_env=prov_data.get("api_key_env"),
-                ))
+                providers.append(
+                    ModelProvider(
+                        name=prov_data["name"],
+                        models=prov_data.get("models", []),
+                        base_url=prov_data.get("base_url"),
+                        api_key_env=prov_data.get("api_key_env"),
+                    )
+                )
             self.tiers[tier] = TierConfig(
                 name=tier_name,
                 description=tier_data.get("description", ""),
@@ -137,7 +139,7 @@ class TierRouter:
                     prefix = f"{provider.name}/"
                     if override.startswith(prefix):
                         provider_hint = provider.name
-                        model_name = override[len(prefix):]
+                        model_name = override[len(prefix) :]
                         break
 
         for tier, tier_config in self.tiers.items():
@@ -192,8 +194,10 @@ class TierRouter:
 
         # Classify the task
         classification = self.classifier.classify(context)
-        logger.info(f"Task {task_id} classified as {classification.tier.value} "
-                    f"(confidence: {classification.confidence})")
+        logger.info(
+            f"Task {task_id} classified as {classification.tier.value} "
+            f"(confidence: {classification.confidence})"
+        )
 
         # Check for escalation
         escalated = False
@@ -214,8 +218,10 @@ class TierRouter:
         tier_config = self.tiers.get(classification.tier)
         if not tier_config or not tier_config.providers:
             # Fall back to the configured default tier.
-            logger.warning(f"No config for tier {classification.tier.value}, "
-                          f"falling back to {self.default_tier.value}")
+            logger.warning(
+                f"No config for tier {classification.tier.value}, "
+                f"falling back to {self.default_tier.value}"
+            )
             tier_config = self.tiers.get(self.default_tier)
             classification.tier = self.default_tier
 
@@ -231,7 +237,7 @@ class TierRouter:
         # Simple round-robin provider selection
         provider_idx = (task_state["attempts"] - 1) % len(tier_config.providers)
         provider = tier_config.providers[provider_idx]
-        
+
         # Select first available model (could be smarter)
         model = provider.models[0] if provider.models else "default"
 
@@ -251,8 +257,10 @@ class TierRouter:
         """Report a task failure to trigger escalation on next route."""
         if task_id in self._task_attempts:
             self._task_attempts[task_id]["failures"] += 1
-            logger.info(f"Task {task_id} failure recorded "
-                        f"({self._task_attempts[task_id]['failures']} total)")
+            logger.info(
+                f"Task {task_id} failure recorded "
+                f"({self._task_attempts[task_id]['failures']} total)"
+            )
 
     def report_success(self, task_id: str):
         """Report a task success."""

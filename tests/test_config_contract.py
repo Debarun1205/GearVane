@@ -4,8 +4,6 @@ The example config had drifted from the code. These tests parse both the
 shipped config and the source to catch that drift.
 """
 
-import ast
-import re
 from pathlib import Path
 
 import pytest
@@ -23,10 +21,7 @@ def config():
 
 @pytest.fixture(scope="module")
 def sources():
-    return {
-        path.name: path.read_text(encoding="utf-8")
-        for path in PACKAGE_DIR.glob("*.py")
-    }
+    return {path.name: path.read_text(encoding="utf-8") for path in PACKAGE_DIR.glob("*.py")}
 
 
 class TestShippedConfigShape:
@@ -35,11 +30,21 @@ class TestShippedConfigShape:
     def test_loads(self, config):
         assert isinstance(config, dict)
 
-    @pytest.mark.parametrize("section", [
-        "tiers", "providers", "router", "learned_classifier",
-        "logging", "safety", "health", "budget",
-        "model_manager", "deployment",
-    ])
+    @pytest.mark.parametrize(
+        "section",
+        [
+            "tiers",
+            "providers",
+            "router",
+            "learned_classifier",
+            "logging",
+            "safety",
+            "health",
+            "budget",
+            "model_manager",
+            "deployment",
+        ],
+    )
     def test_section_present(self, config, section):
         assert section in config, f"missing section: {section}"
 
@@ -61,9 +66,7 @@ class TestShippedConfigShape:
         for tier in ("mid", "frontier"):
             for provider in config["tiers"][tier]["providers"]:
                 if provider["name"] not in local:
-                    assert "api_key_env" in provider, (
-                        f"{provider['name']} has no api_key_env"
-                    )
+                    assert "api_key_env" in provider, f"{provider['name']} has no api_key_env"
 
     def test_no_secrets_in_config(self, config):
         # Keys must be referenced by env var name, never inlined.
@@ -95,8 +98,7 @@ class TestShippedConfigShape:
         assert config["deployment"]["github"]["default_branch"] == "master"
 
     def test_thresholds_ordered(self, config):
-        assert config["budget"]["warning_threshold"] < \
-            config["budget"]["critical_threshold"]
+        assert config["budget"]["warning_threshold"] < config["budget"]["critical_threshold"]
 
 
 class TestConfigKeysAreConsumed:

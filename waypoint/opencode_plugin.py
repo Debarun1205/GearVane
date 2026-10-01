@@ -13,12 +13,11 @@ directly through execute().
 import logging
 import os
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
-from .classifier import TaskContext, Tier
+from .classifier import TaskContext
 from .orchestrator import ExecutionResult, Orchestrator
-from .router import RoutingDecision, TierRouter
-
+from .router import TierRouter
 
 logger = logging.getLogger(__name__)
 
@@ -47,23 +46,20 @@ def load_yaml_config(path: Optional[str] = None) -> Dict[str, Any]:
     """Load a config, searching upward when no path is given."""
     import yaml
 
-    if path:
-        config_path = Path(path)
-    else:
-        config_path = find_config()
+    resolved: Optional[Path] = Path(path) if path else find_config()
 
-    if config_path is None or not config_path.is_file():
+    if resolved is None or not resolved.is_file():
         logger.warning("No Waypoint config found; using built-in defaults")
         return {}
 
-    with open(config_path) as handle:
+    with open(resolved) as handle:
         config = yaml.safe_load(handle) or {}
 
     if not isinstance(config, dict):
-        logger.warning(f"Ignoring {config_path}: not a YAML mapping")
+        logger.warning(f"Ignoring {resolved}: not a YAML mapping")
         return {}
 
-    logger.info(f"Loaded Waypoint config from {config_path}")
+    logger.info(f"Loaded Waypoint config from {resolved}")
     return config
 
 
@@ -77,8 +73,7 @@ class WaypointPlugin:
     name = "waypoint"
     version = "0.1.0"
 
-    def __init__(self, config_path: Optional[str] = None,
-                 config: Optional[Dict[str, Any]] = None):
+    def __init__(self, config_path: Optional[str] = None, config: Optional[Dict[str, Any]] = None):
         self.config_path = config_path
         self.config = config if config is not None else load_yaml_config(config_path)
         self._orchestrator: Optional[Orchestrator] = None
@@ -111,9 +106,9 @@ class WaypointPlugin:
 
     # -- classification -------------------------------------------------------
 
-    def classify_task(self, description: str,
-                      files: Optional[List[str]] = None,
-                      **kwargs) -> Dict[str, Any]:
+    def classify_task(
+        self, description: str, files: Optional[List[str]] = None, **kwargs
+    ) -> Dict[str, Any]:
         """Return a routing decision without executing."""
         context = TaskContext(
             description=description,
@@ -121,9 +116,7 @@ class WaypointPlugin:
             error_loops=kwargs.get("error_loops", 0),
             test_failures=kwargs.get("test_failures", 0),
         )
-        decision = self.router.route(
-            kwargs.get("task_id", description[:32]), context
-        )
+        decision = self.router.route(kwargs.get("task_id", description[:32]), context)
         return {
             "tier": decision.tier.value,
             "provider": decision.provider.name,
@@ -133,17 +126,15 @@ class WaypointPlugin:
             "reasons": decision.reasons,
         }
 
-    def select_model(self, description: str,
-                     files: Optional[List[str]] = None,
-                     **kwargs) -> str:
+    def select_model(self, description: str, files: Optional[List[str]] = None, **kwargs) -> str:
         """Return just the model id, for hosts that want a single string."""
         return self.classify_task(description, files, **kwargs)["model"]
 
     # -- execution ------------------------------------------------------------
 
-    def execute_task(self, description: str,
-                     files: Optional[List[str]] = None,
-                     **kwargs) -> Dict[str, Any]:
+    def execute_task(
+        self, description: str, files: Optional[List[str]] = None, **kwargs
+    ) -> Dict[str, Any]:
         """Route and execute a task, returning a host-friendly dict."""
         task_id = kwargs.pop("task_id", None) or description[:32]
         result = self.orchestrator.execute(
@@ -154,9 +145,7 @@ class WaypointPlugin:
         )
         return self._result_to_dict(result)
 
-    def stream_task(self, description: str,
-                    files: Optional[List[str]] = None,
-                    **kwargs):
+    def stream_task(self, description: str, files: Optional[List[str]] = None, **kwargs):
         """Yield tokens as the model produces them."""
         task_id = kwargs.pop("task_id", None) or description[:32]
         return self.orchestrator.execute_stream(
@@ -187,10 +176,7 @@ class WaypointPlugin:
         return {
             "spend": self.orchestrator.safety.get_spend_status(),
             "cost": self.orchestrator.cost.get_stats(),
-            "tiers": {
-                tier.value: len(cfg.providers)
-                for tier, cfg in self.router.tiers.items()
-            },
+            "tiers": {tier.value: len(cfg.providers) for tier, cfg in self.router.tiers.items()},
         }
 
 

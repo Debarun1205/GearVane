@@ -3,11 +3,10 @@
 import json
 import logging
 import time
-from dataclasses import dataclass, field, asdict
-from pathlib import Path
-from typing import Dict, List, Optional, Any
 from collections import defaultdict
-
+from dataclasses import asdict, dataclass, field
+from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -63,21 +62,22 @@ class FeedbackStore:
         """Get feedback statistics."""
         if not self._entries:
             return {"total": 0}
-        
+
         total = len(self._entries)
         rated = [e for e in self._entries if e.user_rating is not None]
         correct = [e for e in self._entries if e.was_correct is True]
         incorrect = [e for e in self._entries if e.was_correct is False]
-        
-        avg_rating = sum(e.user_rating for e in rated) / len(rated) if rated else 0
-        
+
+        ratings = [e.user_rating for e in rated if e.user_rating is not None]
+        avg_rating = sum(ratings) / len(ratings) if ratings else 0
+
         # Accuracy by tier
-        tier_stats = defaultdict(lambda: {"total": 0, "correct": 0})
+        tier_stats: Dict[str, Dict[str, int]] = defaultdict(lambda: {"total": 0, "correct": 0})
         for entry in self._entries:
             tier_stats[entry.predicted_tier]["total"] += 1
             if entry.was_correct:
                 tier_stats[entry.predicted_tier]["correct"] += 1
-        
+
         return {
             "total_entries": total,
             "rated_entries": len(rated),
@@ -113,17 +113,16 @@ class FeedbackLoop:
         self.store.add(entry)
         return entry
 
-    def record_outcome(self, task_id: str, actual_tier: str, 
-                       user_rating: Optional[int] = None):
+    def record_outcome(self, task_id: str, actual_tier: str, user_rating: Optional[int] = None):
         """Record the actual outcome for a prediction."""
         # Find the entry
         for entry in reversed(self.store.get_entries()):
             if entry.task_id == task_id and entry.actual_tier is None:
                 entry.actual_tier = actual_tier
-                entry.was_correct = (entry.predicted_tier == actual_tier)
+                entry.was_correct = entry.predicted_tier == actual_tier
                 entry.user_rating = user_rating
                 self.store._save()
-                
+
                 if not entry.was_correct:
                     logger.warning(
                         f"Misclassification: task={task_id} "
@@ -135,39 +134,43 @@ class FeedbackLoop:
         """Analyze feedback and suggest classification adjustments."""
         stats = self.store.get_stats()
         suggestions = []
-        
+
         # Find tiers with low accuracy
         for tier, tier_stats in stats.get("by_tier", {}).items():
             if tier_stats["accuracy"] < 0.6 and tier_stats["total"] >= 5:
-                suggestions.append({
-                    "type": "low_accuracy",
-                    "tier": tier,
-                    "accuracy": tier_stats["accuracy"],
-                    "message": f"Tier '{tier}' has low accuracy ({tier_stats['accuracy']:.0%}). "
-                              f"Consider adjusting keywords or thresholds.",
-                })
-        
+                suggestions.append(
+                    {
+                        "type": "low_accuracy",
+                        "tier": tier,
+                        "accuracy": tier_stats["accuracy"],
+                        "message": (
+                            f"Tier '{tier}' has low accuracy "
+                            f"({tier_stats['accuracy']:.0%}). Consider "
+                            "adjusting keywords or thresholds."
+                        ),
+                    }
+                )
+
         # Find commonly misclassified descriptions
-        misclassified = [
-            e for e in self.store.get_entries()
-            if e.was_correct is False
-        ]
-        
+        misclassified = [e for e in self.store.get_entries() if e.was_correct is False]
+
         # Group by predicted tier
         by_tier = defaultdict(list)
         for entry in misclassified:
             by_tier[entry.predicted_tier].append(entry)
-        
+
         for tier, entries in by_tier.items():
             if len(entries) >= 3:
-                suggestions.append({
-                    "type": "common_misclassification",
-                    "tier": tier,
-                    "count": len(entries),
-                    "message": f"Tier '{tier}' has {len(entries)} misclassifications. "
-                              f"Review recent tasks for patterns.",
-                })
-        
+                suggestions.append(
+                    {
+                        "type": "common_misclassification",
+                        "tier": tier,
+                        "count": len(entries),
+                        "message": f"Tier '{tier}' has {len(entries)} misclassifications. "
+                        f"Review recent tasks for patterns.",
+                    }
+                )
+
         return suggestions
 
     def export_feedback(self, filepath: str):
@@ -181,9 +184,11 @@ class FeedbackLoop:
         training_data = []
         for entry in self.store.get_entries():
             if entry.actual_tier:
-                training_data.append({
-                    "description": entry.description,
-                    "tier": entry.actual_tier,
-                    "metadata": entry.metadata,
-                })
+                training_data.append(
+                    {
+                        "description": entry.description,
+                        "tier": entry.actual_tier,
+                        "metadata": entry.metadata,
+                    }
+                )
         return training_data

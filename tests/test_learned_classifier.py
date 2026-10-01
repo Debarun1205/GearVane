@@ -8,11 +8,10 @@ from waypoint.classifier import TaskContext, Tier
 from waypoint.learned_classifier import (
     HybridClassifier,
     LearnedClassifier,
-    train_from_feedback,
     features_for,
     tokenize,
+    train_from_feedback,
 )
-
 
 SAMPLES = [
     # Simple / local
@@ -106,8 +105,7 @@ class TestTraining:
     def test_training_is_deterministic(self):
         other = LearnedClassifier(learning_rate=0.5, epochs=50)
         other.train(SAMPLES)
-        assert other.predict_proba("fix a typo") == \
-            self.clf.predict_proba("fix a typo")
+        assert other.predict_proba("fix a typo") == self.clf.predict_proba("fix a typo")
 
     def test_top_features_are_positive_and_sorted(self):
         top = self.clf.top_features(Tier.FRONTIER, n=5)
@@ -151,18 +149,14 @@ class TestHybridClassifier:
     def test_heuristics_used_before_enough_samples(self):
         hybrid = HybridClassifier(min_samples=10)
         hybrid.learned.train(SAMPLES[:5])  # below threshold
-        result = hybrid.classify(
-            TaskContext(description="fix a typo in the readme")
-        )
+        result = hybrid.classify(TaskContext(description="fix a typo in the readme"))
         assert result.tier == Tier.LOCAL
         assert any("not active" in r for r in result.reasons)
 
     def test_learned_used_after_threshold(self):
         hybrid = HybridClassifier(min_samples=8)
         hybrid.learned.train(SAMPLES)
-        result = hybrid.classify(
-            TaskContext(description="fix a typo in the readme")
-        )
+        result = hybrid.classify(TaskContext(description="fix a typo in the readme"))
         assert result.tier == Tier.LOCAL
         assert any("Learned model" in r for r in result.reasons)
 
@@ -170,13 +164,11 @@ class TestHybridClassifier:
         # Train on data that teaches the opposite of the heuristic default,
         # then confirm the heuristic tier still wins.
         hybrid = HybridClassifier(min_samples=8)
-        inverted = [(d, Tier.FRONTIER if t == Tier.LOCAL else Tier.LOCAL)
-                    for d, t in SAMPLES]
+        inverted = [(d, Tier.FRONTIER if t == Tier.LOCAL else Tier.LOCAL) for d, t in SAMPLES]
         hybrid.learned.train(inverted)
 
         result = hybrid.classify(
-            TaskContext(description="fix a typo in the readme",
-                        files_touched=["README.md"])
+            TaskContext(description="fix a typo in the readme", files_touched=["README.md"])
         )
         # The heuristic says LOCAL; even though the model says FRONTIER, the
         # hybrid keeps LOCAL.
@@ -196,8 +188,7 @@ class TestHybridClassifier:
         result = hybrid.classify(
             TaskContext(description="refactor the authentication architecture")
         )
-        assert any("agreed with heuristics" in r or "overridden" in r
-                   for r in result.reasons)
+        assert any("agreed with heuristics" in r or "overridden" in r for r in result.reasons)
 
 
 class TestTrainFromFeedback:
@@ -207,13 +198,15 @@ class TestTrainFromFeedback:
         feedback_path = tmp_path / "feedback.jsonl"
         store = FeedbackStore(str(feedback_path))
         for i, (desc, tier) in enumerate(SAMPLES):
-            store.add(FeedbackEntry(
-                task_id=f"t{i}",
-                description=desc,
-                predicted_tier="mid",
-                actual_tier=tier.value,
-                was_correct=tier.value == "mid",
-            ))
+            store.add(
+                FeedbackEntry(
+                    task_id=f"t{i}",
+                    description=desc,
+                    predicted_tier="mid",
+                    actual_tier=tier.value,
+                    was_correct=tier.value == "mid",
+                )
+            )
 
         model_path = str(tmp_path / "model.json")
         clf = train_from_feedback(model_path, str(feedback_path), epochs=40)
@@ -228,8 +221,7 @@ class TestTrainFromFeedback:
 
         feedback_path = tmp_path / "feedback.jsonl"
         store = FeedbackStore(str(feedback_path))
-        store.add(FeedbackEntry(task_id="t1", description="unlabelled task",
-                                predicted_tier="mid"))
+        store.add(FeedbackEntry(task_id="t1", description="unlabelled task", predicted_tier="mid"))
 
         clf = train_from_feedback(str(tmp_path / "m.json"), str(feedback_path))
         assert clf.weights.is_trained() is False

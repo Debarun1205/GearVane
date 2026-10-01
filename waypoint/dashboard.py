@@ -1,14 +1,12 @@
 """Web dashboard for monitoring Waypoint routing and costs."""
 
-import json
 import logging
 from datetime import datetime
-from typing import Dict, Any, Optional
+from typing import Optional
 
-from .logger import RoutingLogger
 from .cost import CostTracker
 from .health import ModelHealthChecker
-
+from .logger import RoutingLogger
 
 logger = logging.getLogger(__name__)
 
@@ -179,9 +177,12 @@ DASHBOARD_HTML = """
 class DashboardGenerator:
     """Generates HTML dashboard from routing and cost data."""
 
-    def __init__(self, routing_logger: RoutingLogger, 
-                 cost_tracker: Optional[CostTracker] = None,
-                 health_checker: Optional[ModelHealthChecker] = None):
+    def __init__(
+        self,
+        routing_logger: RoutingLogger,
+        cost_tracker: Optional[CostTracker] = None,
+        health_checker: Optional[ModelHealthChecker] = None,
+    ):
         self.routing_logger = routing_logger
         self.cost_tracker = cost_tracker
         self.health_checker = health_checker
@@ -190,7 +191,7 @@ class DashboardGenerator:
         """Generate the HTML dashboard."""
         stats = self.routing_logger.get_stats()
         cost_stats = self.cost_tracker.get_stats() if self.cost_tracker else {}
-        
+
         # Calculate success rate
         total = stats.get("total", 0)
         successes = stats.get("successes", 0)
@@ -201,7 +202,9 @@ class DashboardGenerator:
         tier_cards = ""
         for tier, count in stats.get("tier_distribution", {}).items():
             pct = round((count / total) * 100, 1) if total > 0 else 0
-            color = {"local": "#22c55e", "mid": "#f59e0b", "frontier": "#ef4444"}.get(tier, "#64748b")
+            color = {"local": "#22c55e", "mid": "#f59e0b", "frontier": "#ef4444"}.get(
+                tier, "#64748b"
+            )
             tier_cards += f"""
             <div class="card">
                 <h3>{tier.upper()}</h3>
@@ -228,12 +231,19 @@ class DashboardGenerator:
                 </tr>
                 """
         else:
-            health_rows = '<tr><td colspan="5" style="text-align:center;color:#64748b;">No health data</td></tr>'
+            health_rows = (
+                '<tr><td colspan="5" '
+                'style="text-align:center;color:#64748b;">'
+                "No health data</td></tr>"
+            )
 
         # Routing rows (recent 10)
         routing_rows = ""
         for entry in self.routing_logger._entries[-10:]:
-            status = "⏳ Pending" if entry.success is None else ("✅" if entry.success else "❌")
+            if entry.success is None:
+                status = "pending"
+            else:
+                status = "ok" if entry.success else "failed"
             routing_rows += f"""
             <tr>
                 <td>{datetime.fromtimestamp(entry.timestamp).strftime('%H:%M:%S')}</td>

@@ -8,15 +8,14 @@ failure.
 import logging
 import time
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, Iterator, List, Optional
+from typing import Any, Dict, Iterator, List, Optional
 
-from .classifier import TaskContext, Tier
+from .classifier import TaskContext
 from .cost import CostTracker
 from .providers import Completion, ProviderError, ProviderFactory
 from .retry import RetryConfig, RetryExhaustedError, retry_sync
 from .router import RoutingDecision, TierRouter
 from .safety import SafetyManager
-
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +35,7 @@ class NonRetryableError(Exception):
 @dataclass
 class ExecutionResult:
     """Outcome of running one task end to end."""
+
     task_id: str
     success: bool
     content: str = ""
@@ -66,21 +66,24 @@ class Orchestrator:
             timeout=config.get("providers", {}).get("timeout_seconds", 120.0)
         )
 
-        self._max_escalations = config.get("router", {}).get("escalation", {}).get(
-            "max_escalations", 2
+        self._max_escalations = (
+            config.get("router", {}).get("escalation", {}).get("max_escalations", 2)
         )
         self._cost_per_token = {
-            tier.name.lower(): tier.cost_per_token
-            for tier in self.router.tiers.values()
+            tier.name.lower(): tier.cost_per_token for tier in self.router.tiers.values()
         }
 
-    def execute(self, task_id: str, prompt: str,
-                files_touched: Optional[List[str]] = None,
-                system: Optional[str] = None,
-                temperature: float = 0.0,
-                max_tokens: int = 2048,
-                error_loops: int = 0,
-                test_failures: int = 0) -> ExecutionResult:
+    def execute(
+        self,
+        task_id: str,
+        prompt: str,
+        files_touched: Optional[List[str]] = None,
+        system: Optional[str] = None,
+        temperature: float = 0.0,
+        max_tokens: int = 2048,
+        error_loops: int = 0,
+        test_failures: int = 0,
+    ) -> ExecutionResult:
         """Route and run a task, retrying and escalating as needed."""
         start = time.time()
         history: List[Dict[str, Any]] = []
@@ -125,22 +128,26 @@ class Orchestrator:
                 completion = self._call_with_retry(
                     decision, prompt, system, temperature, max_tokens
                 )
-            except (ProviderError, RetryExhaustedError, RetryableProviderError,
-                    NonRetryableError) as e:
+            except (
+                ProviderError,
+                RetryExhaustedError,
+                RetryableProviderError,
+                NonRetryableError,
+            ) as e:
                 message = str(e)
                 logger.warning(f"Task {task_id} attempt {attempt + 1} failed: {message}")
 
                 self.router.report_failure(task_id)
-                self.cost.record_usage(
-                    task_id, decision.tier.value, decision.model, 0, 0, 0.0
+                self.cost.record_usage(task_id, decision.tier.value, decision.model, 0, 0, 0.0)
+                history.append(
+                    {
+                        "attempt": attempt + 1,
+                        "tier": decision.tier.value,
+                        "model": decision.model,
+                        "success": False,
+                        "error": message,
+                    }
                 )
-                history.append({
-                    "attempt": attempt + 1,
-                    "tier": decision.tier.value,
-                    "model": decision.model,
-                    "success": False,
-                    "error": message,
-                })
 
                 # Feed the failure into the next classification so the router
                 # sees the error count and can escalate.
@@ -154,19 +161,25 @@ class Orchestrator:
             total_out += completion.usage.tokens_out
 
             self.cost.record_usage(
-                task_id, decision.tier.value, decision.model,
-                completion.usage.tokens_in, completion.usage.tokens_out, unit_cost,
+                task_id,
+                decision.tier.value,
+                decision.model,
+                completion.usage.tokens_in,
+                completion.usage.tokens_out,
+                unit_cost,
             )
             self.safety.record_spend(cost, task_id=task_id)
             self.router.report_success(task_id)
 
-            history.append({
-                "attempt": attempt + 1,
-                "tier": decision.tier.value,
-                "model": decision.model,
-                "success": True,
-                "cost_usd": round(cost, 6),
-            })
+            history.append(
+                {
+                    "attempt": attempt + 1,
+                    "tier": decision.tier.value,
+                    "model": decision.model,
+                    "success": True,
+                    "cost_usd": round(cost, 6),
+                }
+            )
 
             return ExecutionResult(
                 task_id=task_id,
@@ -196,9 +209,14 @@ class Orchestrator:
             history=history,
         )
 
-    def _call_with_retry(self, decision: RoutingDecision, prompt: str,
-                         system: Optional[str], temperature: float,
-                         max_tokens: int) -> Completion:
+    def _call_with_retry(
+        self,
+        decision: RoutingDecision,
+        prompt: str,
+        system: Optional[str],
+        temperature: float,
+        max_tokens: int,
+    ) -> Completion:
         """Call the provider with retry on transient failures only.
 
         Only retryable ProviderErrors are retried. Permanent failures (bad
@@ -229,11 +247,15 @@ class Orchestrator:
 
         return retry_sync(call, retry_config)
 
-    def execute_stream(self, task_id: str, prompt: str,
-                       files_touched: Optional[List[str]] = None,
-                       system: Optional[str] = None,
-                       temperature: float = 0.0,
-                       max_tokens: int = 2048) -> Iterator[str]:
+    def execute_stream(
+        self,
+        task_id: str,
+        prompt: str,
+        files_touched: Optional[List[str]] = None,
+        system: Optional[str] = None,
+        temperature: float = 0.0,
+        max_tokens: int = 2048,
+    ) -> Iterator[str]:
         """Route a task and stream the response token by token."""
         context = TaskContext(
             description=prompt,

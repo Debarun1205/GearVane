@@ -2,11 +2,10 @@
 
 import json
 import logging
-import os
 import time
-from dataclasses import dataclass, field, asdict
-from typing import List, Optional, Dict, Any
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 
 @dataclass
@@ -37,7 +36,7 @@ class RoutingLogger:
         self.log_decisions = self.config.get("log_routing_decisions", True)
         self.log_escalations = self.config.get("log_escalations", True)
         self.log_costs = self.config.get("log_costs", True)
-        
+
         self._entries: List[RoutingLogEntry] = []
         self._setup_file_logging()
 
@@ -45,10 +44,10 @@ class RoutingLogger:
         """Set up Python logging to file."""
         if not self.enabled:
             return
-        
+
         log_path = Path(self.log_file)
         log_path.parent.mkdir(parents=True, exist_ok=True)
-        
+
         logging.basicConfig(
             level=getattr(logging, self.level.upper()),
             format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
@@ -62,7 +61,7 @@ class RoutingLogger:
         """Log a routing decision."""
         if not self.enabled or not self.log_decisions:
             return
-        
+
         entry = RoutingLogEntry(
             timestamp=time.time(),
             task_id=task_id,
@@ -75,18 +74,26 @@ class RoutingLogger:
             attempt=decision.attempt,
         )
         self._entries.append(entry)
-        
-        logger = logging.getLogger("waypoint.router")
-        logger.info(f"Route: task={task_id} tier={entry.tier} "
-                    f"model={entry.model} confidence={entry.confidence} "
-                    f"escalated={entry.escalated}")
 
-    def log_outcome(self, task_id: str, success: bool, cost_usd: float = 0.0,
-                    duration_seconds: float = 0.0, metadata: Dict[str, Any] = None):
+        logger = logging.getLogger("waypoint.router")
+        logger.info(
+            f"Route: task={task_id} tier={entry.tier} "
+            f"model={entry.model} confidence={entry.confidence} "
+            f"escalated={entry.escalated}"
+        )
+
+    def log_outcome(
+        self,
+        task_id: str,
+        success: bool,
+        cost_usd: float = 0.0,
+        duration_seconds: float = 0.0,
+        metadata: Optional[Dict[str, Any]] = None,
+    ):
         """Log the outcome of a routed task."""
         if not self.enabled:
             return
-        
+
         # Find the latest entry for this task
         for entry in reversed(self._entries):
             if entry.task_id == task_id:
@@ -96,17 +103,19 @@ class RoutingLogger:
                 if metadata:
                     entry.metadata.update(metadata)
                 break
-        
+
         logger = logging.getLogger("waypoint.outcome")
         status = "SUCCESS" if success else "FAILURE"
-        logger.info(f"Outcome: task={task_id} status={status} "
-                    f"cost=${cost_usd:.4f} duration={duration_seconds:.2f}s")
+        logger.info(
+            f"Outcome: task={task_id} status={status} "
+            f"cost=${cost_usd:.4f} duration={duration_seconds:.2f}s"
+        )
 
     def log_escalation(self, task_id: str, from_tier: str, to_tier: str, reason: str):
         """Log an escalation event."""
         if not self.enabled or not self.log_escalations:
             return
-        
+
         logger = logging.getLogger("waypoint.escalation")
         logger.warning(f"Escalation: task={task_id} {from_tier} -> {to_tier} ({reason})")
 
@@ -114,17 +123,17 @@ class RoutingLogger:
         """Get routing statistics."""
         if not self._entries:
             return {"total": 0}
-        
+
         total = len(self._entries)
         escalations = sum(1 for e in self._entries if e.escalated)
         successes = sum(1 for e in self._entries if e.success is True)
         failures = sum(1 for e in self._entries if e.success is False)
         total_cost = sum(e.cost_usd for e in self._entries)
-        
-        tier_counts = {}
+
+        tier_counts: Dict[str, int] = {}
         for e in self._entries:
             tier_counts[e.tier] = tier_counts.get(e.tier, 0) + 1
-        
+
         return {
             "total": total,
             "escalations": escalations,

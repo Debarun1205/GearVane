@@ -34,27 +34,64 @@ class TaskClassifier:
     """Classifies tasks into tiers using keyword heuristics and context."""
 
     SIMPLE_KEYWORDS = [
-        "typo", "formatting", "rename", "comment", "readme",
-        "documentation", "boilerplate", "template", "simple", "fix",
-        "small", "typo", "spelling", "whitespace", "lint",
+        "typo",
+        "formatting",
+        "rename",
+        "comment",
+        "readme",
+        "documentation",
+        "boilerplate",
+        "template",
+        "simple",
+        "fix",
+        "small",
+        "typo",
+        "spelling",
+        "whitespace",
+        "lint",
     ]
 
     COMPLEX_KEYWORDS = [
-        "architecture", "refactor", "optimize", "security",
-        "concurrency", "distributed", "migration", "redesign",
-        "performance", "scale", "debug", "investigate", "complex",
-        "race condition", "deadlock", "memory leak", "bottleneck",
+        "architecture",
+        "refactor",
+        "optimize",
+        "security",
+        "concurrency",
+        "distributed",
+        "migration",
+        "redesign",
+        "performance",
+        "scale",
+        "debug",
+        "investigate",
+        "complex",
+        "race condition",
+        "deadlock",
+        "memory leak",
+        "bottleneck",
     ]
 
     COMPLEX_FILE_PATTERNS = [
-        r"\.rs$", r"\.go$", r"\.cpp$", r"\.c$",
-        r"_test\.", r"tests?/", r"src/core/", r"src/engine/",
-        r"migrations?", r"deploy", r"infra",
+        r"\.rs$",
+        r"\.go$",
+        r"\.cpp$",
+        r"\.c$",
+        r"_test\.",
+        r"tests?/",
+        r"src/core/",
+        r"src/engine/",
+        r"migrations?",
+        r"deploy",
+        r"infra",
     ]
 
     # Glob-style patterns, which are what users actually write in config.
     COMPLEX_FILE_GLOBS = [
-        "*.rs", "*.go", "*_test.*", "src/core/*", "src/engine/*",
+        "*.rs",
+        "*.go",
+        "*_test.*",
+        "src/core/*",
+        "src/engine/*",
     ]
 
     @staticmethod
@@ -121,7 +158,8 @@ class TaskClassifier:
 
         # File-based scoring
         complex_files = sum(
-            1 for f in context.files_touched
+            1
+            for f in context.files_touched
             if any(re.search(p, f) for p in self.complex_file_patterns)
         )
         if complex_files > 0:
@@ -161,7 +199,7 @@ class TaskClassifier:
                 scores={k.value: v for k, v in scores.items()},
             )
 
-        winner = max(scores, key=scores.get)
+        winner = max(scores, key=lambda t: scores[t])
         # Confidence based on margin
         sorted_scores = sorted(scores.values(), reverse=True)
         margin = sorted_scores[0] - sorted_scores[1] if len(sorted_scores) > 1 else sorted_scores[0]

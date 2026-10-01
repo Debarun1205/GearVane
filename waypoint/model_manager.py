@@ -5,9 +5,8 @@ import logging
 import subprocess
 import time
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Any
 from enum import Enum
-
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -48,18 +47,20 @@ class OllamaManager:
             )
             if result.returncode != 0:
                 return []
-            
+
             models = []
             lines = result.stdout.strip().split("\n")[1:]  # Skip header
             for line in lines:
                 parts = line.split()
                 if len(parts) >= 3:
-                    models.append(LocalModel(
-                        name=parts[0],
-                        provider="ollama",
-                        size_mb=self._parse_size(parts[2]),
-                        status=ModelStatus.READY,
-                    ))
+                    models.append(
+                        LocalModel(
+                            name=parts[0],
+                            provider="ollama",
+                            size_mb=self._parse_size(parts[2]),
+                            status=ModelStatus.READY,
+                        )
+                    )
             return models
         except FileNotFoundError:
             logger.warning("Ollama not found")
@@ -146,6 +147,7 @@ class LMStudioManager:
         """List LM Studio models."""
         try:
             import urllib.request
+
             with urllib.request.urlopen(f"{self.base_url}/v1/models", timeout=5) as resp:
                 data = json.loads(resp.read())
                 return [
@@ -164,6 +166,7 @@ class LMStudioManager:
         """Check if LM Studio server is running."""
         try:
             import urllib.request
+
             urllib.request.urlopen(f"{self.base_url}/v1/models", timeout=5)
             return True
         except Exception:
@@ -181,17 +184,20 @@ class LlamaCppManager:
         models = []
         try:
             from pathlib import Path
+
             model_path = Path(self.models_dir)
             if model_path.exists():
                 for f in model_path.glob("*.gguf"):
                     size_mb = f.stat().st_size // (1024 * 1024)
-                    models.append(LocalModel(
-                        name=f.stem,
-                        provider="llama_cpp",
-                        size_mb=size_mb,
-                        status=ModelStatus.READY,
-                        path=str(f),
-                    ))
+                    models.append(
+                        LocalModel(
+                            name=f.stem,
+                            provider="llama_cpp",
+                            size_mb=size_mb,
+                            status=ModelStatus.READY,
+                            path=str(f),
+                        )
+                    )
         except Exception as e:
             logger.error(f"Failed to list llama.cpp models: {e}")
         return models
@@ -217,9 +223,7 @@ class ModelManager:
         self.lm_studio = LMStudioManager(
             section.get("lm_studio", {}).get("base_url", "http://localhost:1234")
         )
-        self.llama_cpp = LlamaCppManager(
-            section.get("llama_cpp", {}).get("models_dir", "./models")
-        )
+        self.llama_cpp = LlamaCppManager(section.get("llama_cpp", {}).get("models_dir", "./models"))
 
     def list_all_models(self) -> List[LocalModel]:
         """List all local models across providers."""
@@ -231,8 +235,11 @@ class ModelManager:
 
     def get_available_models(self) -> List[LocalModel]:
         """Get all ready/running models."""
-        return [m for m in self.list_all_models() 
-                if m.status in (ModelStatus.READY, ModelStatus.RUNNING)]
+        return [
+            m
+            for m in self.list_all_models()
+            if m.status in (ModelStatus.READY, ModelStatus.RUNNING)
+        ]
 
     def pull_model(self, provider: str, model_name: str) -> bool:
         """Pull a model from a specific provider."""
@@ -260,11 +267,11 @@ class ModelManager:
         """Get model statistics."""
         models = self.list_all_models()
         total_size = sum(m.size_mb for m in models)
-        
-        by_provider = {}
+
+        by_provider: Dict[str, int] = {}
         for m in models:
             by_provider[m.provider] = by_provider.get(m.provider, 0) + 1
-        
+
         return {
             "total_models": len(models),
             "total_size_mb": total_size,

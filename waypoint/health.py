@@ -4,9 +4,8 @@ import asyncio
 import logging
 import time
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Any, Callable
 from enum import Enum
-
+from typing import Any, Callable, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -43,22 +42,26 @@ class ModelHealthChecker:
     def __init__(self, config: Optional[Dict[str, Any]] = None):
         self.config = config or {}
         health_config = self.config.get("health", {})
-        
+
         self.check_interval = health_config.get("check_interval_seconds", 60.0)
         self.timeout = health_config.get("timeout_seconds", 10.0)
         self.latency_threshold = health_config.get("latency_threshold_ms", 5000.0)
         self.failure_threshold = health_config.get("failure_threshold", 3)
-        
+
         self._models: Dict[str, Dict[str, Any]] = {}
         self._results: Dict[str, HealthCheckResult] = {}
         self._failure_counts: Dict[str, int] = {}
         self._status_callbacks: List[Callable[[str, HealthStatus, HealthStatus], None]] = []
         self._running = False
 
-    def register_model(self, model: str, provider: str,
-                       endpoint: Optional[str] = None,
-                       check_fn: Optional[Callable] = None,
-                       probe: Optional[Callable] = None):
+    def register_model(
+        self,
+        model: str,
+        provider: str,
+        endpoint: Optional[str] = None,
+        check_fn: Optional[Callable] = None,
+        probe: Optional[Callable] = None,
+    ):
         """Register a model for health checking.
 
         Supply either check_fn (async, returns truthy when healthy) or probe
@@ -89,10 +92,10 @@ class ModelHealthChecker:
                 last_checked=time.time(),
                 message="Model not registered",
             )
-        
+
         model_info = self._models[model]
         start_time = time.time()
-        
+
         try:
             check_fn = model_info.get("check_fn")
             if check_fn:
@@ -115,8 +118,7 @@ class ModelHealthChecker:
                         else HealthStatus.UNHEALTHY
                     )
                     message = (
-                        f"Check failed ({self._failure_counts[model]} "
-                        f"consecutive failures)"
+                        f"Check failed ({self._failure_counts[model]} " f"consecutive failures)"
                     )
             elif model_info.get("provider") is not None:
                 # Probe the real endpoint through the provider client. Reporting
@@ -150,12 +152,12 @@ class ModelHealthChecker:
                 self._failure_counts[model] = 0
                 status = HealthStatus.UNKNOWN
                 message = "Not registered for checking"
-            
+
             # Check latency threshold
             if status == HealthStatus.HEALTHY and latency > self.latency_threshold:
                 status = HealthStatus.DEGRADED
                 message = f"High latency: {latency:.0f}ms"
-            
+
             result = HealthCheckResult(
                 model=model,
                 provider=model_info["provider"],
@@ -164,7 +166,7 @@ class ModelHealthChecker:
                 last_checked=time.time(),
                 message=message,
             )
-            
+
             # Notify on status change
             old_status = self._results.get(model)
             if old_status and old_status.status != status:
@@ -173,15 +175,19 @@ class ModelHealthChecker:
                         callback(model, old_status.status, status)
                     except Exception as e:
                         logger.error(f"Status callback failed: {e}")
-            
+
             self._results[model] = result
             return result
-            
+
         except asyncio.TimeoutError:
             latency = (time.time() - start_time) * 1000
             self._failure_counts[model] += 1
-            status = HealthStatus.UNHEALTHY if self._failure_counts[model] >= self.failure_threshold else HealthStatus.DEGRADED
-            
+            status = (
+                HealthStatus.UNHEALTHY
+                if self._failure_counts[model] >= self.failure_threshold
+                else HealthStatus.DEGRADED
+            )
+
             result = HealthCheckResult(
                 model=model,
                 provider=model_info["provider"],
@@ -192,12 +198,16 @@ class ModelHealthChecker:
             )
             self._results[model] = result
             return result
-            
+
         except Exception as e:
             latency = (time.time() - start_time) * 1000
             self._failure_counts[model] += 1
-            status = HealthStatus.UNHEALTHY if self._failure_counts[model] >= self.failure_threshold else HealthStatus.DEGRADED
-            
+            status = (
+                HealthStatus.UNHEALTHY
+                if self._failure_counts[model] >= self.failure_threshold
+                else HealthStatus.DEGRADED
+            )
+
             result = HealthCheckResult(
                 model=model,
                 provider=model_info["provider"],
@@ -225,14 +235,16 @@ class ModelHealthChecker:
     def get_healthy_models(self) -> List[str]:
         """Get list of healthy models."""
         return [
-            model for model, result in self._results.items()
+            model
+            for model, result in self._results.items()
             if result.status == HealthStatus.HEALTHY
         ]
 
     def get_unhealthy_models(self) -> List[str]:
         """Get list of unhealthy models."""
         return [
-            model for model, result in self._results.items()
+            model
+            for model, result in self._results.items()
             if result.status in (HealthStatus.UNHEALTHY, HealthStatus.DEGRADED)
         ]
 

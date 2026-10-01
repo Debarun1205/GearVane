@@ -1,7 +1,6 @@
 """Tests for the safety module."""
 
-import pytest
-from waypoint.safety import SafetyManager, ApprovalStatus
+from waypoint.safety import ApprovalStatus, SafetyManager
 
 
 class TestSafetyManager:
@@ -96,14 +95,14 @@ class TestSafetyManager:
     def test_pending_approvals_listed(self):
         self.safety.check_command("git push origin main")
         self.safety.check_command("git push --force origin main")
-        
+
         pending = self.safety.get_pending_approvals()
         assert len(pending) == 2
 
     def test_approve_operation(self):
         result = self.safety.check_command("git push origin main")
         assert result.status == ApprovalStatus.PENDING
-        
+
         self.safety.approve(result)
         assert result.status == ApprovalStatus.APPROVED
 

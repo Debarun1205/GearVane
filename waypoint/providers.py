@@ -14,7 +14,6 @@ import urllib.request
 from dataclasses import dataclass, field
 from typing import Any, Dict, Iterator, List, Optional
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -40,6 +39,7 @@ class Usage:
 @dataclass
 class Completion:
     """A model response."""
+
     content: str
     model: str
     usage: Usage = field(default_factory=Usage)
@@ -51,27 +51,39 @@ class Completion:
 class ProviderClient:
     """Base class for provider clients."""
 
-    def __init__(self, base_url: str, model: str, api_key: Optional[str] = None,
-                 timeout: float = 120.0):
+    def __init__(
+        self, base_url: str, model: str, api_key: Optional[str] = None, timeout: float = 120.0
+    ):
         self.base_url = base_url.rstrip("/")
         self.model = model
         self.api_key = api_key
         self.timeout = timeout
 
-    def complete(self, prompt: str, system: Optional[str] = None,
-                 temperature: float = 0.0, max_tokens: int = 2048) -> Completion:
+    def complete(
+        self,
+        prompt: str,
+        system: Optional[str] = None,
+        temperature: float = 0.0,
+        max_tokens: int = 2048,
+    ) -> Completion:
         raise NotImplementedError
 
-    def stream(self, prompt: str, system: Optional[str] = None,
-               temperature: float = 0.0, max_tokens: int = 2048) -> Iterator[str]:
+    def stream(
+        self,
+        prompt: str,
+        system: Optional[str] = None,
+        temperature: float = 0.0,
+        max_tokens: int = 2048,
+    ) -> Iterator[str]:
         raise NotImplementedError
 
     def health_check(self) -> bool:
         """Cheap availability probe."""
         raise NotImplementedError
 
-    def _post(self, url: str, payload: Dict[str, Any],
-              headers: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
+    def _post(
+        self, url: str, payload: Dict[str, Any], headers: Optional[Dict[str, str]] = None
+    ) -> Dict[str, Any]:
         """POST JSON and decode the JSON response."""
         body = json.dumps(payload).encode("utf-8")
         req_headers = {"Content-Type": "application/json"}
@@ -121,8 +133,13 @@ class ProviderClient:
 class OllamaClient(ProviderClient):
     """Client for a local Ollama server."""
 
-    def complete(self, prompt: str, system: Optional[str] = None,
-                 temperature: float = 0.0, max_tokens: int = 2048) -> Completion:
+    def complete(
+        self,
+        prompt: str,
+        system: Optional[str] = None,
+        temperature: float = 0.0,
+        max_tokens: int = 2048,
+    ) -> Completion:
         payload: Dict[str, Any] = {
             "model": self.model,
             "prompt": prompt,
@@ -149,8 +166,13 @@ class OllamaClient(ProviderClient):
             finish_reason=data.get("done_reason", "stop"),
         )
 
-    def stream(self, prompt: str, system: Optional[str] = None,
-               temperature: float = 0.0, max_tokens: int = 2048) -> Iterator[str]:
+    def stream(
+        self,
+        prompt: str,
+        system: Optional[str] = None,
+        temperature: float = 0.0,
+        max_tokens: int = 2048,
+    ) -> Iterator[str]:
         payload: Dict[str, Any] = {
             "model": self.model,
             "prompt": prompt,
@@ -205,8 +227,13 @@ class OpenAICompatClient(ProviderClient):
     llama.cpp's server, and hosted OpenAI itself.
     """
 
-    def complete(self, prompt: str, system: Optional[str] = None,
-                 temperature: float = 0.0, max_tokens: int = 2048) -> Completion:
+    def complete(
+        self,
+        prompt: str,
+        system: Optional[str] = None,
+        temperature: float = 0.0,
+        max_tokens: int = 2048,
+    ) -> Completion:
         messages = []
         if system:
             messages.append({"role": "system", "content": system})
@@ -241,8 +268,13 @@ class OpenAICompatClient(ProviderClient):
             finish_reason=choices[0].get("finish_reason", "stop"),
         )
 
-    def stream(self, prompt: str, system: Optional[str] = None,
-               temperature: float = 0.0, max_tokens: int = 2048) -> Iterator[str]:
+    def stream(
+        self,
+        prompt: str,
+        system: Optional[str] = None,
+        temperature: float = 0.0,
+        max_tokens: int = 2048,
+    ) -> Iterator[str]:
         messages = []
         if system:
             messages.append({"role": "system", "content": system})
@@ -309,8 +341,13 @@ class OpenAICompatClient(ProviderClient):
 class AnthropicClient(ProviderClient):
     """Client for the Anthropic Messages API."""
 
-    def complete(self, prompt: str, system: Optional[str] = None,
-                 temperature: float = 0.0, max_tokens: int = 2048) -> Completion:
+    def complete(
+        self,
+        prompt: str,
+        system: Optional[str] = None,
+        temperature: float = 0.0,
+        max_tokens: int = 2048,
+    ) -> Completion:
         payload: Dict[str, Any] = {
             "model": self.model,
             "max_tokens": max_tokens,
@@ -328,9 +365,7 @@ class AnthropicClient(ProviderClient):
 
         # Anthropic returns content as a list of blocks.
         blocks = data.get("content", [])
-        content = "".join(
-            b.get("text", "") for b in blocks if b.get("type") == "text"
-        )
+        content = "".join(b.get("text", "") for b in blocks if b.get("type") == "text")
 
         usage_raw = data.get("usage", {}) or {}
 
@@ -345,8 +380,13 @@ class AnthropicClient(ProviderClient):
             finish_reason=data.get("stop_reason", "stop"),
         )
 
-    def stream(self, prompt: str, system: Optional[str] = None,
-               temperature: float = 0.0, max_tokens: int = 2048) -> Iterator[str]:
+    def stream(
+        self,
+        prompt: str,
+        system: Optional[str] = None,
+        temperature: float = 0.0,
+        max_tokens: int = 2048,
+    ) -> Iterator[str]:
         payload: Dict[str, Any] = {
             "model": self.model,
             "max_tokens": max_tokens,
@@ -478,7 +518,9 @@ class ProviderFactory:
             api_key = None
 
         client_class = PROVIDER_REGISTRY.get(normalized, OpenAICompatClient)
-        target_model = model or (provider.models[0] if hasattr(provider, "models") and provider.models else "")
+        target_model = model or (
+            provider.models[0] if hasattr(provider, "models") and provider.models else ""
+        )
 
         return client_class(
             base_url=base_url,

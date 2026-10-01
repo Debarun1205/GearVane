@@ -10,8 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from waypoint.cli import build_parser, main
-
+from waypoint.cli import build_parser
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
@@ -30,23 +29,26 @@ def run_cli(*args, expect_success=True):
 class TestParserDispatch:
     """Every subcommand must be recorded in args.command."""
 
-    @pytest.mark.parametrize("argv", [
-        ["route", "--task", "fix a typo"],
-        ["run", "--task", "fix a typo"],
-        ["health"],
-        ["health", "--offline"],
-        ["models"],
-        ["cost"],
-        ["dashboard"],
-        ["feedback"],
-        ["stats"],
-        ["safety", "spend"],
-        ["safety", "pending"],
-        ["approve"],
-        ["approve", "--all"],
-        ["deploy", "github", "--github-action", "push"],
-        ["train"],
-    ])
+    @pytest.mark.parametrize(
+        "argv",
+        [
+            ["route", "--task", "fix a typo"],
+            ["run", "--task", "fix a typo"],
+            ["health"],
+            ["health", "--offline"],
+            ["models"],
+            ["cost"],
+            ["dashboard"],
+            ["feedback"],
+            ["stats"],
+            ["safety", "spend"],
+            ["safety", "pending"],
+            ["approve"],
+            ["approve", "--all"],
+            ["deploy", "github", "--github-action", "push"],
+            ["train"],
+        ],
+    )
     def test_subcommand_recorded(self, argv):
         args = build_parser().parse_args(argv)
         assert args.command == argv[0]
@@ -89,19 +91,37 @@ class TestParserDispatch:
 
 class TestParserOptions:
     def test_route_accepts_context(self):
-        args = build_parser().parse_args([
-            "route", "--task", "x", "--files", "a.py", "b.py",
-            "--error-loops", "2", "--test-failures", "1",
-        ])
+        args = build_parser().parse_args(
+            [
+                "route",
+                "--task",
+                "x",
+                "--files",
+                "a.py",
+                "b.py",
+                "--error-loops",
+                "2",
+                "--test-failures",
+                "1",
+            ]
+        )
         assert args.files == ["a.py", "b.py"]
         assert args.error_loops == 2
         assert args.test_failures == 1
 
     def test_run_accepts_generation_options(self):
-        args = build_parser().parse_args([
-            "run", "--task", "x", "--temperature", "0.5",
-            "--max-tokens", "512", "--stream",
-        ])
+        args = build_parser().parse_args(
+            [
+                "run",
+                "--task",
+                "x",
+                "--temperature",
+                "0.5",
+                "--max-tokens",
+                "512",
+                "--stream",
+            ]
+        )
         assert args.temperature == 0.5
         assert args.max_tokens == 512
         assert args.stream is True
@@ -120,15 +140,23 @@ class TestEndToEndCommands:
     """Commands must run, not just parse, against the shipped config."""
 
     def test_route_runs(self):
-        result = run_cli("route", "--task", "Fix a typo in README",
-                         "--files", "README.md")
+        result = run_cli("route", "--task", "Fix a typo in README", "--files", "README.md")
         assert result.returncode == 0, result.stderr
         assert "Tier:" in result.stdout
 
     def test_route_json_runs(self):
         import json
-        result = run_cli("route", "--task", "Refactor the auth architecture",
-                         "--files", "a.py", "b.py", "c.py", "--json")
+
+        result = run_cli(
+            "route",
+            "--task",
+            "Refactor the auth architecture",
+            "--files",
+            "a.py",
+            "b.py",
+            "c.py",
+            "--json",
+        )
         assert result.returncode == 0, result.stderr
         payload = json.loads(result.stdout)
         assert payload["tier"] in ("local", "mid", "frontier")
@@ -147,6 +175,7 @@ class TestEndToEndCommands:
 
     def test_safety_check_runs(self):
         import json
+
         result = run_cli("safety", "check", "--command", "git status")
         assert result.returncode == 0, result.stderr
         payload = json.loads(result.stdout)
@@ -154,8 +183,7 @@ class TestEndToEndCommands:
 
     def test_approve_with_no_pending(self):
         result = run_cli("approve")
-        assert "No pending approvals" in result.stdout or \
-            "Pending approvals" in result.stdout
+        assert "No pending approvals" in result.stdout or "Pending approvals" in result.stdout
 
     def test_stats_runs(self):
         result = run_cli("stats")

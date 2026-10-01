@@ -20,7 +20,6 @@ from typing import Dict, List, Optional, Sequence, Tuple
 
 from .classifier import ClassificationResult, TaskClassifier, TaskContext, Tier
 
-
 logger = logging.getLogger(__name__)
 
 TIERS = (Tier.LOCAL, Tier.MID, Tier.FRONTIER)
@@ -68,6 +67,7 @@ def normalize(features: Dict[str, float]) -> Dict[str, float]:
 @dataclass
 class LearnedWeights:
     """Per-tier weight vectors and bias terms."""
+
     # tier -> feature name -> weight
     weights: Dict[str, Dict[str, float]] = field(default_factory=dict)
     bias: Dict[str, float] = field(default_factory=dict)
@@ -98,8 +98,7 @@ class LearnedWeights:
 class LearnedClassifier:
     """Multinomial logistic regression over hashed description features."""
 
-    def __init__(self, learning_rate: float = 0.1, epochs: int = 30,
-                 l2: float = 0.001):
+    def __init__(self, learning_rate: float = 0.1, epochs: int = 30, l2: float = 0.001):
         self.learning_rate = learning_rate
         self.epochs = epochs
         self.l2 = l2
@@ -138,7 +137,7 @@ class LearnedClassifier:
     def predict(self, description: str) -> Tuple[Tier, float]:
         """Predict a tier and its confidence."""
         probabilities = self.predict_proba(description)
-        best_key = max(probabilities, key=probabilities.get)
+        best_key = max(probabilities, key=lambda k: probabilities[k])
         return Tier(best_key), probabilities[best_key]
 
     def train(self, samples: Sequence[Tuple[str, Tier]]) -> LearnedWeights:
@@ -186,7 +185,7 @@ class LearnedClassifier:
             if self.l2 > 0:
                 for tier_weights in self.weights.weights.values():
                     for name in tier_weights:
-                        tier_weights[name] *= (1.0 - self.l2)
+                        tier_weights[name] *= 1.0 - self.l2
 
         # Mark the model trained before scoring: predict() delegates to
         # predict_proba(), which returns a uniform distribution while
@@ -202,8 +201,7 @@ class LearnedClassifier:
         self.weights.accuracy = correct / len(samples)
 
         logger.info(
-            f"Trained on {len(samples)} samples, "
-            f"training accuracy {self.weights.accuracy:.1%}"
+            f"Trained on {len(samples)} samples, " f"training accuracy {self.weights.accuracy:.1%}"
         )
         return self.weights
 
@@ -222,10 +220,7 @@ class LearnedClassifier:
         if path_obj.exists():
             with open(path_obj) as f:
                 classifier.weights = LearnedWeights.from_dict(json.load(f))
-            logger.info(
-                f"Loaded model from {path} "
-                f"({classifier.weights.trained_on} samples)"
-            )
+            logger.info(f"Loaded model from {path} " f"({classifier.weights.trained_on} samples)")
         return classifier
 
     def top_features(self, tier: Tier, n: int = 10) -> List[Tuple[str, float]]:
@@ -243,10 +238,13 @@ class HybridClassifier:
     predictable on a fresh install.
     """
 
-    def __init__(self, config: Optional[dict] = None,
-                 learned: Optional[LearnedClassifier] = None,
-                 min_samples: int = 10,
-                 blend: float = 0.5):
+    def __init__(
+        self,
+        config: Optional[dict] = None,
+        learned: Optional[LearnedClassifier] = None,
+        min_samples: int = 10,
+        blend: float = 0.5,
+    ):
         self.heuristic = TaskClassifier(config)
         self.learned = learned or LearnedClassifier()
         self.min_samples = min_samples
@@ -268,7 +266,7 @@ class HybridClassifier:
             return heuristic
 
         probabilities = self.learned.predict_proba(context.description)
-        learned_key = max(probabilities, key=probabilities.get)
+        learned_key = max(probabilities, key=lambda k: probabilities[k])
         learned_tier = Tier(learned_key)
         learned_confidence = probabilities[learned_key]
 
@@ -276,8 +274,7 @@ class HybridClassifier:
         # the heuristic's tier at reduced confidence, so a bad learned model
         # degrades gracefully instead of silently rerouting work.
         agree = learned_tier == heuristic.tier
-        combined = (self.blend * learned_confidence +
-                    (1 - self.blend) * heuristic.confidence)
+        combined = self.blend * learned_confidence + (1 - self.blend) * heuristic.confidence
 
         if agree:
             tier = heuristic.tier
@@ -300,8 +297,7 @@ class HybridClassifier:
         )
 
 
-def train_from_feedback(model_path: str, feedback_path: str,
-                        **kwargs) -> LearnedClassifier:
+def train_from_feedback(model_path: str, feedback_path: str, **kwargs) -> LearnedClassifier:
     """Train a classifier from stored FeedbackLoop data."""
     from .feedback import FeedbackStore
 

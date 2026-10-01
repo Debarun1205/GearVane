@@ -38,6 +38,15 @@ config.yaml
 waypoint.log
 *.log
 
+# Runtime artifacts
+learned_model.json
+feedback.jsonl
+dashboard.html
+coverage.xml
+dist/
+build/
+*.egg-info/
+
 # OS
 .DS_Store
 Thumbs.db

@@ -1,4 +1,14 @@
+# Runtime dependencies
+#
+# The harness core is deliberately stdlib-only: providers use urllib and the
+# learned classifier is implemented directly, so installing Waypoint pulls in
+# no HTTP client and no ML framework.
+
 pyyaml>=6.0
 click>=8.0
 rich>=13.0
 pydantic>=2.0
+
+# Test dependencies. Installed locally with:
+#   pip install -r requirements-dev.txt
+# CI installs these separately via requirements-dev.txt.

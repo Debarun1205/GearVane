@@ -2,12 +2,7 @@
 
 import pytest
 
-from waypoint.cost import CostTracker
-from waypoint.orchestrator import (
-    NonRetryableError,
-    Orchestrator,
-    RetryableProviderError,
-)
+from waypoint.orchestrator import Orchestrator
 from waypoint.providers import Completion, ProviderError, Usage
 
 
@@ -16,34 +11,50 @@ def make_config(per_task=5.0, per_session=50.0, max_retries=0, retry_delay=0.0):
         "tiers": {
             "local": {
                 "description": "Local",
-                "providers": [{"name": "ollama", "models": ["llama3.2"],
-                               "base_url": "http://localhost:11434"}],
+                "providers": [
+                    {"name": "ollama", "models": ["llama3.2"], "base_url": "http://localhost:11434"}
+                ],
                 "cost_per_token": 0.0,
             },
             "mid": {
                 "description": "Mid",
-                "providers": [{"name": "openrouter", "models": ["haiku"],
-                               "base_url": "https://openrouter.ai/api"}],
+                "providers": [
+                    {
+                        "name": "openrouter",
+                        "models": ["haiku"],
+                        "base_url": "https://openrouter.ai/api",
+                    }
+                ],
                 "cost_per_token": 0.0,
             },
             "frontier": {
                 "description": "Frontier",
-                "providers": [{"name": "anthropic", "models": ["claude-x"],
-                               "base_url": "https://api.anthropic.com"}],
+                "providers": [
+                    {
+                        "name": "anthropic",
+                        "models": ["claude-x"],
+                        "base_url": "https://api.anthropic.com",
+                    }
+                ],
                 "cost_per_token": 0.0,
             },
         },
         "router": {
             "default_tier": "mid",
-            "escalation": {"enabled": True, "max_attempts_per_tier": 2,
-                           "max_escalations": 2},
+            "escalation": {"enabled": True, "max_attempts_per_tier": 2, "max_escalations": 2},
         },
-        "providers": {"max_retries": max_retries, "retry_base_delay": retry_delay,
-                      "retry_max_delay": retry_delay},
+        "providers": {
+            "max_retries": max_retries,
+            "retry_base_delay": retry_delay,
+            "retry_max_delay": retry_delay,
+        },
         "safety": {
             "require_approval": [],
-            "spend_limits": {"per_session": per_session, "per_day": per_session,
-                             "per_task": per_task},
+            "spend_limits": {
+                "per_session": per_session,
+                "per_day": per_session,
+                "per_task": per_task,
+            },
             "blocked_commands": [],
             "sandbox_allowed": [],
         },
@@ -59,8 +70,14 @@ class FakeClient:
         self.calls = []
 
     def complete(self, prompt, system=None, temperature=0.0, max_tokens=2048):
-        self.calls.append({"prompt": prompt, "system": system,
-                           "temperature": temperature, "max_tokens": max_tokens})
+        self.calls.append(
+            {
+                "prompt": prompt,
+                "system": system,
+                "temperature": temperature,
+                "max_tokens": max_tokens,
+            }
+        )
         if not self.results:
             raise AssertionError("FakeClient called more times than expected")
         result = self.results.pop(0)
@@ -74,8 +91,7 @@ class FakeClient:
 
 
 def ok(content="done", tin=10, tout=20):
-    return Completion(content=content, model="m",
-                      usage=Usage(tokens_in=tin, tokens_out=tout))
+    return Completion(content=content, model="m", usage=Usage(tokens_in=tin, tokens_out=tout))
 
 
 class TestExecuteSuccess:
@@ -93,15 +109,15 @@ class TestExecuteSuccess:
 
     def test_routes_simple_task_to_local(self):
         self.orch.providers.create = lambda p, m=None: FakeClient([ok()])
-        result = self.orch.execute("t1", "fix a typo in README",
-                                   files_touched=["README.md"])
+        result = self.orch.execute("t1", "fix a typo in README", files_touched=["README.md"])
         assert result.tier == "local"
         assert result.provider == "ollama"
 
     def test_routes_complex_task_to_frontier(self):
         self.orch.providers.create = lambda p, m=None: FakeClient([ok()])
         result = self.orch.execute(
-            "t2", "refactor the authentication architecture for scale",
+            "t2",
+            "refactor the authentication architecture for scale",
             files_touched=["src/auth/a.py", "src/auth/b.py", "src/auth/c.py"],
         )
         assert result.tier == "frontier"
@@ -112,7 +128,8 @@ class TestExecuteSuccess:
         orch = Orchestrator(config)
         orch.providers.create = lambda p, m=None: FakeClient([ok(tin=100, tout=200)])
         result = orch.execute(
-            "t3", "refactor the architecture for concurrency at scale",
+            "t3",
+            "refactor the architecture for concurrency at scale",
             files_touched=["a.py", "b.py", "c.py"],
         )
         # 300 tokens at 0.01/token
@@ -151,7 +168,8 @@ class TestEscalation:
         self.orch.providers.create = create
         # Force a complex task that starts at frontier, with no tier above it.
         result = self.orch.execute(
-            "t1", "refactor architecture for scale and concurrency",
+            "t1",
+            "refactor architecture for scale and concurrency",
             files_touched=["a.py", "b.py", "c.py"],
         )
         assert result.success is False
@@ -188,8 +206,7 @@ class TestEscalation:
             return FakeClient([ok()])
 
         self.orch.providers.create = create
-        result = self.orch.execute("t3", "fix a typo in README",
-                                   files_touched=["README.md"])
+        result = self.orch.execute("t3", "fix a typo in README", files_touched=["README.md"])
         assert result.success is True
         assert calls == ["ollama", "ollama"]
         assert result.escalated is False
@@ -207,8 +224,7 @@ class TestEscalation:
             return FakeClient([ok()])
 
         orch.providers.create = create
-        result = orch.execute("t4", "fix a typo in README",
-                              files_touched=["README.md"])
+        result = orch.execute("t4", "fix a typo in README", files_touched=["README.md"])
         assert result.success is True
         # First attempt local, second promoted to mid.
         assert calls[0] == "ollama"
@@ -249,8 +265,9 @@ class TestBudgetGate:
         orch = Orchestrator(config)
         orch.providers.create = lambda p, m=None: FakeClient([ok()])
         # max_tokens default 2048 * 0.01 = 20.48 > per_task 5.0
-        result = orch.execute("t1", "refactor architecture for scale",
-                              files_touched=["a.py", "b.py", "c.py"])
+        result = orch.execute(
+            "t1", "refactor architecture for scale", files_touched=["a.py", "b.py", "c.py"]
+        )
         assert result.success is False
         assert "Budget exceeded" in result.error
 
@@ -269,10 +286,12 @@ class TestRetryIntegration:
         calls = []
 
         def create(p, m=None):
-            fake = FakeClient([
-                ProviderError("timeout", retryable=True),
-                ok("ok after retry"),
-            ])
+            fake = FakeClient(
+                [
+                    ProviderError("timeout", retryable=True),
+                    ok("ok after retry"),
+                ]
+            )
             calls.append(fake)
             return fake
 

@@ -7,7 +7,6 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Type
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -66,15 +65,15 @@ class PluginManager:
             if not plugin.initialize(config):
                 logger.error(f"Plugin {plugin.metadata.name} failed to initialize")
                 return False
-            
+
             self._plugins[plugin.metadata.name] = plugin
-            
+
             # Register hooks
             for hook in plugin.metadata.hooks:
                 if hook not in self._hooks:
                     self._hooks[hook] = []
                 self._hooks[hook].append(plugin)
-            
+
             logger.info(f"Plugin registered: {plugin.metadata.name} v{plugin.metadata.version}")
             return True
         except Exception as e:
@@ -85,15 +84,15 @@ class PluginManager:
         """Unregister a plugin."""
         if name not in self._plugins:
             return False
-        
+
         plugin = self._plugins.pop(name)
         plugin.shutdown()
-        
+
         # Remove from hooks
         for hook_plugins in self._hooks.values():
             if plugin in hook_plugins:
                 hook_plugins.remove(plugin)
-        
+
         logger.info(f"Plugin unregistered: {name}")
         return True
 
@@ -101,7 +100,7 @@ class PluginManager:
         """Emit a hook to all registered plugins."""
         if hook_name not in self._hooks:
             return
-        
+
         for plugin in self._hooks[hook_name]:
             try:
                 method = getattr(plugin, hook_name, None)
@@ -124,9 +123,11 @@ class PluginManager:
             module = importlib.import_module(module_path)
             # Find plugin classes in the module
             for name, obj in inspect.getmembers(module):
-                if (inspect.isclass(obj) and 
-                    issubclass(obj, WaypointPlugin) and 
-                    obj is not WaypointPlugin):
+                if (
+                    inspect.isclass(obj)
+                    and issubclass(obj, WaypointPlugin)
+                    and obj is not WaypointPlugin
+                ):
                     return self.register(obj, config)
             logger.error(f"No plugin class found in {module_path}")
             return False

@@ -1,6 +1,5 @@
 """Tests for the task classifier."""
 
-import pytest
 from waypoint.classifier import TaskClassifier, TaskContext, Tier
 
 

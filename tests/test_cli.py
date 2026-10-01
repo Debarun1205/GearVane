@@ -4,8 +4,6 @@ These cover regressions that only appear when the shipped example config is
 used, which the unit tests for individual modules did not exercise.
 """
 
-import sys
-
 import pytest
 
 from waypoint.classifier import TaskClassifier, TaskContext, Tier
@@ -54,6 +52,7 @@ class TestShippedExampleConfig:
     @pytest.fixture
     def example_config(self):
         from pathlib import Path
+
         path = Path(__file__).resolve().parent.parent / "config.example.yaml"
         return load_config(str(path))
 
@@ -83,20 +82,18 @@ class TestGlobPatternTranslation:
     """Glob patterns from config must be translated, not used as regex."""
 
     def test_glob_matches_nested_path(self):
-        classifier = TaskClassifier({
-            "heuristics": {"complex_file_patterns": ["*.rs"]}
-        })
+        classifier = TaskClassifier({"heuristics": {"complex_file_patterns": ["*.rs"]}})
         # "*.rs" should match a file in a subdirectory.
         result = classifier.classify(
             TaskContext(description="update", files_touched=["src/main.rs"])
         )
-        assert "complex file patterns" in " ".join(result.reasons).lower() or \
-            result.scores["frontier"] > 0
+        assert (
+            "complex file patterns" in " ".join(result.reasons).lower()
+            or result.scores["frontier"] > 0
+        )
 
     def test_glob_with_suffix(self):
-        classifier = TaskClassifier({
-            "heuristics": {"complex_file_patterns": ["*_test.*"]}
-        })
+        classifier = TaskClassifier({"heuristics": {"complex_file_patterns": ["*_test.*"]}})
         result = classifier.classify(
             TaskContext(description="update", files_touched=["src/parser_test.go"])
         )
@@ -106,28 +103,20 @@ class TestGlobPatternTranslation:
         # "*_test.*" requires "_test." mid-name, so a file named
         # "test_foo.py" does not match. Documented so the shipped config's
         # behaviour is not mistaken for a bug.
-        classifier = TaskClassifier({
-            "heuristics": {"complex_file_patterns": ["*_test.*"]}
-        })
+        classifier = TaskClassifier({"heuristics": {"complex_file_patterns": ["*_test.*"]}})
         result = classifier.classify(
             TaskContext(description="update", files_touched=["src/test_foo.py"])
         )
         assert result.scores["frontier"] == 0
 
     def test_regex_patterns_still_work(self):
-        classifier = TaskClassifier({
-            "heuristics": {"complex_file_patterns": [r"\.go$"]}
-        })
-        result = classifier.classify(
-            TaskContext(description="update", files_touched=["main.go"])
-        )
+        classifier = TaskClassifier({"heuristics": {"complex_file_patterns": [r"\.go$"]}})
+        result = classifier.classify(TaskContext(description="update", files_touched=["main.go"]))
         assert result.scores["frontier"] > 0
 
     def test_invalid_regex_falls_back_to_glob(self):
         # A bare "+" is invalid regex but a valid glob.
-        classifier = TaskClassifier({
-            "heuristics": {"complex_file_patterns": ["+"]}
-        })
+        classifier = TaskClassifier({"heuristics": {"complex_file_patterns": ["+"]}})
         assert classifier.complex_file_patterns == ["\\+"]
 
     def test_default_patterns_are_valid(self):

@@ -4,9 +4,8 @@ import asyncio
 import json
 import logging
 from dataclasses import dataclass
-from typing import AsyncIterator, Callable, Optional, Dict, Any, Union
 from enum import Enum
-
+from typing import Any, AsyncIterator, Callable, Dict, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +23,7 @@ class StreamEventType(Enum):
 class StreamEvent:
     type: StreamEventType
     data: Any
-    metadata: Dict[str, Any] = None
+    metadata: Optional[Dict[str, Any]] = None
 
     def __post_init__(self):
         if self.metadata is None:
@@ -87,13 +86,17 @@ class StreamingClient:
         self.buffer = StreamBuffer()
         self._active_streams: Dict[str, asyncio.Task] = {}
 
-    async def stream(self, prompt: str, stream_id: Optional[str] = None,
-                     system_prompt: Optional[str] = None,
-                     tools: Optional[list] = None,
-                     **kwargs) -> AsyncIterator[StreamEvent]:
+    async def stream(
+        self,
+        prompt: str,
+        stream_id: Optional[str] = None,
+        system_prompt: Optional[str] = None,
+        tools: Optional[list] = None,
+        **kwargs,
+    ) -> AsyncIterator[StreamEvent]:
         """Stream a response from a model."""
         stream_id = stream_id or f"stream-{id(prompt)}"
-        
+
         # Emit start event
         yield StreamEvent(
             type=StreamEventType.START,
@@ -104,10 +107,10 @@ class StreamingClient:
             # This is a placeholder for actual model streaming
             # In production, this would connect to the model API
             # and yield tokens as they arrive
-            
+
             # Simulate streaming for now
             response = await self._call_model(prompt, system_prompt, tools, **kwargs)
-            
+
             # Stream tokens
             tokens = response.get("content", "").split()
             for token in tokens:
@@ -116,7 +119,7 @@ class StreamingClient:
                     data={"token": token + " ", "stream_id": stream_id},
                 )
                 await asyncio.sleep(0.01)  # Simulate network delay
-            
+
             # Emit tool calls if any
             tool_calls = response.get("tool_calls", [])
             for tool_call in tool_calls:
@@ -124,7 +127,7 @@ class StreamingClient:
                     type=StreamEventType.TOOL_CALL,
                     data=tool_call,
                 )
-            
+
             # Emit done event
             yield StreamEvent(
                 type=StreamEventType.DONE,
@@ -134,15 +137,20 @@ class StreamingClient:
                     "usage": response.get("usage", {}),
                 },
             )
-            
+
         except Exception as e:
             yield StreamEvent(
                 type=StreamEventType.ERROR,
                 data={"error": str(e), "stream_id": stream_id},
             )
 
-    async def _call_model(self, prompt: str, system_prompt: Optional[str] = None,
-                          tools: Optional[list] = None, **kwargs) -> dict:
+    async def _call_model(
+        self,
+        prompt: str,
+        system_prompt: Optional[str] = None,
+        tools: Optional[list] = None,
+        **kwargs,
+    ) -> dict:
         """Call the model API (placeholder for actual implementation)."""
         # In production, this would make the actual API call
         # For now, return a mock response
@@ -179,21 +187,23 @@ class StreamAggregator:
 
     async def stream_all(self, prompt: str, **kwargs) -> AsyncIterator[tuple]:
         """Stream from all registered clients."""
+
         async def _stream(name, client):
             async for event in client.stream(prompt, **kwargs):
                 yield (name, event)
 
         # Merge all streams
-        merged = asyncio.Queue()
-        
+        merged: asyncio.Queue = asyncio.Queue()
+
         async def _consume(name, client):
             async for event in client.stream(prompt, **kwargs):
                 await merged.put((name, event))
             await merged.put((name, None))  # Sentinel
 
-        tasks = [asyncio.create_task(_consume(name, client)) 
-                 for name, client in self._streams.items()]
-        
+        tasks = [
+            asyncio.create_task(_consume(name, client)) for name, client in self._streams.items()
+        ]
+
         completed = 0
         while completed < len(tasks):
             name, event = await merged.get()
@@ -201,5 +211,5 @@ class StreamAggregator:
                 completed += 1
             else:
                 yield (name, event)
-        
+
         await asyncio.gather(*tasks)
