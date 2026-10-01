@@ -52,12 +52,52 @@ class TaskClassifier:
         r"migrations?", r"deploy", r"infra",
     ]
 
+    # Glob-style patterns, which are what users actually write in config.
+    COMPLEX_FILE_GLOBS = [
+        "*.rs", "*.go", "*_test.*", "src/core/*", "src/engine/*",
+    ]
+
+    @staticmethod
+    def _glob_to_regex(pattern: str) -> str:
+        """Translate a glob pattern into an anchored-enough regex.
+
+        Config files naturally use globs ("*.rs"), which are not valid regex
+        ("nothing to repeat"). "*" is treated as matching across path
+        separators so that "*.rs" matches "src/main.rs", which is what a user
+        writing that pattern expects.
+        """
+        out = []
+        for ch in pattern:
+            if ch == "*":
+                out.append(".*")
+            elif ch == "?":
+                out.append(".")
+            else:
+                out.append(re.escape(ch))
+        return "".join(out)
+
+    @classmethod
+    def _compile_patterns(cls, patterns) -> List[str]:
+        """Compile config patterns, accepting both glob and regex syntax."""
+        compiled = []
+        for p in patterns:
+            text = str(p)
+            try:
+                re.compile(text)
+                compiled.append(text)
+            except re.error:
+                # Not valid regex, so treat it as a glob.
+                compiled.append(cls._glob_to_regex(text))
+        return compiled
+
     def __init__(self, config: Optional[dict] = None):
         self.config = config or {}
         self.heuristics = self.config.get("heuristics", {})
         self.simple_keywords = self.heuristics.get("simple_keywords", self.SIMPLE_KEYWORDS)
         self.complex_keywords = self.heuristics.get("complex_keywords", self.COMPLEX_KEYWORDS)
-        self.complex_file_patterns = self.heuristics.get("complex_file_patterns", self.COMPLEX_FILE_PATTERNS)
+        self.complex_file_patterns = self._compile_patterns(
+            self.heuristics.get("complex_file_patterns", self.COMPLEX_FILE_PATTERNS)
+        )
         self.min_files_for_complex = self.heuristics.get("min_files_for_complex", 3)
 
     def classify(self, context: TaskContext) -> ClassificationResult:

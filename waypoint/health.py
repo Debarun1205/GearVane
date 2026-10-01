@@ -55,14 +55,21 @@ class ModelHealthChecker:
         self._status_callbacks: List[Callable[[str, HealthStatus, HealthStatus], None]] = []
         self._running = False
 
-    def register_model(self, model: str, provider: str, 
+    def register_model(self, model: str, provider: str,
                        endpoint: Optional[str] = None,
-                       check_fn: Optional[Callable] = None):
-        """Register a model for health checking."""
+                       check_fn: Optional[Callable] = None,
+                       probe: Optional[Callable] = None):
+        """Register a model for health checking.
+
+        Supply either check_fn (async, returns truthy when healthy) or probe
+        (sync, returns truthy when healthy). With neither, the model reports
+        UNKNOWN rather than a misleading HEALTHY.
+        """
         self._models[model] = {
             "provider": provider,
             "endpoint": endpoint,
             "check_fn": check_fn,
+            "probe": probe,
         }
         self._failure_counts[model] = 0
         logger.info(f"Registered model for health check: {model} ({provider})")
@@ -89,35 +96,60 @@ class ModelHealthChecker:
         try:
             check_fn = model_info.get("check_fn")
             if check_fn:
-                # Use custom check function
+                # Use a caller-supplied check function.
                 result = await asyncio.wait_for(
                     check_fn(model_info),
                     timeout=self.timeout,
                 )
                 latency = (time.time() - start_time) * 1000
-                
+
                 if result:
                     self._failure_counts[model] = 0
                     status = HealthStatus.HEALTHY
                     message = "OK"
                 else:
                     self._failure_counts[model] += 1
-                    status = HealthStatus.DEGRADED if self._failure_counts[model] < self.failure_threshold else HealthStatus.UNHEALTHY
-                    message = f"Check failed ({self._failure_counts[model]} consecutive failures)"
-            else:
-                # Default: just check if endpoint is reachable
-                endpoint = model_info.get("endpoint")
-                if endpoint:
-                    # Simple HTTP health check would go here
+                    status = (
+                        HealthStatus.DEGRADED
+                        if self._failure_counts[model] < self.failure_threshold
+                        else HealthStatus.UNHEALTHY
+                    )
+                    message = (
+                        f"Check failed ({self._failure_counts[model]} "
+                        f"consecutive failures)"
+                    )
+            elif model_info.get("provider") is not None:
+                # Probe the real endpoint through the provider client. Reporting
+                # HEALTHY without contacting anything produces a false green,
+                # which is worse than reporting nothing.
+                probe = model_info.get("probe")
+                if probe is None:
                     latency = (time.time() - start_time) * 1000
-                    self._failure_counts[model] = 0
-                    status = HealthStatus.HEALTHY
-                    message = "Endpoint reachable"
+                    status = HealthStatus.UNKNOWN
+                    message = "No probe configured"
                 else:
+                    reachable = await asyncio.wait_for(
+                        asyncio.to_thread(probe),
+                        timeout=self.timeout,
+                    )
                     latency = (time.time() - start_time) * 1000
-                    self._failure_counts[model] = 0
-                    status = HealthStatus.HEALTHY
-                    message = "No check function, assuming healthy"
+                    if reachable:
+                        self._failure_counts[model] = 0
+                        status = HealthStatus.HEALTHY
+                        message = "Endpoint reachable"
+                    else:
+                        self._failure_counts[model] += 1
+                        status = (
+                            HealthStatus.DEGRADED
+                            if self._failure_counts[model] < self.failure_threshold
+                            else HealthStatus.UNHEALTHY
+                        )
+                        message = "Endpoint unreachable"
+            else:
+                latency = (time.time() - start_time) * 1000
+                self._failure_counts[model] = 0
+                status = HealthStatus.UNKNOWN
+                message = "Not registered for checking"
             
             # Check latency threshold
             if status == HealthStatus.HEALTHY and latency > self.latency_threshold:
