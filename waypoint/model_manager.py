@@ -206,15 +206,19 @@ class ModelManager:
     """Unified manager for all local model providers."""
 
     def __init__(self, config: Optional[Dict[str, Any]] = None):
+        # Accepts either the model_manager section directly or the whole
+        # config, so callers can pass load_config() output unchanged.
         self.config = config or {}
+        section = self.config.get("model_manager", self.config)
+
         self.ollama = OllamaManager(
-            self.config.get("ollama", {}).get("base_url", "http://localhost:11434")
+            section.get("ollama", {}).get("base_url", "http://localhost:11434")
         )
         self.lm_studio = LMStudioManager(
-            self.config.get("lm_studio", {}).get("base_url", "http://localhost:1234")
+            section.get("lm_studio", {}).get("base_url", "http://localhost:1234")
         )
         self.llama_cpp = LlamaCppManager(
-            self.config.get("llama_cpp", {}).get("models_dir", "./models")
+            section.get("llama_cpp", {}).get("models_dir", "./models")
         )
 
     def list_all_models(self) -> List[LocalModel]:

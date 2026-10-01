@@ -1,73 +1,111 @@
-# Waypoint Configuration Example
+# Waypoint configuration
+#
+# Copy this file to config.yaml and edit it:
+#
+#     cp config.example.yaml config.yaml
+#
+# Waypoint falls back to this file when config.yaml is absent, so a fresh
+# clone runs without the copy step.
 
-# Model tiers configuration
+# ---------------------------------------------------------------------------
+# Model tiers
+# ---------------------------------------------------------------------------
+# Each tier lists providers and the models they expose. The router classifies
+# a task and picks a tier; within a tier, providers are used round-robin and
+# the first listed model is chosen.
+#
+# Local providers need no credentials. Hosted providers read their key from
+# the environment variable named in api_key_env, never from this file.
+
 tiers:
+  # Simple, well-scoped edits. Free to run.
   local:
     description: "Local models for simple tasks"
+    cost_per_token: 0.0
+    max_retries: 2
     providers:
       - name: ollama
         base_url: "http://localhost:11434"
         models:
-          - llama3.2
           - qwen2.5-coder
+          - llama3.2
           - deepseek-coder-v2
       - name: lm_studio
         base_url: "http://localhost:1234"
         models:
           - qwen2.5-coder-7b
-    max_retries: 2
-    cost_per_token: 0
 
+  # Medium complexity, usually multi-file changes.
   mid:
     description: "Mid-tier models for medium complexity"
+    cost_per_token: 0.0001
+    max_retries: 2
     providers:
       - name: openrouter
+        api_key_env: OPENROUTER_API_KEY
         models:
           - anthropic/claude-3-haiku
           - google/gemini-flash
           - openai/gpt-4o-mini
-    max_retries: 2
-    cost_per_token: 0.0001
 
+  # Hard problems: architecture, debugging, performance work.
   frontier:
     description: "Frontier models for hard tasks"
+    cost_per_token: 0.005
+    max_retries: 3
     providers:
       - name: anthropic
+        api_key_env: ANTHROPIC_API_KEY
         models:
           - claude-sonnet-4-20250514
           - claude-opus-4-20250514
       - name: openai
+        api_key_env: OPENAI_API_KEY
         models:
           - gpt-4o
           - o3
-      - name: google
-        models:
-          - gemini-2.0-flash
-          - gemini-2.5-pro
-    max_retries: 3
-    cost_per_token: 0.005
 
-# Router settings
+# ---------------------------------------------------------------------------
+# Provider behaviour
+# ---------------------------------------------------------------------------
+providers:
+  # Total request timeout in seconds.
+  timeout_seconds: 120
+  # Retries for transient failures only (429, 5xx, connection loss).
+  # Permanent failures such as a bad API key are never retried.
+  max_retries: 2
+  retry_base_delay: 1.0
+  retry_max_delay: 30.0
+
+# ---------------------------------------------------------------------------
+# Router
+# ---------------------------------------------------------------------------
 router:
-  # Default tier when classification is uncertain
+  # Tier used when classification is uncertain.
   default_tier: mid
-  
-  # Escalation settings
+
   escalation:
     enabled: true
+    # Consecutive failures before a task moves up a tier.
     max_attempts_per_tier: 2
     auto_promote_on_failure: true
-    promote_to: frontier
-  
-  # Manual override (pin a specific model)
-  manual_override: null  # e.g., "anthropic/claude-sonnet-4-20250514"
-  
-  # Classification heuristics
+    # Upper bound on promotions per task, to stop runaway escalation.
+    max_escalations: 2
+
+  # Pin every task to one model. Accepts a bare name ("gpt-4o"), a qualified
+  # name ("anthropic/claude-sonnet-4-20250514"), or an OpenRouter-style id
+  # ("openrouter/anthropic/claude-3-haiku"). An override that matches nothing
+  # logs a warning and falls back to automatic routing.
+  manual_override: null
+
   heuristics:
-    # Keywords that suggest simple tasks (local tier)
+    # Keywords suggesting simple work.
     simple_keywords:
       - typo
+      - spelling
+      - whitespace
       - formatting
+      - lint
       - rename
       - comment
       - readme
@@ -75,48 +113,82 @@ router:
       - boilerplate
       - template
       - simple
-      - fix
       - small
-    
-    # Keywords that suggest complex tasks (frontier tier)
+      - fix
+
+    # Keywords suggesting complex work.
     complex_keywords:
       - architecture
       - refactor
       - optimize
+      - performance
+      - bottleneck
       - security
       - concurrency
+      - race condition
+      - deadlock
+      - memory leak
       - distributed
       - migration
       - redesign
-      - performance
       - scale
       - debug
       - investigate
       - complex
-    
-    # File patterns that suggest complexity
+
+    # File patterns that raise complexity. Both glob and regex syntax work:
+    # a pattern that is not valid regex is treated as a glob, so "*.rs"
+    # matches src/main.rs.
     complex_file_patterns:
       - "*.rs"
       - "*.go"
-      - "*_test.*"
-      - "src/core/*"
-      - "src/engine/*"
-    
-    # Minimum files touched to consider a task complex
+      - "*.c"
+      - "*.cpp"
+      - "tests?/"
+      - "test_"
+      - "src/core/"
+      - "src/engine/"
+      - "migrations?/"
+      - "infra/"
+      - "deploy"
+
+    # File count at which a task is treated as complex.
     min_files_for_complex: 3
 
+# ---------------------------------------------------------------------------
+# Learned classifier
+# ---------------------------------------------------------------------------
+# Learns tier selection from recorded outcomes. Disabled by default. The
+# heuristic result always wins on disagreement, so a poorly trained model
+# degrades to current behaviour rather than rerouting work.
+learned_classifier:
+  enabled: false
+  model_file: learned_model.json
+  # Outcomes required before the learned model is used at all.
+  min_samples: 10
+  # Weight given to the learned model versus the heuristics.
+  blend: 0.5
+  learning_rate: 0.5
+  epochs: 50
+
+# ---------------------------------------------------------------------------
 # Logging
+# ---------------------------------------------------------------------------
 logging:
   enabled: true
   level: INFO
-  file: "waypoint.log"
+  file: waypoint.log
   log_routing_decisions: true
   log_escalations: true
   log_costs: true
+  # Where the train command reads labelled outcomes from.
+  feedback_file: feedback.jsonl
 
+# ---------------------------------------------------------------------------
 # Safety
+# ---------------------------------------------------------------------------
 safety:
-  # Require approval for these operations
+  # Operations that require explicit approval. See: waypoint approve
   require_approval:
     - git_push
     - git_force_push
@@ -124,54 +196,98 @@ safety:
     - deploy_staging
     - delete_branch
     - merge_pr
-  
-  # Spend limits (USD)
+
+  # Hard spend ceilings in USD. The orchestrator checks the tier's
+  # cost_per_token against these before spending anything.
   spend_limits:
     per_session: 10.0
     per_day: 50.0
     per_task: 5.0
-  
-  # Sandboxed commands (these can run without approval)
+
+  # Commands permitted to run without approval.
   sandbox_allowed:
     - "git status"
     - "git log"
     - "git diff"
+    - "git branch"
     - "ls"
     - "cat"
+    - "head"
+    - "tail"
     - "find"
     - "grep"
+    - "wc"
     - "pytest"
     - "npm test"
     - "python -m pytest"
-  
-  # Blocked commands (never run)
+
+  # Commands that never run, approval or not.
   blocked_commands:
     - "rm -rf"
     - "sudo"
     - "chmod 777"
     - "dd if="
+    - "mkfs"
+    - ":(){"
 
-# Deployment tools
+# ---------------------------------------------------------------------------
+# Health checks
+# ---------------------------------------------------------------------------
+# Each model is probed against its real endpoint by `waypoint health`.
+health:
+  check_interval_seconds: 60
+  timeout_seconds: 10
+  # Above this latency a model is reported DEGRADED.
+  latency_threshold_ms: 5000
+  # Consecutive failures before a model is reported UNHEALTHY.
+  failure_threshold: 3
+
+# ---------------------------------------------------------------------------
+# Budget alerts
+# ---------------------------------------------------------------------------
+# Alert thresholds as a fraction of each limit.
+budget:
+  per_session: 10.0
+  per_day: 50.0
+  per_task: 5.0
+  warning_threshold: 0.7
+  critical_threshold: 0.9
+
+# ---------------------------------------------------------------------------
+# Local model management
+# ---------------------------------------------------------------------------
+model_manager:
+  ollama:
+    base_url: "http://localhost:11434"
+  lm_studio:
+    base_url: "http://localhost:1234"
+  llama_cpp:
+    models_dir: "./models"
+
+# ---------------------------------------------------------------------------
+# Deployment
+# ---------------------------------------------------------------------------
 deployment:
   github:
     enabled: true
     require_approval_for_push: true
     require_approval_for_pr: false
-    default_branch: main
-  
+    # Match your checked-out branch. See: git branch --show-current
+    default_branch: master
+
   docker:
     enabled: true
     require_approval_for_build: false
     require_approval_for_push: true
-  
+
   flyio:
     enabled: false
     require_approval_for_deploy: true
-  
+
   vercel:
     enabled: false
     require_approval_for_deploy: true
-  
+
   cloudflare:
     enabled: false
     require_approval_for_deploy: true

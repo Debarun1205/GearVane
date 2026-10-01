@@ -466,11 +466,11 @@ def cmd_approve(args):
         print("No pending approvals")
         return
 
-    if args.command:
-        if deployer.approve_operation(args.command):
-            print(f"Approved: {args.command}")
+    if args.approve_command:
+        if deployer.approve_operation(args.approve_command):
+            print(f"Approved: {args.approve_command}")
         else:
-            print(f"No pending approval matching: {args.command}",
+            print(f"No pending approval matching: {args.approve_command}",
                   file=sys.stderr)
             print("\nPending:", file=sys.stderr)
             for p in pending:
@@ -514,8 +514,12 @@ def cmd_safety(args):
     """Check safety status."""
     config = load_config(args.config)
     deployer = DeploymentManager(config)
+    # The destination is safety_action, not "action": naming it "action"
+    # shadowed the parser's own "command" dest, so the subcommand was
+    # recorded as None and every safety invocation printed help.
+    action = args.safety_action
 
-    if args.safety_action == "spend":
+    if action == "spend":
         status = deployer.safety.get_spend_status()
         if args.json:
             print(json.dumps(status, indent=2))
@@ -526,7 +530,7 @@ def cmd_safety(args):
                   f"${status['task_remaining']} remaining")
         return
 
-    if args.safety_action == "pending":
+    if action == "pending":
         pending = deployer.get_pending_approvals()
         if args.json:
             print(json.dumps(pending, indent=2))
@@ -538,11 +542,13 @@ def cmd_safety(args):
             print("No pending approvals")
         return
 
-    if args.safety_action == "check":
-        if not args.command:
+    if action == "check":
+        if not args.safety_command:
             print("safety check requires --command", file=sys.stderr)
             sys.exit(1)
-        result = deployer.safety.execute_sandboxed(args.command, dry_run=True)
+        result = deployer.safety.execute_sandboxed(
+            args.safety_command, dry_run=True
+        )
         print(json.dumps(result, indent=2))
         if not result["executed"]:
             sys.exit(1)
@@ -615,13 +621,17 @@ def build_parser() -> argparse.ArgumentParser:
 
     # safety
     p = subparsers.add_parser("safety", help="Check safety status")
-    p.add_argument("safety_action", choices=["spend", "pending", "check"])
-    p.add_argument("--command")
+    p.add_argument("safety_action", choices=["spend", "pending", "check"],
+                   help="spend: budget state, pending: gated operations, "
+                        "check: dry-run a command")
+    p.add_argument("--command", dest="safety_command",
+                   help="Command to check (for 'check')")
     p.add_argument("--json", action="store_true")
 
     # approve
     p = subparsers.add_parser("approve", help="Approve a pending operation")
-    p.add_argument("--command", help="Exact command to approve")
+    p.add_argument("--command", dest="approve_command",
+                   help="Exact command to approve")
     p.add_argument("--all", action="store_true", help="Approve all pending")
 
     # deploy
@@ -642,11 +652,21 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main():
     parser = build_parser()
-    args = parser.parse_args()
+    # Dispatch on sys.argv[1] directly. Subparser options can collide with the
+    # parser's own "command" dest, so args.command is not reliable here.
+    subcommand = sys.argv[1] if len(sys.argv) > 1 and not sys.argv[1].startswith("-") else None
 
-    if not args.command:
+    if subcommand is None:
         parser.print_help()
         sys.exit(1)
+
+    args = parser.parse_args()
+
+    if not hasattr(args, "command"):
+        # A colliding subparser argument replaced the command dest.
+        args.command = subcommand
+    elif args.command != subcommand:
+        args.command = subcommand
 
     handlers = {
         "route": cmd_route,
