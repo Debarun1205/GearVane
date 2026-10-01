@@ -342,6 +342,46 @@ def cmd_feedback(args):
             print(f"  - {s['message']}")
 
 
+def cmd_train(args):
+    """Train the learned classifier from recorded feedback."""
+    config = load_config(args.config)
+    learned_config = config.get("learned_classifier", {})
+    feedback_path = learned_config.get(
+        "feedback_file", config.get("logging", {}).get("feedback_file", "feedback.jsonl")
+    )
+    model_path = learned_config.get("model_file", "learned_model.json")
+
+    from .learned_classifier import train_from_feedback
+
+    classifier = train_from_feedback(
+        model_path,
+        feedback_path,
+        learning_rate=args.learning_rate,
+        epochs=args.epochs,
+        l2=args.l2,
+    )
+
+    if not classifier.weights.is_trained():
+        print(f"No labelled feedback found at {feedback_path}", file=sys.stderr)
+        print("Run some tasks and record outcomes before training.", file=sys.stderr)
+        sys.exit(1)
+
+    if args.json:
+        print(json.dumps(classifier.weights.to_dict(), indent=2))
+        return
+
+    print(f"Model saved to {model_path}")
+    print(f"Samples:  {classifier.weights.trained_on}")
+    print(f"Accuracy: {classifier.weights.accuracy:.1%}")
+    print("\nStrongest features per tier:")
+    from .classifier import Tier
+    for tier in Tier:
+        features = classifier.top_features(tier, n=5)
+        if features:
+            rendered = ", ".join(f"{name} ({w})" for name, w in features)
+            print(f"  {tier.value:<10} {rendered}")
+
+
 def cmd_deploy(args):
     """Run deployment operations."""
     config = load_config(args.config)
@@ -561,6 +601,14 @@ def build_parser() -> argparse.ArgumentParser:
     p = subparsers.add_parser("feedback", help="Show routing feedback stats")
     p.add_argument("--json", action="store_true")
 
+    # train
+    p = subparsers.add_parser("train", help="Train the learned classifier")
+    p.add_argument("--config", dest="unused_config", help=argparse.SUPPRESS)
+    p.add_argument("--epochs", type=int, default=50)
+    p.add_argument("--learning-rate", type=float, default=0.5)
+    p.add_argument("--l2", type=float, default=0.001)
+    p.add_argument("--json", action="store_true")
+
     # stats
     p = subparsers.add_parser("stats", help="Show routing statistics")
     p.add_argument("--json", action="store_true")
@@ -608,6 +656,7 @@ def main():
         "cost": cmd_cost,
         "dashboard": cmd_dashboard,
         "feedback": cmd_feedback,
+        "train": cmd_train,
         "stats": cmd_stats,
         "safety": cmd_safety,
         "approve": cmd_approve,

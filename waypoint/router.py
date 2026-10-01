@@ -44,15 +44,57 @@ class TierRouter:
     def __init__(self, config: Dict[str, Any]):
         self.config = config
         self.tiers: Dict[Tier, TierConfig] = {}
-        self.classifier = TaskClassifier(config.get("router", {}))
         self.escalation_config = config.get("router", {}).get("escalation", {})
         self.manual_override = config.get("router", {}).get("manual_override")
         self.default_tier = Tier(config.get("router", {}).get("default_tier", "mid"))
-        
+
+        # Use the hybrid classifier when a trained model is configured.
+        learned_config = config.get("learned_classifier", {})
+        self.classifier = self._build_classifier(learned_config)
+
         self._load_tiers(config.get("tiers", {}))
         
         # Track attempts per task
         self._task_attempts: Dict[str, Dict[str, Any]] = {}
+
+    def _build_classifier(self, learned_config: dict):
+        """Pick the heuristic classifier, or the hybrid when a model exists."""
+        heuristic = TaskClassifier(self.config.get("router", {}))
+
+        if not learned_config.get("enabled", False):
+            return heuristic
+
+        model_file = learned_config.get("model_file", "learned_model.json")
+        try:
+            from .learned_classifier import HybridClassifier, LearnedClassifier
+
+            learned = LearnedClassifier.load(
+                model_file,
+                learning_rate=learned_config.get("learning_rate", 0.5),
+                epochs=learned_config.get("epochs", 50),
+            )
+            if not learned.weights.is_trained():
+                logger.info(
+                    f"No trained model at {model_file}; using heuristics only. "
+                    f"Run 'waypoint train' once feedback has been recorded."
+                )
+                return heuristic
+
+            logger.info(
+                f"Using hybrid classifier with model trained on "
+                f"{learned.weights.trained_on} samples "
+                f"({learned.weights.accuracy:.0%} accuracy)"
+            )
+            return HybridClassifier(
+                config=self.config.get("router", {}),
+                learned=learned,
+                min_samples=learned_config.get("min_samples", 10),
+                blend=learned_config.get("blend", 0.5),
+            )
+        except Exception as e:
+            logger.warning(f"Could not load learned classifier: {e}. "
+                           f"Falling back to heuristics.")
+            return heuristic
 
     def _load_tiers(self, tiers_config: dict):
         """Load tier configurations."""
