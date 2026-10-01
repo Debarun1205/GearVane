@@ -113,6 +113,28 @@ class TestDocker:
         assert "requirements.txt" in dockerfile
         assert "pip install" in dockerfile
 
+    def test_dockerfile_installs_non_editable(self):
+        # `pip install -e .` leaves a link to the source tree in the image.
+        dockerfile = (PROJECT_ROOT / "Dockerfile").read_text(encoding="utf-8")
+        assert "pip install -e" not in dockerfile
+
+    def test_dockerignore_exists(self):
+        assert (PROJECT_ROOT / ".dockerignore").is_file()
+
+    def test_dockerignore_excludes_tests(self):
+        ignored = (PROJECT_ROOT / ".dockerignore").read_text(encoding="utf-8")
+        assert "tests" in ignored.split()
+
+    def test_compose_has_no_obsolete_version_key(self):
+        # Compose v2 warns about the obsolete top-level `version` key.
+        compose = (PROJECT_ROOT / "docker-compose.yml").read_text(encoding="utf-8")
+        assert not any(line.strip().startswith("version:") for line in compose.splitlines())
+
+    def test_compose_passes_keys_via_environment(self):
+        compose = (PROJECT_ROOT / "docker-compose.yml").read_text(encoding="utf-8")
+        assert "ANTHROPIC_API_KEY" in compose
+        assert "API_KEY=${" in compose, "keys must come from the environment"
+
 
 @pytest.fixture(scope="module")
 def built(tmp_path_factory):

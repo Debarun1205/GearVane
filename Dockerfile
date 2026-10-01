@@ -1,25 +1,42 @@
-FROM python:3.11-slim
+# Waypoint container image.
+#
+# Build:  docker build -t waypoint .
+# Run:    docker run --rm waypoint route --task "Fix a typo"
+#
+# The package is installed non-editable, so the image contains a real
+# installation rather than a link back to the source tree.
+
+FROM python:3.12-slim
+
+# git is needed by the GitHub deployment tooling; curl is used by the
+# Ollama health probe.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends git curl \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    git \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install Python dependencies
-COPY requirements.txt .
+# Dependencies first so this layer is cached across source-only changes.
+COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application
-COPY . .
+# Then the package metadata, so a version bump rebuilds only this layer.
+COPY setup.py setup.cfg README.md LICENSE ./
+COPY waypoint ./waypoint
 
-# Install the package
-RUN pip install -e .
+RUN pip install --no-cache-dir .
 
-# Create volume for logs and feedback
-VOLUME ["/app/logs", "/app/feedback"]
+# Run-time artifacts. Declared as a volume so they can be mounted and are
+# not baked into the image.
+VOLUME ["/app/artifacts"]
 
-# Default command
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    WAYPOINT_ARTIFACTS=/app/artifacts
+
+# Fail the container healthcheck if the CLI is broken.
+HEALTHCHECK --interval=60s --timeout=15s --retries=3 \
+    CMD waypoint --help > /dev/null || exit 1
+
 ENTRYPOINT ["waypoint"]
 CMD ["--help"]
