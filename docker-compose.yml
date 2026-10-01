@@ -1,0 +1,35 @@
+version: "3.8"
+
+services:
+  waypoint:
+    build: .
+    volumes:
+      - ./config.yaml:/app/config.yaml:ro
+      - ./logs:/app/logs
+      - ./feedback:/app/feedback
+    environment:
+      - PYTHONUNBUFFERED=1
+    command: ["--config", "config.yaml"]
+
+  waypoint-local:
+    build: .
+    volumes:
+      - ./config.yaml:/app/config.yaml:ro
+      - ./logs:/app/logs
+      - ./feedback:/app/feedback
+      - ollama-models:/root/.ollama/models
+    environment:
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      - ollama
+    command: ["--config", "config.yaml"]
+
+  ollama:
+    image: ollama/ollama:latest
+    volumes:
+      - ollama-models:/root/.ollama/models
+    ports:
+      - "11434:11434"
+
+volumes:
+  ollama-models:
