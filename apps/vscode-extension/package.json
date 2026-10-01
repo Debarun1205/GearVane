@@ -1,0 +1,119 @@
+{
+  "name": "waypoint",
+  "displayName": "Waypoint",
+  "description": "Route each task to the cheapest model tier that can do the job",
+  "version": "0.2.0",
+  "publisher": "waypoint",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.85.0",
+    "node": ">=20"
+  },
+  "categories": ["AI", "Other"],
+  "keywords": ["llm", "routing", "model selection", "ollama", "openai"],
+  "main": "./dist/extension.js",
+  "activationEvents": [],
+  "contributes": {
+    "commands": [
+      {
+        "command": "waypoint.routeSelection",
+        "title": "Waypoint: Route Selection",
+        "category": "Waypoint"
+      },
+      {
+        "command": "waypoint.explainSelection",
+        "title": "Waypoint: Explain Routing Decision",
+        "category": "Waypoint"
+      },
+      {
+        "command": "waypoint.ask",
+        "title": "Waypoint: Ask",
+        "category": "Waypoint"
+      },
+      {
+        "command": "waypoint.health",
+        "title": "Waypoint: Check Model Health",
+        "category": "Waypoint"
+      },
+      {
+        "command": "waypoint.spend",
+        "title": "Waypoint: Show Spend",
+        "category": "Waypoint"
+      },
+      {
+        "command": "waypoint.showLog",
+        "title": "Waypoint: Show Routing Log",
+        "category": "Waypoint"
+      },
+      {
+        "command": "waypoint.pinModel",
+        "title": "Waypoint: Pin Model for Workspace",
+        "category": "Waypoint"
+      },
+      {
+        "command": "waypoint.clearPin",
+        "title": "Waypoint: Clear Pinned Model",
+        "category": "Waypoint"
+      }
+    ],
+    "configuration": {
+      "title": "Waypoint",
+      "properties": {
+        "waypoint.configPath": {
+          "type": "string",
+          "default": "",
+          "description": "Path to a Waypoint config file. Leave empty to search upward."
+        },
+        "waypoint.tier": {
+          "type": "string",
+          "enum": ["auto", "local", "mid", "frontier"],
+          "default": "auto",
+          "description": "Force a model tier, or leave on auto to classify each request."
+        },
+        "waypoint.model": {
+          "type": "string",
+          "default": "",
+          "description": "Pin a specific model, e.g. anthropic/claude-sonnet-4-20250514."
+        },
+        "waypoint.includeSelectionInPrompt": {
+          "type": "boolean",
+          "default": true,
+          "description": "Include the selected text when routing a task."
+        },
+        "waypoint.maxTokens": {
+          "type": "number",
+          "default": 2048,
+          "description": "Maximum tokens per request."
+        },
+        "waypoint.showRoutingNotifications": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show a notification with the chosen tier for each request."
+        }
+      }
+    },
+    "views": {
+      "explorer": [
+        {
+          "id": "waypoint.session",
+          "name": "Waypoint"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "lint": "eslint src",
+    "package": "vsce package --no-dependencies",
+    "clean": "rm -rf dist out"
+  },
+  "dependencies": {
+    "@waypoint/core": "0.2.0"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.85.0",
+    "@vscode/vsce": "^3.0.0"
+  }
+}

@@ -1,0 +1,13 @@
+# Only the compiled output and the manifest are needed at runtime.
+src/
+test/
+tsconfig.json
+vitest.config.ts
+eslint.config.js
+**/*.map
+**/*.ts
+!dist/**/*.js
+
+.vscode/
+node_modules/
+*.vsix
