@@ -82,13 +82,14 @@ class TestDocumentedFlagsExist:
         assert '"--dry-run"' in cli_source
 
 
+@pytest.fixture(scope="module")
+def config_text():
+    """The shipped example config, read once."""
+    return (PROJECT_ROOT / "config.example.yaml").read_text(encoding="utf-8")
+
+
 class TestDocumentedConfigKeysExist:
     """Config keys in the README must exist in the example config."""
-
-    @pytest.fixture(scope="class")
-    @classmethod
-    def config_text(cls):
-        return (PROJECT_ROOT / "config.example.yaml").read_text(encoding="utf-8")
 
     @pytest.mark.parametrize(
         "key",

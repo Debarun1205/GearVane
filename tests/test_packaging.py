@@ -114,26 +114,27 @@ class TestDocker:
         assert "pip install" in dockerfile
 
 
+@pytest.fixture(scope="module")
+def built(tmp_path_factory):
+    """Build the distribution once and share it across the tests below."""
+    if not _has_module("build"):
+        pytest.skip("python -m build is not installed")
+
+    outdir = tmp_path_factory.mktemp("dist")
+    result = subprocess.run(
+        [sys.executable, "-m", "build", "--outdir", str(outdir)],
+        cwd=PROJECT_ROOT,
+        capture_output=True,
+        text=True,
+        timeout=600,
+    )
+    if result.returncode != 0:
+        pytest.fail(f"build failed:\n{result.stdout}\n{result.stderr}")
+    return outdir
+
+
 class TestBuildArtifacts:
     """The distribution must build and the installed console script work."""
-
-    @pytest.fixture(scope="class")
-    @classmethod
-    def built(cls, tmp_path_factory):
-        if not _has_module("build"):
-            pytest.skip("python -m build is not installed")
-
-        outdir = tmp_path_factory.mktemp("dist")
-        result = subprocess.run(
-            [sys.executable, "-m", "build", "--outdir", str(outdir)],
-            cwd=PROJECT_ROOT,
-            capture_output=True,
-            text=True,
-            timeout=600,
-        )
-        if result.returncode != 0:
-            pytest.fail(f"build failed:\n{result.stdout}\n{result.stderr}")
-        return outdir
 
     def test_wheel_is_produced(self, built):
         wheels = list(built.glob("*.whl"))
