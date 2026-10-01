@@ -13,6 +13,7 @@ setup(
     long_description_content_type="text/markdown",
     author="Debarun",
     license="MIT",
+    license_files=["LICENSE"],
     packages=find_packages(exclude=("tests", "tests.*")),
     python_requires=">=3.9",
     install_requires=[
@@ -42,7 +43,8 @@ setup(
     classifiers=[
         "Development Status :: 3 - Alpha",
         "Intended Audience :: Developers",
-        "License :: OSI Approved :: MIT License",
+        # License is declared via the SPDX `license` field above; the
+        # trove classifier is deprecated and emits a build warning.
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",

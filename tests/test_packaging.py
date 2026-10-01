@@ -1,11 +1,18 @@
 """Tests for packaging metadata and build correctness."""
 
+import importlib.util
 import re
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
+
+def _has_module(name: str) -> bool:
+    return importlib.util.find_spec(name) is not None
 
 
 class TestProjectMetadata:
@@ -105,6 +112,76 @@ class TestDocker:
         dockerfile = (PROJECT_ROOT / "Dockerfile").read_text(encoding="utf-8")
         assert "requirements.txt" in dockerfile
         assert "pip install" in dockerfile
+
+
+class TestBuildArtifacts:
+    """The distribution must build and the installed console script work."""
+
+    @pytest.fixture(scope="class")
+    @classmethod
+    def built(cls, tmp_path_factory):
+        if not _has_module("build"):
+            pytest.skip("python -m build is not installed")
+
+        outdir = tmp_path_factory.mktemp("dist")
+        result = subprocess.run(
+            [sys.executable, "-m", "build", "--outdir", str(outdir)],
+            cwd=PROJECT_ROOT,
+            capture_output=True,
+            text=True,
+            timeout=600,
+        )
+        if result.returncode != 0:
+            pytest.fail(f"build failed:\n{result.stdout}\n{result.stderr}")
+        return outdir
+
+    def test_wheel_is_produced(self, built):
+        wheels = list(built.glob("*.whl"))
+        assert wheels, "no wheel produced"
+
+    def test_sdist_is_produced(self, built):
+        tarballs = list(built.glob("*.tar.gz"))
+        assert tarballs, "no sdist produced"
+
+    def test_wheel_excludes_tests(self, built):
+        import zipfile
+
+        wheel = next(built.glob("*.whl"))
+        with zipfile.ZipFile(wheel) as archive:
+            names = archive.namelist()
+        assert not any(n.startswith("tests/") for n in names), "tests must not ship in the wheel"
+
+    def test_wheel_contains_package(self, built):
+        import zipfile
+
+        wheel = next(built.glob("*.whl"))
+        with zipfile.ZipFile(wheel) as archive:
+            names = archive.namelist()
+        assert "waypoint/__init__.py" in names
+        assert "waypoint/cli.py" in names
+        assert "waypoint/providers.py" in names
+
+    def test_wheel_declares_console_script(self, built):
+        import zipfile
+
+        wheel = next(built.glob("*.whl"))
+        with zipfile.ZipFile(wheel) as archive:
+            entry_points = next(n for n in archive.namelist() if n.endswith("entry_points.txt"))
+            content = archive.read(entry_points).decode()
+        assert "waypoint = waypoint.cli:main" in content
+
+    def test_wheel_ships_license(self, built):
+        import zipfile
+
+        wheel = next(built.glob("*.whl"))
+        with zipfile.ZipFile(wheel) as archive:
+            names = archive.namelist()
+        assert any("LICENSE" in n for n in names)
+
+    def test_build_emits_no_license_classifier_warning(self, built):
+        # Deprecated trove classifiers produce a build warning.
+        setup = (PROJECT_ROOT / "setup.py").read_text(encoding="utf-8")
+        assert "License :: OSI Approved" not in setup
 
 
 class TestSourceIsAscii:
