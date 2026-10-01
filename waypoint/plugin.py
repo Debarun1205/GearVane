@@ -63,7 +63,8 @@ class PluginManager:
         try:
             plugin = plugin_class()
             if not plugin.initialize(config):
-                logger.error(f"Plugin {plugin.metadata.name} failed to initialize")
+                # initialize() returning False means the plugin declined.
+                logger.error("Plugin failed to initialize")
                 return False
 
             self._plugins[plugin.metadata.name] = plugin

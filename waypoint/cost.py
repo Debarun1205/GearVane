@@ -38,9 +38,15 @@ class CostEntry:
 class CostTracker:
     """Tracks model usage costs and triggers budget alerts."""
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
+    def __init__(self, config: Optional[Dict[str, Any]] = None, **overrides):
+        """Accept a config dict, keyword overrides, or both.
+
+        Callers reach for kwargs like per_session=1.0, so accept those
+        alongside a nested config.
+        """
         self.config = config or {}
-        budget_config = self.config.get("budget", {})
+        budget_config = dict(self.config.get("budget", {}))
+        budget_config.update(overrides)
 
         self.per_session_limit = budget_config.get("per_session", 10.0)
         self.per_day_limit = budget_config.get("per_day", 50.0)
@@ -96,33 +102,25 @@ class CostTracker:
         session_spend = self.get_session_spend()
         day_spend = self.get_day_spend()
 
-        # Check session budget
-        if session_spend >= self.per_session_limit:
-            self._emit_alert(
-                AlertLevel.CRITICAL,
-                "Session budget exceeded",
-                session_spend,
-                self.per_session_limit,
-                "session",
-            )
-        elif session_spend >= self.per_session_limit * self.critical_threshold:
-            self._emit_alert(
-                AlertLevel.WARNING,
-                "Session budget near limit",
-                session_spend,
-                self.per_session_limit,
-                "session",
-            )
+        for budget_type, spend, limit in (
+            ("session", session_spend, self.per_session_limit),
+            ("day", day_spend, self.per_day_limit),
+        ):
+            label = "Session" if budget_type == "session" else "Daily"
 
-        # Check day budget
-        if day_spend >= self.per_day_limit:
-            self._emit_alert(
-                AlertLevel.CRITICAL, "Daily budget exceeded", day_spend, self.per_day_limit, "day"
-            )
-        elif day_spend >= self.per_day_limit * self.critical_threshold:
-            self._emit_alert(
-                AlertLevel.WARNING, "Daily budget near limit", day_spend, self.per_day_limit, "day"
-            )
+            if spend >= limit:
+                level = AlertLevel.CRITICAL
+                message = f"{label} budget exceeded"
+            elif spend >= limit * self.critical_threshold:
+                level = AlertLevel.CRITICAL
+                message = f"{label} budget nearly exhausted"
+            elif spend >= limit * self.warning_threshold:
+                level = AlertLevel.WARNING
+                message = f"{label} budget at {spend / limit:.0%}"
+            else:
+                continue
+
+            self._emit_alert(level, message, spend, limit, budget_type)
 
     def _emit_alert(
         self, level: AlertLevel, message: str, current: float, limit: float, budget_type: str
@@ -165,7 +163,18 @@ class CostTracker:
     def get_stats(self) -> Dict[str, Any]:
         """Get cost statistics."""
         if not self._entries:
-            return {"total": 0, "total_cost": 0.0}
+            # Return the full shape even when empty so callers do not
+            # need a special case for the no-usage branch.
+            return {
+                "total_calls": 0,
+                "total_tokens_in": 0,
+                "total_tokens_out": 0,
+                "total_cost_usd": 0.0,
+                "session_spend_usd": 0.0,
+                "day_spend_usd": 0.0,
+                "cost_by_tier": {},
+                "cost_by_model": {},
+            }
 
         total_in = sum(e.tokens_in for e in self._entries)
         total_out = sum(e.tokens_out for e in self._entries)

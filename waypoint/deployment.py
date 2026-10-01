@@ -29,8 +29,14 @@ class GitHubDeployer:
         self.default_branch = config.get("default_branch", "main")
 
     def _run_git(self, command: str, dry_run: bool = False) -> DeployResult:
-        """Run a git command with safety checks."""
-        approval = self.safety.check_command(command)
+        """Run a git command with safety checks.
+
+        The safety classifier matches on full command lines such as
+        "git push", so it must receive the prefixed form. Passing the bare
+        subcommand would classify as "shell" and bypass the push gate.
+        """
+        full_command = f"git {command}"
+        approval = self.safety.check_command(full_command)
 
         if approval.status == ApprovalStatus.DENIED:
             return DeployResult(
@@ -40,6 +46,8 @@ class GitHubDeployer:
             )
 
         if approval.status == ApprovalStatus.PENDING:
+            # Report the gate even in dry run: --dry-run must not make a
+            # gated command look safe to run unattended.
             return DeployResult(
                 success=False,
                 tool="github",
@@ -51,12 +59,12 @@ class GitHubDeployer:
             return DeployResult(
                 success=True,
                 tool="github",
-                output=f"[DRY RUN] Would execute: git {command}",
+                output=f"[DRY RUN] Would execute: {full_command}",
             )
 
         try:
             proc = subprocess.run(
-                f"git {command}",
+                full_command,
                 shell=True,
                 capture_output=True,
                 text=True,

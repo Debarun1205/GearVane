@@ -39,9 +39,15 @@ class HealthConfig:
 class ModelHealthChecker:
     """Monitors model health through periodic checks."""
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
+    def __init__(self, config: Optional[Dict[str, Any]] = None, **overrides):
+        """Accept either a full config dict or direct keyword overrides.
+
+        Callers reach for kwargs like failure_threshold=3, so accept both
+        rather than forcing a nested dict.
+        """
         self.config = config or {}
-        health_config = self.config.get("health", {})
+        health_config = dict(self.config.get("health", {}))
+        health_config.update(overrides)
 
         self.check_interval = health_config.get("check_interval_seconds", 60.0)
         self.timeout = health_config.get("timeout_seconds", 10.0)

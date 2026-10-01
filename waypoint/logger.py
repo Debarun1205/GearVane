@@ -58,8 +58,13 @@ class RoutingLogger:
         )
 
     def log_routing(self, task_id: str, decision, context=None):
-        """Log a routing decision."""
-        if not self.enabled or not self.log_decisions:
+        """Log a routing decision.
+
+        Entries are always recorded in memory so `stats` and `cost` reflect
+        what actually ran. The enabled/log_routing_decisions flags control
+        file and stream output only.
+        """
+        if not self.log_decisions:
             return
 
         entry = RoutingLogEntry(
@@ -90,10 +95,11 @@ class RoutingLogger:
         duration_seconds: float = 0.0,
         metadata: Optional[Dict[str, Any]] = None,
     ):
-        """Log the outcome of a routed task."""
-        if not self.enabled:
-            return
+        """Log the outcome of a routed task.
 
+        Recorded in memory regardless of the enabled flag, so stats stay
+        accurate when file logging is off.
+        """
         # Find the latest entry for this task
         for entry in reversed(self._entries):
             if entry.task_id == task_id:

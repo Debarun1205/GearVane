@@ -61,7 +61,16 @@ class FeedbackStore:
     def get_stats(self) -> Dict[str, Any]:
         """Get feedback statistics."""
         if not self._entries:
-            return {"total": 0}
+            # Same keys as the populated branch so callers need no special case.
+            return {
+                "total_entries": 0,
+                "rated_entries": 0,
+                "correct_predictions": 0,
+                "incorrect_predictions": 0,
+                "accuracy": 0.0,
+                "average_rating": 0.0,
+                "by_tier": {},
+            }
 
         total = len(self._entries)
         rated = [e for e in self._entries if e.user_rating is not None]
