@@ -1,0 +1,177 @@
+# Waypoint Configuration Example
+
+# Model tiers configuration
+tiers:
+  local:
+    description: "Local models for simple tasks"
+    providers:
+      - name: ollama
+        base_url: "http://localhost:11434"
+        models:
+          - llama3.2
+          - qwen2.5-coder
+          - deepseek-coder-v2
+      - name: lm_studio
+        base_url: "http://localhost:1234"
+        models:
+          - qwen2.5-coder-7b
+    max_retries: 2
+    cost_per_token: 0
+
+  mid:
+    description: "Mid-tier models for medium complexity"
+    providers:
+      - name: openrouter
+        models:
+          - anthropic/claude-3-haiku
+          - google/gemini-flash
+          - openai/gpt-4o-mini
+    max_retries: 2
+    cost_per_token: 0.0001
+
+  frontier:
+    description: "Frontier models for hard tasks"
+    providers:
+      - name: anthropic
+        models:
+          - claude-sonnet-4-20250514
+          - claude-opus-4-20250514
+      - name: openai
+        models:
+          - gpt-4o
+          - o3
+      - name: google
+        models:
+          - gemini-2.0-flash
+          - gemini-2.5-pro
+    max_retries: 3
+    cost_per_token: 0.005
+
+# Router settings
+router:
+  # Default tier when classification is uncertain
+  default_tier: mid
+  
+  # Escalation settings
+  escalation:
+    enabled: true
+    max_attempts_per_tier: 2
+    auto_promote_on_failure: true
+    promote_to: frontier
+  
+  # Manual override (pin a specific model)
+  manual_override: null  # e.g., "anthropic/claude-sonnet-4-20250514"
+  
+  # Classification heuristics
+  heuristics:
+    # Keywords that suggest simple tasks (local tier)
+    simple_keywords:
+      - typo
+      - formatting
+      - rename
+      - comment
+      - readme
+      - documentation
+      - boilerplate
+      - template
+      - simple
+      - fix
+      - small
+    
+    # Keywords that suggest complex tasks (frontier tier)
+    complex_keywords:
+      - architecture
+      - refactor
+      - optimize
+      - security
+      - concurrency
+      - distributed
+      - migration
+      - redesign
+      - performance
+      - scale
+      - debug
+      - investigate
+      - complex
+    
+    # File patterns that suggest complexity
+    complex_file_patterns:
+      - "*.rs"
+      - "*.go"
+      - "*_test.*"
+      - "src/core/*"
+      - "src/engine/*"
+    
+    # Minimum files touched to consider a task complex
+    min_files_for_complex: 3
+
+# Logging
+logging:
+  enabled: true
+  level: INFO
+  file: "waypoint.log"
+  log_routing_decisions: true
+  log_escalations: true
+  log_costs: true
+
+# Safety
+safety:
+  # Require approval for these operations
+  require_approval:
+    - git_push
+    - git_force_push
+    - deploy_production
+    - deploy_staging
+    - delete_branch
+    - merge_pr
+  
+  # Spend limits (USD)
+  spend_limits:
+    per_session: 10.0
+    per_day: 50.0
+    per_task: 5.0
+  
+  # Sandboxed commands (these can run without approval)
+  sandbox_allowed:
+    - "git status"
+    - "git log"
+    - "git diff"
+    - "ls"
+    - "cat"
+    - "find"
+    - "grep"
+    - "pytest"
+    - "npm test"
+    - "python -m pytest"
+  
+  # Blocked commands (never run)
+  blocked_commands:
+    - "rm -rf"
+    - "sudo"
+    - "chmod 777"
+    - "dd if="
+
+# Deployment tools
+deployment:
+  github:
+    enabled: true
+    require_approval_for_push: true
+    require_approval_for_pr: false
+    default_branch: main
+  
+  docker:
+    enabled: true
+    require_approval_for_build: false
+    require_approval_for_push: true
+  
+  flyio:
+    enabled: false
+    require_approval_for_deploy: true
+  
+  vercel:
+    enabled: false
+    require_approval_for_deploy: true
+  
+  cloudflare:
+    enabled: false
+    require_approval_for_deploy: true
