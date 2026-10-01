@@ -213,11 +213,20 @@ class TierRouter:
         # Select provider and model
         tier_config = self.tiers.get(classification.tier)
         if not tier_config or not tier_config.providers:
-            # Fallback to default tier
+            # Fall back to the configured default tier.
             logger.warning(f"No config for tier {classification.tier.value}, "
                           f"falling back to {self.default_tier.value}")
             tier_config = self.tiers.get(self.default_tier)
             classification.tier = self.default_tier
+
+        # With no tiers configured at all there is nothing to route to. Report
+        # that plainly instead of raising AttributeError on None.
+        if not tier_config or not tier_config.providers:
+            raise ValueError(
+                "No usable model tiers configured. Add at least one provider "
+                "under 'tiers' in your config, or pass --config pointing at a "
+                "file that defines one."
+            )
 
         # Simple round-robin provider selection
         provider_idx = (task_state["attempts"] - 1) % len(tier_config.providers)
