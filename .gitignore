@@ -47,6 +47,18 @@ dist/
 build/
 *.egg-info/
 
+# Node / TypeScript
+node_modules/
+*.tsbuildinfo
+.vite/
+coverage/
+apps/*/out/
+apps/*/dist/
+apps/*/*.vsix
+apps/*/release/
+apps/*/android/
+apps/*/www/
+
 # OS
 .DS_Store
 Thumbs.db
