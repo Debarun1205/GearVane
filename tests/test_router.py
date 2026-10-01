@@ -75,18 +75,51 @@ class TestTierRouter:
         decision = self.router.route("task-2", context)
         assert decision.tier == Tier.FRONTIER
 
-    def test_manual_override(self):
-        config = self.config.copy()
-        config["router"]["manual_override"] = "anthropic/claude-sonnet-4-20250514"
+    def test_manual_override_bare_model_name(self):
+        config = {**self.config, "router": {**self.config["router"],
+                                           "manual_override": "claude-sonnet-4-20250514"}}
         router = TierRouter(config)
-        
-        context = TaskContext(
-            description="Fix a typo",
-            files_touched=["README.md"],
-        )
+
+        context = TaskContext(description="Fix a typo", files_touched=["README.md"])
         decision = router.route("task-3", context)
-        assert decision.model == "anthropic/claude-sonnet-4-20250514"
+        assert decision.model == "claude-sonnet-4-20250514"
+        assert decision.tier == Tier.FRONTIER
         assert decision.confidence == 1.0
+
+    def test_manual_override_provider_qualified(self):
+        config = {**self.config, "router": {**self.config["router"],
+                                           "manual_override": "anthropic/claude-sonnet-4-20250514"}}
+        router = TierRouter(config)
+
+        context = TaskContext(description="Fix a typo", files_touched=["README.md"])
+        decision = router.route("task-4", context)
+        assert decision.model == "claude-sonnet-4-20250514"
+        assert decision.provider.name == "anthropic"
+
+    def test_manual_override_slash_in_model_name(self):
+        # OpenRouter-style names contain slashes, e.g. anthropic/claude-3-haiku.
+        config = {**self.config, "router": {**self.config["router"],
+                                           "manual_override": "openrouter/anthropic/claude-3-haiku"}}
+        router = TierRouter(config)
+
+        context = TaskContext(description="Fix a typo", files_touched=["README.md"])
+        decision = router.route("task-4b", context)
+        assert decision.model == "anthropic/claude-3-haiku"
+        assert decision.provider.name == "openrouter"
+
+    def test_unmatched_manual_override_falls_back_with_warning(self, caplog):
+        config = {**self.config, "router": {**self.config["router"],
+                                           "manual_override": "does-not-exist"}}
+        router = TierRouter(config)
+
+        context = TaskContext(description="Fix a typo", files_touched=["README.md"])
+        decision = router.route("task-3b", context)
+
+        # Must not silently claim the override was honoured.
+        assert decision.tier == Tier.LOCAL
+        assert "Manual override" not in decision.reasons
+        assert any("matched no configured model" in r.message
+                   for r in caplog.records if r.levelname == "WARNING")
 
     def test_escalation_after_failures(self):
         context = TaskContext(

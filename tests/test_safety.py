@@ -51,10 +51,41 @@ class TestSafetyManager:
         assert result.status == ApprovalStatus.PENDING
 
     def test_spend_within_limits(self):
-        assert self.safety.check_spend(5.0)
-        self.safety.record_spend(5.0)
-        assert self.safety.check_spend(4.0)
-        assert not self.safety.check_spend(6.0)
+        # per_task_limit is 5.0, so a single task can spend at most 5.0 even
+        # though the session budget is larger.
+        assert self.safety.check_spend(5.0, task_id="task-a")
+        self.safety.record_spend(5.0, task_id="task-a")
+        # Task budget now exhausted.
+        assert not self.safety.check_spend(0.1, task_id="task-a")
+        # Session budget (10.0) still has room, and a new task resets task spend.
+        assert self.safety.check_spend(5.0, task_id="task-b")
+
+    def test_session_limit_blocks(self):
+        self.safety.record_spend(5.0, task_id="task-a")
+        self.safety.record_spend(5.0, task_id="task-b")
+        # Session budget of 10.0 is now exhausted regardless of task scoping.
+        assert not self.safety.check_spend(0.1, task_id="task-c")
+
+    def test_per_task_limit_blocks_within_session_budget(self):
+        # per_task_limit is 5.0 but the session budget is 10.0. Spending 5.0 on
+        # one task must exhaust the task budget even though session budget remains.
+        self.safety.record_spend(5.0, task_id="task-a")
+        assert not self.safety.check_spend(0.1, task_id="task-a")
+        assert self.safety.check_spend(0.1, task_id="task-b")
+
+    def test_per_task_budget_resets_for_new_task(self):
+        # Regression: task_spend used to accumulate forever because nothing called
+        # reset_task(), so one expensive task blocked all later tasks.
+        self.safety.record_spend(5.0, task_id="task-a")
+        self.assertBlockedForCurrentTask()
+        # A new task gets a fresh per-task budget.
+        assert self.safety.check_spend(5.0, task_id="task-b")
+        self.safety.record_spend(5.0, task_id="task-b")
+        # Session budget (10.0) is now exhausted.
+        assert not self.safety.check_spend(0.1, task_id="task-c")
+
+    def assertBlockedForCurrentTask(self):
+        assert not self.safety.check_spend(0.01, task_id="task-a")
 
     def test_spend_tracker_status(self):
         self.safety.record_spend(2.5)

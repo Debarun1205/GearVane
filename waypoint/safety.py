@@ -39,6 +39,19 @@ class SpendTracker:
     task_spend: float = 0.0
     _session_start: float = field(default_factory=time.time)
     _day_start: float = field(default_factory=time.time)
+    _current_task_id: Optional[str] = None
+
+    def start_task(self, task_id: str):
+        """Begin tracking a new task and reset the per-task budget.
+
+        Per-task spend must reset when the task changes. Previously this was
+        only resettable via an explicit reset_task() call that no caller made,
+        so once task_spend hit per_task_limit every later task was blocked for
+        the life of the process.
+        """
+        if self._current_task_id != task_id:
+            self.task_spend = 0.0
+            self._current_task_id = task_id
 
     def can_spend(self, amount: float) -> bool:
         """Check if a spend amount is within limits."""
@@ -50,8 +63,10 @@ class SpendTracker:
             return False
         return True
 
-    def record_spend(self, amount: float):
-        """Record a spend."""
+    def record_spend(self, amount: float, task_id: Optional[str] = None):
+        """Record a spend, scoping it to a task."""
+        if task_id is not None:
+            self.start_task(task_id)
         self.session_spend += amount
         self.day_spend += amount
         self.task_spend += amount
@@ -59,6 +74,7 @@ class SpendTracker:
     def reset_task(self):
         """Reset per-task spend."""
         self.task_spend = 0.0
+        self._current_task_id = None
 
     def get_status(self) -> Dict[str, Any]:
         """Get current spend status."""
@@ -171,13 +187,15 @@ class SafetyManager:
         """Deny a pending request."""
         request.status = ApprovalStatus.DENIED
 
-    def check_spend(self, estimated_cost: float) -> bool:
+    def check_spend(self, estimated_cost: float, task_id: Optional[str] = None) -> bool:
         """Check if an estimated cost is within budget."""
+        if task_id is not None:
+            self.spend_tracker.start_task(task_id)
         return self.spend_tracker.can_spend(estimated_cost)
 
-    def record_spend(self, cost: float):
+    def record_spend(self, cost: float, task_id: Optional[str] = None):
         """Record actual spend."""
-        self.spend_tracker.record_spend(cost)
+        self.spend_tracker.record_spend(cost, task_id)
 
     def get_pending_approvals(self) -> List[ApprovalRequest]:
         """Get all pending approval requests."""

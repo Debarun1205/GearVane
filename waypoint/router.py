@@ -74,24 +74,68 @@ class TierRouter:
                 cost_per_token=tier_data.get("cost_per_token", 0.0),
             )
 
+    def _resolve_override(self, override: str):
+        """Resolve a manual override string to a (tier, provider, model) triple.
+
+        Accepts either a bare model name ("gpt-4o") or a qualified
+        "provider/model" string ("openai/gpt-4o"). Returns None if the
+        override does not match any configured model.
+        """
+        override = override.strip()
+
+        # Split an optional "provider/model" qualifier.
+        provider_hint = None
+        model_name = override
+        if "/" in override:
+            provider_hint, model_name = override.split("/", 1)
+            # A provider name may itself contain "/" (e.g. openrouter/anthropic/claude).
+            # Re-join anything that matches a configured provider prefix.
+            for tier_config in self.tiers.values():
+                for provider in tier_config.providers:
+                    prefix = f"{provider.name}/"
+                    if override.startswith(prefix):
+                        provider_hint = provider.name
+                        model_name = override[len(prefix):]
+                        break
+
+        for tier, tier_config in self.tiers.items():
+            for provider in tier_config.providers:
+                if provider_hint and provider.name != provider_hint:
+                    continue
+                for model in provider.models:
+                    if model == model_name:
+                        return (tier, provider, model)
+
+        return None
+
     def route(self, task_id: str, context: TaskContext) -> RoutingDecision:
         """Route a task to the appropriate tier and model."""
         # Check manual override
         if self.manual_override:
-            logger.info(f"Manual override active: {self.manual_override}")
-            # Find the provider/model in override
-            for tier, tier_config in self.tiers.items():
-                for provider in tier_config.providers:
-                    if self.manual_override in provider.models:
-                        return RoutingDecision(
-                            tier=tier,
-                            provider=provider,
-                            model=self.manual_override,
-                            confidence=1.0,
-                            reasons=["Manual override"],
-                            escalated=False,
-                            attempt=1,
-                        )
+            resolved = self._resolve_override(self.manual_override)
+            if resolved:
+                tier, provider, model = resolved
+                logger.info(
+                    f"Manual override active: {self.manual_override} "
+                    f"-> {provider.name}/{model} (tier={tier.value})"
+                )
+                return RoutingDecision(
+                    tier=tier,
+                    provider=provider,
+                    model=model,
+                    confidence=1.0,
+                    reasons=[f"Manual override: {self.manual_override}"],
+                    escalated=False,
+                    attempt=1,
+                )
+
+            # An override that matches nothing must not silently degrade to
+            # normal routing, because the user explicitly asked for a model.
+            logger.warning(
+                f"Manual override '{self.manual_override}' matched no configured "
+                f"model. Falling back to automatic routing. "
+                f"Check 'router.manual_override' in your config."
+            )
 
         # Get or create task tracking
         if task_id not in self._task_attempts:
