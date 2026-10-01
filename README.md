@@ -84,8 +84,8 @@ ollama pull qwen2.5-coder
 **Hosted models** — export a key if you use them:
 
 ```bash
-export ANTHROPIC_API_KEY=sk-ant-...
-export OPENROUTER_API_KEY=sk-or-...
+export ANTHROPIC_API_KEY=<your-anthropic-key>
+export OPENROUTER_API_KEY=<your-openrouter-key>
 ```
 
 Keys are read from the environment only, never stored in config.
@@ -313,6 +313,15 @@ Alpha. The router, providers, escalation, budget gates, and CLI are
 tested end to end. The learned classifier trains and predicts but has not
 been evaluated against real production traffic yet, which is the obvious
 next step.
+
+## Security
+
+API keys are read from the environment only and are never written to a
+config file, log, or dashboard. Deployments sit behind approval gates that
+refuse to run even under `--dry-run`.
+
+See [SECURITY.md](SECURITY.md) for credential handling, how to report a
+vulnerability, and the behaviours the approval gates depend on.
 
 ## License
 

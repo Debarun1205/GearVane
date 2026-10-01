@@ -198,10 +198,55 @@ class TestDocumentedPythonApi:
             assert hook in readme
 
 
+@pytest.fixture(scope="module")
+def security():
+    """The security policy, read once."""
+    return (PROJECT_ROOT / "SECURITY.md").read_text(encoding="utf-8")
+
+
+class TestSecurityDocs:
+    """SECURITY.md must document the credential rules the code enforces."""
+
+    def test_security_file_exists(self):
+        assert (PROJECT_ROOT / "SECURITY.md").is_file()
+
+    def test_readme_links_to_security_policy(self, readme):
+        assert "SECURITY.md" in readme
+
+    def test_warns_against_tokens_in_remote_urls(self, security):
+        assert "x-access-token" in security
+        assert "credential.helper" in security
+
+    def test_documents_environment_only_keys(self, security):
+        assert "api_key_env" in security
+        assert "environment" in security.lower()
+
+    def test_documents_approval_gate_guarantees(self, security):
+        assert "--dry-run" in security
+        assert "blocked_commands" in security
+
+    def test_no_secrets_in_repo_docs(self, security, readme):
+        for text in (security, readme):
+            assert "ghp_" not in text
+            assert "sk-ant-" not in text
+            assert "github_pat_" not in text
+
+    def test_readme_states_no_sandboxing(self, security):
+        # Do not imply isolation the code does not provide.
+        assert "does not sandbox" in security
+
+
 class TestReadmeQuality:
     def test_has_license_section(self, readme):
         assert "## License" in readme
         assert "MIT" in readme
+
+    def test_has_security_section(self, readme):
+        assert "## Security" in readme
+
+    def test_has_status_section(self, readme):
+        # A project should state its maturity honestly.
+        assert "## Status" in readme
 
     def test_no_placeholder_text(self, readme):
         for marker in ("TODO", "FIXME", "XXX", "coming soon", "TBD"):
