@@ -20,6 +20,12 @@ import {
   type ParsedArgs,
 } from './args.js';
 import { loadConfig } from './config-loader.js';
+import {
+  AGENT_HELP,
+  BUILD_HELP,
+  cmdAgent,
+  cmdBuild,
+} from './harness-commands.js';
 
 const HELP = `waypoint ${VERSION} - route each task to the cheapest model tier that can do the job
 
@@ -35,7 +41,13 @@ Usage:
   waypoint safety <spend|pending|check> [--command "<cmd>"] [--json]
   waypoint approve [--command "<cmd>" | --all]
   waypoint deploy <github|docker> <action> [options] [--dry-run]
+  waypoint agent --task "<what you want done>" [options]
+  waypoint build --template <id> --name "<project>" [--out <dir>]
   waypoint --version
+
+Routing and health:
+  waypoint agent --help
+  waypoint build --help
 
 Options:
   --config <path>   Config file to use
@@ -59,6 +71,19 @@ async function main(argv: string[]): Promise<number> {
   // An explicit --help or help subcommand is a successful request. Only a
   // bare invocation with no arguments at all is an error.
   const wantsHelp = flagBool(args, 'help') || args.command === 'help';
+
+  // Per-command help, printed before the config is loaded: `agent --help`
+  // should not fail because the config happens to be malformed.
+  if (wantsHelp && args.command) {
+    if (args.command === 'agent') {
+      process.stdout.write(`${AGENT_HELP}\n`);
+      return 0;
+    }
+    if (args.command === 'build') {
+      process.stdout.write(`${BUILD_HELP}\n`);
+      return 0;
+    }
+  }
 
   if (!args.command || wantsHelp) {
     process.stdout.write(`${HELP}\n`);
@@ -90,6 +115,10 @@ async function main(argv: string[]): Promise<number> {
       return cmdApprove(args, config);
     case 'deploy':
       return cmdDeploy(args, config, json);
+    case 'agent':
+      return await cmdAgent(args, json, useColor);
+    case 'build':
+      return await cmdBuild(args, json);
     default:
       process.stderr.write(`Unknown command: ${args.command}\n\n${HELP}\n`);
       return 1;

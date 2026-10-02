@@ -188,6 +188,8 @@ jobs:
           pip install -e .
           npm ci
           npm run build --workspace @waypoint/core
+          # The CLI imports the harness for the agent and build commands.
+          npm run build --workspace @waypoint/harness
           npm run build --workspace @waypoint/cli
 
       - name: Python CLI
@@ -214,6 +216,29 @@ jobs:
           ts=$(node packages/cli/dist/bin.js route --task "$task" --files $files --json | python -c 'import json,sys; print(json.load(sys.stdin)["tier"])')
           echo "python=$py typescript=$ts"
           test "$py" = "$ts"
+
+      - name: The builder command scaffolds
+        # Unit tests can pass while the shipped binary cannot resolve a
+        # workspace dependency. The command has to actually run.
+        run: |
+          set -euo pipefail
+          out=$(mktemp -d)
+          node packages/cli/dist/bin.js build \
+            --template landing \
+            --name "Smoke Test" \
+            --tagline "Scaffolded in CI" \
+            --features "One;Two" \
+            --out "$out"
+          test -f "$out/index.html"
+          grep -q "Smoke Test" "$out/index.html"
+          echo "scaffolded $(ls -1 "$out" | wc -l) files"
+
+      - name: The agent command reports its tools
+        # --dry-run must not contact a model, so this is safe on a runner with
+        # no provider reachable.
+        run: |
+          set -euo pipefail
+          node packages/cli/dist/bin.js agent --task "smoke" --dry-run | tee /dev/stderr | grep -q read_file
 
   # The renderer must stay a single self-contained bundle, since the same file
   # ships inside the Android webview.

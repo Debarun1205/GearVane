@@ -19,6 +19,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@waypoint/core": "0.2.0"
+    "@waypoint/core": "0.2.0",
+    "@waypoint/harness": "0.2.0"
   }
 }
