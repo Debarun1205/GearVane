@@ -1,0 +1,69 @@
+{
+  "name": "waypoint-app",
+  "productName": "Waypoint",
+  "version": "0.2.0",
+  "description": "Route each prompt to the cheapest model tier that can do the job",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "main": "dist/main.js",
+  "scripts": {
+    "build:main": "tsc -p tsconfig.json",
+    "build:renderer": "esbuild src/renderer.ts --bundle --format=esm --target=es2022 --platform=browser --outfile=renderer/renderer.js",
+    "build": "npm run build:main && npm run build:renderer",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "lint": "eslint src",
+    "start": "npm run build && electron dist/main.js",
+    "dist": "npm run build && electron-builder",
+    "dist:linux": "npm run build && electron-builder --linux",
+    "dist:win": "npm run build && electron-builder --win",
+    "android:sync": "npm run build && cap sync android",
+    "android:apk": "npm run android:sync && cd android && gradlew assembleDebug",
+    "clean": "rm -rf dist release out android/app/build"
+  },
+  "dependencies": {
+    "@waypoint/app-core": "0.2.0",
+    "@waypoint/core": "0.2.0"
+  },
+  "devDependencies": {
+    "@capacitor/android": "^6.2.0",
+    "@capacitor/cli": "^6.2.0",
+    "@capacitor/core": "^6.2.0",
+    "@types/node": "^22.0.0",
+    "electron": "^33.0.0",
+    "electron-builder": "^25.0.0",
+    "esbuild": "^0.24.0"
+  },
+  "build": {
+    "appId": "dev.waypoint.app",
+    "productName": "Waypoint",
+    "directories": {
+      "output": "release",
+      "buildResources": "resources"
+    },
+    "files": ["dist/**/*", "renderer/**/*", "resources/icon.png"],
+    "linux": {
+      "target": [
+        { "target": "AppImage", "arch": ["x64", "arm64"] },
+        { "target": "deb", "arch": ["x64", "arm64"] }
+      ],
+      "category": "Development",
+      "icon": "resources/icon.png"
+    },
+    "win": {
+      "target": [
+        { "target": "nsis", "arch": ["x64"] },
+        { "target": "portable", "arch": ["x64"] }
+      ],
+      "icon": "resources/icon.png"
+    },
+    "mac": {
+      "target": [{ "target": "dmg", "arch": ["x64", "arm64"] }],
+      "category": "public.app-category.developer-tools"
+    },
+    "android": {
+      "target": "apk"
+    }
+  }
+}
