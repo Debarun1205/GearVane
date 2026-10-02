@@ -63,6 +63,11 @@ describe('the document does not overstate what exists', () => {
       mustContain: 'compact',
     },
     {
+      label: 'Session persistence',
+      path: join('packages', 'harness', 'src', 'session', 'store.ts'),
+      mustContain: 'redact',
+    },
+    {
       label: 'Tool layer',
       path: join('packages', 'harness', 'src', 'tools', 'registry.ts'),
     },
@@ -222,6 +227,19 @@ describe('the document keeps the risks stated', () => {
 
   it('warns that trimming must not orphan a tool result', () => {
     expect(prose).toMatch(/never orphans a tool result/i);
+  });
+
+  it('says session redaction is not a guarantee', () => {
+    // The one sentence that stops a reader treating redaction as a security
+    // boundary rather than a useful default.
+    expect(prose).toMatch(/not a guarantee/i);
+    expect(prose).toMatch(/credential in an unusual format/i);
+  });
+
+  it('records why a corrupt session must not throw', () => {
+    // A crash mid-write is the expected input, not an exceptional one.
+    expect(prose).toMatch(/corrupt file must never throw/i);
+    expect(prose).toMatch(/truncated file/i);
   });
 
   it('notes the loop keeps full history after trimming', () => {

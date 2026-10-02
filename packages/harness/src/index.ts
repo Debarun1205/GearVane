@@ -32,6 +32,18 @@ export {
 export { ToolRegistry } from './tools/registry.js';
 
 export {
+  MemorySessionStorage,
+  SESSION_VERSION,
+  SessionStore,
+  redact,
+  type ResumeResult,
+  type ResumeStatus,
+  type SessionState,
+  type SessionStorage,
+  type SessionStoreOptions,
+} from './session/store.js';
+
+export {
   CHARS_PER_TOKEN,
   SAFETY_MARGIN,
   availableForHistory,

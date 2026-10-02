@@ -27,7 +27,7 @@ multi-model harness needs most and usually gets wrong.
 | Tool call **advertising** to a provider (OpenAI-compatible, Anthropic) | done |
 | Agent loop | done |
 | Context management: budget, trim, compact | done |
-| Session persistence | **not done** |
+| Session persistence: save, resume, redact | done |
 | Shell tool: gated, cwd-pinned, bounded | done |
 | Sandboxing (OS-level containment) | **not done, and not planned here** |
 
@@ -81,7 +81,7 @@ packages/harness
   tools/shell   command execution, gated by core's SafetyManager
   workspace/    path containment
   context/      token estimate, budget, trim, compact
-  session/      persist and resume                                [not built]
+  session/      persist and resume
 ```
 
 The loop lives at the package root rather than in `agent/` because it is the
@@ -190,6 +190,40 @@ produces a request the provider rejects.
 **The loop keeps the full history even after trimming.** Only the copy sent to
 the model is trimmed, so a caller can still show the user everything that
 happened after old turns left the window.
+
+## Sessions
+
+A session exists so an interrupted run can be resumed, which makes three
+failure modes matter more than they would for ordinary caching.
+
+**A corrupt file must never throw.** A crash mid-write leaves a truncated file
+behind, so that is the expected input, not an exceptional one. Unparseable
+content is discarded and reported as `corrupt` with a reason. A session with no
+workspace root is refused outright: resuming into an unknown directory would be
+worse than not resuming, because the run would be confined to nothing.
+
+**A file from an older version must stay readable.** The shape is versioned, a
+mismatched version loads as `migrated` rather than being rejected, and unknown
+fields are dropped instead of causing a parse error. A session store that
+rejects its own older files loses every run across a version bump.
+
+**A credential must never reach storage.** Redaction runs over the serialised
+session rather than over individual fields, because a key can appear inside a
+file the agent read, a command it ran, or a model response — and none of those
+are distinguishable from ordinary text. A session file is also the single most
+likely artefact to be committed to a repository by accident, which is the whole
+reason this module is not just a JSON helper.
+
+The patterns are blunt on purpose: a false positive costs a little
+readability, a false negative writes a live key to disk. Variable names are
+preserved and only values are dropped, so a redacted transcript still reads as a
+transcript. It covers provider keys, GitHub and Slack tokens, `key = value`
+assignments, `Bearer` headers, URL credentials, bare `.env` lines, and PEM
+private-key blocks.
+
+It is not a guarantee. A credential in an unusual format, or one the agent
+never echoed into a transcript, will not be caught. Nothing short of keeping
+keys out of the conversation entirely achieves that.
 
 ## Multi-model
 
