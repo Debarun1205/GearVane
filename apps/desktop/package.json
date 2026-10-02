@@ -42,7 +42,7 @@
       "output": "release",
       "buildResources": "resources"
     },
-    "files": ["dist/**/*", "renderer/**/*", "resources/icon.png"],
+    "files": ["dist/**/*", "renderer/**/*"],
     "linux": {
       "target": [
         { "target": "AppImage", "arch": ["x64", "arm64"] },
