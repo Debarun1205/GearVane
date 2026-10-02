@@ -39,10 +39,17 @@ TypeScript port is what the CLI, app, and extension use; the Python package
 remains the reference and is tested for identical routing behaviour.
 
 The harness is under construction. It has workspace path containment, a tool
-layer with five file tools, tool-calling support in the provider clients, and
-a working agent loop. **Command containment, context management, and session
-persistence are not built** — there is no shell tool, so the harness has file
-containment but no sandbox.
+layer with file tools and a gated shell, tool-calling support in the provider
+clients, and a working agent loop. **Context management and session
+persistence are not built.**
+
+Be clear about what the shell tool is: it gates commands through
+`SafetyManager`, refuses blocked ones, pins the working directory to the
+workspace, strips provider keys from the child environment, and bounds runtime
+and output. **It is not a sandbox.** An approved command can still read and
+write anywhere you can; real containment needs an OS-level boundary that is not
+implemented here.
+
 [docs/harness-architecture.md](docs/harness-architecture.md) is the source of
 truth, and a test checks its status table against the repository so it cannot
 drift.

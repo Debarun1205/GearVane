@@ -71,12 +71,29 @@ describe('the document does not overstate what exists', () => {
       path: join('packages', 'harness', 'src', 'workspace', 'containment.ts'),
       mustContain: 'class Workspace',
     },
-    {
-      // The shell tool is what would make this true.
-      label: 'Shell containment and sandboxing',
-      path: join('packages', 'harness', 'src', 'tools', 'shell'),
-    },
-  ];
+    ];
+
+  /**
+   * Sandbox wording is checked separately because the shell tool now exists
+   * and is gated, which is exactly the situation where the honest description
+   * is easiest to get wrong. Gating is not containment, and a tool that
+   * exists is not automatically a sandbox.
+   */
+  it('does not describe the shell tool as a sandbox', () => {
+    const shellPath = join('packages', 'harness', 'src', 'tools', 'shell.ts');
+    if (!existsSync(shellPath)) return;
+
+    const source = read(shellPath).replace(/\s+/g, ' ');
+
+    // It must keep denying the sandbox claim...
+    expect(source).toMatch(/not a sandbox/i);
+    expect(source).toMatch(/needs an OS boundary/i);
+
+    // ...and must never make the claim in the positive.
+    expect(source).not.toMatch(/\bprovides a sandbox\b/i);
+    expect(source).not.toMatch(/\bis a sandbox\b/i);
+    expect(source).not.toMatch(/fully (contained|sandboxed)/i);
+  });
 
   it.each(CAPABILITIES)(
     'agrees with the repository about "$label"',
@@ -127,23 +144,45 @@ describe('the document does not overstate what exists', () => {
     }
   });
 
-  it('never claims the harness has a sandbox while the shell tool is missing', () => {
+  it('describes the shell tool as gated rather than sandboxed', () => {
     const hasShell = existsSync(
-      join(REPO, 'packages', 'harness', 'src', 'tools', 'shell'),
+      join(REPO, 'packages', 'harness', 'src', 'tools', 'shell.ts'),
     );
 
     if (!hasShell) {
       expect(prose).toMatch(/Shell containment and sandboxing\s*\|\s*\*\*not done\*\*/);
       expect(prose).toMatch(/no sandbox/i);
+      return;
     }
+
+    // Once the tool exists the row has to say what it actually is.
+    expect(prose).toMatch(/gated/i);
+    expect(prose).toMatch(/not a sandbox/i);
   });
 
-  it('separates file containment from command containment', () => {
-    // The distinction that keeps "sandboxed" honest while only files are
-    // confined.
-    expect(prose).toMatch(/separate rows on purpose/i);
-    expect(prose).toMatch(/file half/i);
-    expect(prose).toMatch(/command half/i);
+  it('keeps the shell row and the sandbox row distinct', () => {
+    // Two rows, because the tool exists and is gated while OS-level
+    // containment does not exist at all. Collapsing them would let the word
+    // "sandboxed" sit next to a feature that only gates.
+    const rows = doc.split('\n').filter((line) => line.trim().startsWith('|'));
+    const shellRow = rows.find((line) => line.includes('Shell tool'));
+    const sandboxRow = rows.find((line) => line.includes('Sandboxing'));
+
+    expect(shellRow).toBeDefined();
+    expect(sandboxRow).toBeDefined();
+    expect(shellRow).not.toBe(sandboxRow);
+
+    // The tool is done; containment is not.
+    expect(shellRow).not.toMatch(/\*\*not done\*\*/);
+    expect(sandboxRow).toMatch(/\*\*not done/);
+  });
+
+  it('never describes the gated shell as containment', () => {
+    // cwd controls relative path resolution, not what a process can open. A
+    // document that implied otherwise would mislead exactly the reader most
+    // likely to be harmed by it.
+    expect(prose).toMatch(/started there/i);
+    expect(prose).toMatch(/needs an OS boundary/i);
   });
 });
 

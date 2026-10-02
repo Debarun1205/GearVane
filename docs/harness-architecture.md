@@ -28,12 +28,27 @@ multi-model harness needs most and usually gets wrong.
 | Agent loop | done |
 | Context management | **not done** |
 | Session persistence | **not done** |
-| Shell containment and sandboxing | **not done** |
+| Shell tool: gated, cwd-pinned, bounded | done |
+| Sandboxing (OS-level containment) | **not done, and not planned here** |
 
-Path containment and sandboxing are separate rows on purpose. File paths are
-confined today. Command execution is not: the shell tool does not exist, so
-there is nothing confining it yet. Collapsing the two into one row would let
-"sandboxed" be written next to a feature that only protects files.
+The last two rows are separate on purpose, and the distinction is the most
+important one in this document.
+
+The shell tool exists. It gates commands through `SafetyManager`, refuses
+blocked commands outright, pins the working directory to the workspace, strips
+provider credentials from the child environment, and bounds runtime and output.
+That is a meaningful improvement over running whatever a model prints.
+
+**It is not a sandbox.** A user who approves `curl https://example.com` has
+allowed a process that can read every file they can read. Pinning `cwd` does
+not change that, and neither does an allowlist. Real containment needs an OS
+boundary: a container, a Windows job object, seccomp, or a VM. None of those is
+implemented, and `tests/harness-docs.test.ts` fails if this document or the
+tool's own source ever stops saying so.
+
+Writing "sandboxed" next to a gated shell would be the most dangerous single
+sentence in this repository, because a reader would reasonably conclude that a
+misbehaving command cannot reach their files.
 
 Tool calling was once the same bug in two places: `Completion.toolCalls` is
 populated by `normaliseToolCalls`, so the plumbing to *read* a tool call
@@ -63,7 +78,7 @@ packages/harness
   index.ts      the agent loop, runAgent()
   tools/        tool schemas, validation, registry, dispatch
   tools/fs      read, write, edit, list, mkdir
-  tools/shell   command execution, gated by core's SafetyManager  [not built]
+  tools/shell   command execution, gated by core's SafetyManager
   workspace/    path containment
   context/      token budget, history, compaction                 [not built]
   session/      persist and resume                                [not built]
@@ -72,8 +87,11 @@ packages/harness
 The loop lives at the package root rather than in `agent/` because it is the
 only thing a caller needs to import.
 
-Dependency direction is strictly downward: `agent` may use `tools`, `tools`
-may use `workspace`, and `workspace` may use nothing from this package.
+Dependency direction is strictly downward: the loop may use `tools`, `tools`
+may use `workspace`, and `workspace` may use nothing from this package. The
+shell tool is the one place that reaches outward, to `SafetyManager` in core,
+and it does so through the narrow `check`/`approve` surface rather than by
+taking the whole config.
 
 ## The agent loop
 
@@ -100,19 +118,43 @@ write files and run commands.
 Gating is not containment. Asking "may I run this command?" does not stop a
 command that was already allowed from touching anything on the machine.
 
-What exists today is the file half. `Workspace` in `packages/harness` resolves
-every path against a root and re-checks the *real* path, so `..`, absolute
-paths, and symlinks pointing out of the tree are all rejected. What does not
-exist is the command half, so the remaining requirements are:
+What exists covers both halves, with one honest limit.
 
-- reads have a size cap so a model cannot pull a whole disk into its context
-- writes require the parent directory to exist or be created explicitly
-- the shell tool runs through `SafetyManager` with its working directory pinned
-  to the workspace, and cannot be talked out of that by the command string
+File paths: `Workspace` resolves every path against a root and re-checks the
+*real* path, so `..`, absolute paths, null bytes, and symlinks pointing out of
+the tree are all rejected. Reads are byte-capped so a model cannot pull a whole
+disk into its context. Writes require the parent directory to exist.
 
-Until the command half is built, the honest statement is that the harness has
-file containment and **no sandbox**. The README says so, and a test asserts it
-keeps saying so.
+Commands: the shell tool runs through `SafetyManager`, refuses blocked
+commands, pins `cwd` to the workspace root, passes a curated environment
+rather than the parent's, and bounds both runtime and captured output. Approval
+is required for consequential operations, and with no approver configured a
+gated command fails rather than proceeding unattended.
+
+The limit: none of this is containment. The child process is not confined to
+the workspace, only started there. `cwd` affects relative path resolution, not
+what the process can open. A command that was approved can read and write
+anywhere the user can, and an approval prompt does not change that.
+
+So the accurate statement is: **the harness confines file operations by
+construction, and gates command execution by policy.** Closing the remaining
+gap needs an OS boundary — a container, a Windows job object, seccomp, or a
+sandbox VM — which is not implemented. The README says so and a test asserts
+it keeps saying so.
+
+### A failure worth recording
+
+The first implementation killed a timed-out command with `child.kill()`, which
+kills the direct child. With `shell: true` the direct child is the shell, not
+the command, so on Windows the real process survived and kept the inherited
+stdout and stderr pipes open. `close` never fired, the promise never settled,
+and a timed-out command **hung the agent instead of stopping it**.
+
+The fix kills the process tree (`taskkill /T /F` on Windows, a negative pid on
+POSIX) and settles on a grace timer rather than trusting `close`. It was found
+by measuring the running behaviour — no `close` event within three seconds —
+rather than by reasoning about it. Tests cover both the prompt settling and
+the case where output had already arrived before the process hung.
 
 ## Multi-model
 

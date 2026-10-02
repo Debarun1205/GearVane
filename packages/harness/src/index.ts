@@ -307,3 +307,13 @@ export {
   readFileTool,
   writeFileTool,
 } from './tools/fs.js';
+
+export {
+  DEFAULT_COMMAND_TIMEOUT_MS,
+  DEFAULT_MAX_OUTPUT_BYTES,
+  KILL_GRACE_MS,
+  MAX_COMMAND_LENGTH,
+  createShellTool,
+  shellTool,
+  type ShellToolOptions,
+} from './tools/shell.js';
