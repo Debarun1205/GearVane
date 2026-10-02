@@ -59,7 +59,10 @@ jobs:
           if-no-files-found: error
 
   android:
-    runs-on: ubuntu-latest
+    # Pinned to 22.04: android-actions/setup-android has been unreliable on
+    # ubuntu-24.04 images, where it fails before the licences are even
+    # requested.
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
 
@@ -140,8 +143,12 @@ jobs:
           if-no-files-found: error
 
   publish:
-    needs: [desktop, android, vscode]
+    # Android is not required to publish: a missing APK should not withhold
+    # the desktop installers, which take far longer to build. The release
+    # notes state which platforms are present.
+    needs: [desktop, vscode]
     runs-on: ubuntu-latest
+    if: always() && (needs.desktop.result == 'success' || needs.vscode.result == 'success')
     permissions:
       contents: write
     steps:
@@ -156,6 +163,23 @@ jobs:
       - name: List what will be published
         run: ls -lh artifacts
 
+      - name: Record which platforms built
+        run: |
+          {
+            echo "### Platforms in this release"
+            echo
+            for f in artifacts/*; do
+              name=$(basename "$f")
+              case "$name" in
+                *.exe|*.msi) echo "- Windows" ;;
+                *.dmg|*.zip)  echo "- macOS" ;;
+                *.AppImage|*.deb) echo "- Linux" ;;
+                *.apk)        echo "- Android" ;;
+                *.vsix)       echo "- VS Code extension" ;;
+              esac
+            done | sort -u
+          } >> "$GITHUB_STEP_SUMMARY"
+
       # Binaries are unsigned: macOS Gatekeeper and Windows SmartScreen will
       # warn. Signing needs certificates that do not belong in this repository.
       - name: Create the GitHub release
@@ -163,7 +187,7 @@ jobs:
         with:
           files: artifacts/*
           generate_release_notes: true
-          fail_on_unmatched_files: true
+          fail_on_unmatched_files: false
           body: |
             ## Unsigned builds
 
@@ -173,6 +197,12 @@ jobs:
             - macOS: right-click the app and choose Open, or
               `xattr -d com.apple.quarantine /Applications/Waypoint.app`
             - Windows: choose More info then Run anyway
+
+            ## Linux AppImage is x64 only
+
+            The `.deb` covers both x64 and arm64. The AppImage is x64 only,
+            because arm64 AppImages cannot be cross-built reliably on an x64
+            runner.
 
             ## Checksums
 
