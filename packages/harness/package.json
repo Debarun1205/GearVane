@@ -21,12 +21,12 @@
     "node": ">=20"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc --build tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "eslint src test",
-    "clean": "rm -rf dist"
+    "clean": "tsc --build tsconfig.json --clean && rm -rf dist"
   },
   "dependencies": {
     "@waypoint/core": "0.2.0"

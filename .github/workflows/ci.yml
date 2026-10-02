@@ -58,6 +58,12 @@ jobs:
       - name: Build core
         run: npm run build --workspace @waypoint/core
 
+      # The desktop app imports the harness for the builder, and TypeScript
+      # resolves it through package exports, so the harness must be built
+      # first. It was not, and every desktop build failed to find the module.
+      - name: Build harness
+        run: npm run build --workspace @waypoint/harness
+
       - name: Build app-core
         run: npm run build --workspace @waypoint/app-core
 
