@@ -79,9 +79,12 @@ jobs:
       - name: Install Android SDK
         uses: android-actions/setup-android@v3
         with:
-          # Without this the SDK step fails on a licence prompt.
-          accept-android-sdk-licenses: 'yes'
           packages: 'platform-tools platforms;android-34 build-tools;34.0.0'
+
+      - name: Accept Android SDK licences
+        # setup-android has no licence input; the licences are accepted here.
+        # Without this Gradle aborts on an interactive prompt.
+        run: yes | sdkmanager --licenses > /dev/null 2>&1 || true
 
       - name: Install dependencies
         run: npm ci

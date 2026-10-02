@@ -4,6 +4,11 @@
   "version": "0.2.0",
   "description": "Route each prompt to the cheapest model tier that can do the job",
   "author": "Debarun",
+  "homepage": "https://github.com/Debarun1205/Waypoint",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Debarun1205/Waypoint.git"
+  },
   "license": "MIT",
   "private": true,
   "type": "module",

@@ -16,6 +16,8 @@ const RESOURCES = join(APP, 'resources');
 
 const manifest = JSON.parse(readFileSync(join(APP, 'package.json'), 'utf8')) as {
   author?: string;
+  homepage?: string;
+  repository?: unknown;
   devDependencies: { electron: string };
   build: {
     files: string[];
@@ -130,6 +132,19 @@ describe('electron-builder configuration is valid', () => {
       ),
     ) as { version: string };
     expect(manifest.build.electronVersion).toBe(installed.version);
+  });
+
+  it('declares a homepage', () => {
+    // Regression: without it electron-builder aborts the Linux build with
+    // "Please specify project homepage". Windows and macOS did not need it,
+    // so the Linux job failed alone and was easy to misread as a Linux
+    // packaging problem.
+    expect(manifest.homepage).toBeTruthy();
+    expect(manifest.homepage).toMatch(/^https:\/\//);
+  });
+
+  it('declares a repository URL', () => {
+    expect(manifest.repository).toBeTruthy();
   });
 });
 
