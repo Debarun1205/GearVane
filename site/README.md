@@ -33,8 +33,32 @@ cp -r site/* /path/to/public/
 | File | Purpose |
 |------|---------|
 | `index.html` | The whole page |
+| `builder.html` | The app builder page |
 | `assets/styles.css` | Styles |
 | `assets/demos.js` | Demo prompts plus tab behaviour |
+| `assets/builder.js` | Builder page logic, bundled from the harness source |
+
+## The builder page
+
+`builder.html` scaffolds a site from a template and hands it over as a zip. It
+makes no network calls at all, which is the design rather than a limitation
+worked around:
+
+- Publishing needs a credential
+- A credential in browser JavaScript is a credential shipped to every visitor
+- GitHub Pages has no backend to keep a token out of the browser
+
+So the page downloads a zip, and the desktop app writes to a folder. Both share
+the same engine from `packages/harness`, bundled from source, so the output is
+byte-identical.
+
+There is deliberately **no publish button on this page**. Adding one would mean
+either shipping a token to every visitor or pretending a deploy happened. The
+page says so in plain words rather than leaving the absence to be noticed.
+
+The template engine is a template engine with parameters, not a code generator.
+The same answers always produce the same files, which is what makes the output
+testable; a model-driven generator could not be verified this way.
 
 ## Keeping it honest
 

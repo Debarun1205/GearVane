@@ -746,6 +746,34 @@ export function plan(options: ScaffoldOptions): ScaffoldResult {
 }
 
 /**
+ * Node modules needed to write files, injected rather than imported.
+ *
+ * The scaffold engine is bundled into the website's builder page, where
+ * `node:fs` does not exist. A static import would make the whole module
+ * unbundleable for a browser; a dynamic one still fails at bundle time.
+ * Injecting them keeps planning, escaping, and zipping usable in a browser,
+ * with only the write half requiring Node.
+ */
+export interface FileSystemBridge {
+  mkdir(path: string, options: { recursive: boolean }): Promise<unknown>;
+  writeFile(path: string, contents: string, encoding: 'utf8'): Promise<void>;
+  dirname(path: string): string;
+  exists(path: string): Promise<boolean>;
+}
+
+/** Thrown when a write is attempted with no filesystem supplied. */
+export class NoFilesystemError extends Error {
+  constructor() {
+    super(
+      'This build cannot write files. It can still build a site in memory, ' +
+        'which is what the website builder does. Use the desktop app to write ' +
+        'to disk.',
+    );
+    this.name = 'NoFilesystemError';
+  }
+}
+
+/**
  * Write a planned scaffold to disk through a workspace.
  *
  * Every path is re-checked against containment even though templates produce
@@ -755,10 +783,10 @@ export function plan(options: ScaffoldOptions): ScaffoldResult {
 export async function materialise(
   planned: ScaffoldResult,
   workspace: Workspace,
-  options: { overwrite?: boolean } = {},
+  options: { overwrite?: boolean; fs?: FileSystemBridge } = {},
 ): Promise<ScaffoldResult> {
-  const { mkdir, writeFile } = await import('node:fs/promises');
-  const { dirname } = await import('node:path');
+  const fs = options.fs ?? (await defaultFileSystem());
+  if (!fs) throw new NoFilesystemError();
 
   const written: string[] = [];
   const refused: ScaffoldResult['refused'] = [];
@@ -777,12 +805,7 @@ export async function materialise(
     }
 
     if (options.overwrite === false) {
-      const { access } = await import('node:fs/promises');
-      const exists = await access(absolute).then(
-        () => true,
-        () => false,
-      );
-      if (exists) {
+      if (await fs.exists(absolute)) {
         const reason = 'file already exists and overwrite is disabled';
         refused.push({ path: entry.path, reason });
         files.push({ ...entry, skipped: reason });
@@ -791,8 +814,8 @@ export async function materialise(
     }
 
     try {
-      await mkdir(dirname(absolute), { recursive: true });
-      await writeFile(absolute, entry.contents, 'utf8');
+      await fs.mkdir(fs.dirname(absolute), { recursive: true });
+      await fs.writeFile(absolute, entry.contents, 'utf8');
       written.push(entry.path);
       files.push(entry);
     } catch (error) {
@@ -812,10 +835,39 @@ export async function materialise(
 
 /** Build and write in one step. */
 export async function scaffold(
-  options: ScaffoldOptions & { workspace: Workspace; overwrite?: boolean },
+  options: ScaffoldOptions & {
+    workspace: Workspace;
+    overwrite?: boolean;
+    fs?: FileSystemBridge;
+  },
 ): Promise<ScaffoldResult> {
   const planned = plan(options);
   return materialise(planned, options.workspace, {
     ...(options.overwrite === undefined ? {} : { overwrite: options.overwrite }),
+    ...(options.fs === undefined ? {} : { fs: options.fs }),
   });
+}
+
+/**
+ * The filesystem writes go through.
+ *
+ * Null until a Node host installs one, which is the browser case. Kept in a
+ * variable rather than imported so this module bundles for a browser: esbuild
+ * resolves `node:fs` at bundle time even behind a dynamic import, so the Node
+ * binding lives in `./node-fs.ts`, which nothing here imports.
+ */
+let installedFileSystem: FileSystemBridge | null = null;
+
+/** Install a filesystem. Node hosts use `installNodeFileSystem` from node-fs. */
+export function setFileSystem(fs: FileSystemBridge | null): void {
+  installedFileSystem = fs;
+}
+
+/** The filesystem in use, or null when none has been installed. */
+export function getFileSystem(): FileSystemBridge | null {
+  return installedFileSystem;
+}
+
+async function defaultFileSystem(): Promise<FileSystemBridge | null> {
+  return installedFileSystem;
 }

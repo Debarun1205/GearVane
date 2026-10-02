@@ -351,6 +351,104 @@ body {
   background: rgb(2 6 15 / 0.65);
 }
 
+/* The builder has a grid and several fields, so it needs more room than the
+   health dialog. */
+.dialog-wide {
+  min-width: min(52rem, 94vw);
+  max-height: 88vh;
+  overflow-y: auto;
+}
+
+/* --- builder ------------------------------------------------------------- */
+
+.builder-templates {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  margin: 1rem 0 1.5rem;
+}
+
+/* Native <button>, so focus and Enter/Space work without reimplementing them
+   on a div with a click handler. */
+.builder-template {
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0.9rem;
+  text-align: left;
+}
+
+.builder-template:hover { border-color: var(--border-strong); }
+.builder-template[aria-pressed='true'] { border-color: var(--accent); }
+
+.builder-template-name { font-weight: 600; }
+.builder-template-desc {
+  color: var(--text-dim);
+  font-size: 0.8rem;
+  font-weight: 400;
+}
+
+.builder-field { margin-bottom: 0.9rem; }
+
+.builder-label {
+  color: var(--text-dim);
+  display: block;
+  font-size: 0.85rem;
+  margin-bottom: 0.3rem;
+}
+
+.builder-input {
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font: inherit;
+  padding: 0.5rem 0.65rem;
+  width: 100%;
+}
+
+.builder-input[type='color'] { height: 2.4rem; padding: 0.2rem; }
+
+.builder-help { color: var(--text-dim); font-size: 0.8rem; }
+
+.builder-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin: 1.25rem 0;
+}
+
+.builder-button {
+  background: var(--bg-soft);
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+  padding: 0.55rem 1rem;
+}
+
+.builder-button-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #0b1120;
+  font-weight: 600;
+}
+
+.builder-folder,
+.builder-message {
+  color: var(--text-dim);
+  font-size: 0.85rem;
+  margin: 0;
+  width: 100%;
+}
+
 .health-body {
   margin: 0.9rem 0 1rem;
   font-size: 0.9rem;

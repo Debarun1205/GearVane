@@ -27,7 +27,20 @@ jobs:
 
       - uses: actions/configure-pages@v5
 
-      # The site has no build step, so this uploads site/ as-is.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      # The builder page imports the template engine from packages/harness, so
+      # unlike the rest of the site it is bundled rather than copied. The
+      # marketing page is still plain static files with no build step.
+      - name: Bundle the builder page
+        run: |
+          npm ci --no-audit --no-fund
+          npm run build:site
+
+      # Everything under site/ is uploaded, including the generated bundle.
       - name: Upload the static site
         uses: actions/upload-pages-artifact@v3
         with:

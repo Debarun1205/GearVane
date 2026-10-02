@@ -32,6 +32,9 @@ let workspace: Workspace;
 beforeEach(async () => {
   root = await mkdtemp(join(tmpdir(), 'waypoint-deploy-'));
   workspace = new Workspace(root);
+
+  const { installNodeFileSystem } = await import('../src/builder/node-fs.js');
+  installNodeFileSystem();
 });
 
 const REQUEST: DeployRequest = {

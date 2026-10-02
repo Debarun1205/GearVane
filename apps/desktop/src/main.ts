@@ -15,6 +15,8 @@ import { fileURLToPath } from 'node:url';
 
 import { parseConfig, defaultConfig, type WaypointConfig } from '@waypoint/core';
 
+import { registerBuilderHandlers } from './builder-host.js';
+
 const HERE = fileURLToPath(new URL('.', import.meta.url));
 const RENDERER_DIR = join(HERE, '..', 'renderer');
 
@@ -176,5 +178,9 @@ ipcMain.handle('shell:open', (_event, url: unknown) => {
   void shell.openExternal(url);
   return true;
 });
+
+// The builder needs a filesystem, which the renderer does not have. See
+// builder-host.ts for why the split matters.
+registerBuilderHandlers();
 
 export { mainWindow, createWindow };

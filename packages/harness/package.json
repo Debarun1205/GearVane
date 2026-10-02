@@ -10,6 +10,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./builder-node-fs": {
+      "types": "./dist/builder/node-fs.d.ts",
+      "import": "./dist/builder/node-fs.js"
     }
   },
   "files": ["dist"],

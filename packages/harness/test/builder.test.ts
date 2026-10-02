@@ -34,6 +34,11 @@ let workspace: Workspace;
 beforeEach(async () => {
   root = await mkdtemp(join(tmpdir(), 'waypoint-build-'));
   workspace = new Workspace(root);
+
+  // Writes go through an injected filesystem so this module bundles for a
+  // browser. Node hosts install the real one via installNodeFileSystem.
+  const { installNodeFileSystem } = await import('../src/builder/node-fs.js');
+  installNodeFileSystem();
 });
 
 const LANDING = {

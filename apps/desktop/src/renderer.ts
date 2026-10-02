@@ -24,11 +24,23 @@ import {
   type WaypointConfig,
 } from '@waypoint/core';
 
+// Type-only, so the builder view is not pulled into the Android bundle at the
+// entry point. It is loaded on demand below, and only where the bridge exists.
+import type { BuilderBridge } from './builder-view.js';
+
 /** Capabilities the host may provide. Every one is optional. */
 interface HostBridge {
   appInfo?(): Promise<{ platform?: string; version?: string }>;
   readConfig?(): Promise<{ config: WaypointConfig; path: string | null; error: string | null }>;
   on?(channel: 'config:error', handler: (payload: string) => void): () => void;
+
+  /**
+   * Builder surface, present only in the desktop app.
+   *
+   * Optional because the same renderer runs in an Android webview, where there
+   * is no filesystem to write to and no folder picker to ask with.
+   */
+  builder?: BuilderBridge;
 }
 
 declare global {
@@ -392,6 +404,14 @@ async function main(): Promise<void> {
   els.cancel.addEventListener('click', cancel);
   els.health.addEventListener('click', () => void showHealth());
 
+  const builderToggle = document.getElementById('builder-toggle');
+  const builderDialog = document.getElementById('builder-dialog');
+  if (builderToggle && builderDialog) {
+    builderToggle.addEventListener('click', () => {
+      if (builderDialog instanceof HTMLDialogElement) builderDialog.showModal();
+    });
+  }
+
   els.clear.addEventListener('click', () => {
     controller?.cancelAll();
     activeTaskId = null;
@@ -424,6 +444,24 @@ async function main(): Promise<void> {
     els.hint.textContent = `Config problem: ${message}`;
     els.hint.classList.add('warn');
   });
+
+  // The builder needs the host bridge, so it only mounts in the desktop app.
+  // The Android webview has no filesystem and no folder picker, which is
+  // exactly the limitation the website builder's download path works around.
+  // The toggle is hidden where the builder cannot work, so the button never
+  // opens an empty dialog.
+  const builderHost = document.getElementById('builder');
+  if (!bridge.builder && builderToggle instanceof HTMLButtonElement) {
+    builderToggle.hidden = true;
+  }
+  if (builderHost && bridge.builder) {
+    try {
+      const { BuilderView } = await import('./builder-view.js');
+      new BuilderView(builderHost, bridge.builder).start();
+    } catch (error) {
+      builderHost.textContent = `Builder unavailable: ${(error as Error).message}`;
+    }
+  }
 
   window.addEventListener('beforeunload', () => controller?.cancelAll());
 

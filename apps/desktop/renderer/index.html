@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src *"
+      content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src *; img-src 'self' data: blob:; object-src 'none'; base-uri 'none'"
     />
     <title>Waypoint</title>
     <link rel="stylesheet" href="./styles.css" />
@@ -25,6 +25,7 @@
           <span id="spend-meter" class="spend-meter" title="Session spend against your limit">
             <span id="spend-fill" class="spend-fill"></span>
           </span>
+          <button id="builder-toggle" class="ghost-button" type="button">Builder</button>
           <button id="health-button" class="ghost-button" type="button">Health</button>
           <button id="clear-button" class="ghost-button" type="button">Clear</button>
         </div>
@@ -60,6 +61,13 @@
         </p>
       </footer>
     </div>
+
+    <dialog id="builder-dialog" class="dialog dialog-wide" aria-label="Site builder">
+      <div id="builder" class="builder"></div>
+      <form method="dialog">
+        <button class="ghost-button" type="submit">Close</button>
+      </form>
+    </dialog>
 
     <dialog id="health-dialog" class="dialog">
       <h2>Model health</h2>

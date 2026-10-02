@@ -33,6 +33,10 @@ export { ToolRegistry } from './tools/registry.js';
 
 export * from './builder/index.js';
 
+// Node-only. The website imports builder/index.js directly and never reaches
+// this, which is what keeps `node:fs` out of the browser bundle.
+export { installNodeFileSystem } from './builder/node-fs.js';
+
 export {
   MemorySessionStorage,
   SESSION_VERSION,
