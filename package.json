@@ -4,25 +4,27 @@
   "private": true,
   "description": "Waypoint: route each task to the cheapest model tier that can do the job",
   "license": "MIT",
+  "type": "module",
   "workspaces": [
     "packages/*",
     "apps/*"
   ],
-  "engines": {
-    "node": ">=20"
-  },
   "scripts": {
     "build": "npm run build --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
+    "test:repo": "vitest run",
+    "test:python": "python -m pytest tests/ -q",
+    "test:all": "npm run test && npm run test:repo && npm run test:python",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
     "clean": "npm run clean --workspaces --if-present"
   },
   "devDependencies": {
-    "typescript": "^5.6.0",
-    "@types/node": "^22.0.0",
-    "vitest": "^2.1.0",
     "@eslint/js": "^9.10.0",
-    "typescript-eslint": "^8.8.0"
+    "@types/node": "^22.0.0",
+    "eslint": "^9.10.0",
+    "typescript": "^5.6.0",
+    "typescript-eslint": "^8.8.0",
+    "vitest": "^2.1.0"
   }
 }
