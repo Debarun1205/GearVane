@@ -55,10 +55,24 @@ waypoint run --task "Investigate a race condition in the cache writer under load
 
 ### The app
 
-Download a build for your platform from
-[the releases page](https://github.com/Debarun1205/Waypoint/releases):
-Windows `.exe`, Linux `AppImage` or `.deb`, macOS `.dmg`, and an Android
-`.apk`. All from the same renderer bundle.
+Download a build for your platform from the
+[v0.2.0 release](https://github.com/Debarun1205/Waypoint/releases/tag/v0.2.0):
+
+| Platform | File | Size |
+|----------|------|------|
+| Windows x64 (installer) | `Waypoint.Setup.0.2.0.exe` | 78 MB |
+| Windows x64 (portable) | `Waypoint.0.2.0.exe` | 78 MB |
+| macOS Intel | `Waypoint-0.2.0.dmg` | 98 MB |
+| macOS Apple Silicon | `Waypoint-0.2.0-arm64.dmg` | 94 MB |
+| VS Code | `waypoint-0.2.0.vsix` | 10 KB |
+
+Linux and Android are built on their own runners and published as release
+artifacts when those jobs succeed; the AppImage is x64 only, while the `.deb`
+covers x64 and arm64.
+
+**These binaries are not code signed.** macOS Gatekeeper and Windows
+SmartScreen will warn on first launch. See
+[the build guide](apps/desktop/BUILDING.md).
 
 ### The VS Code extension
 
@@ -227,6 +241,8 @@ Alpha, and honest about it:
 - Release binaries are **unsigned**, so Gatekeeper and SmartScreen will
   warn.
 - The harness gates destructive operations but does not sandbox them.
+- Linux and Android artifacts are published on a best-effort basis; the
+  Windows and macOS builds are the tested path.
 
 ## Licence
 
