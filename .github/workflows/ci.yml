@@ -83,8 +83,16 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build core
-        run: npm run build --workspace @waypoint/core
+      - name: Build everything
+        # The CLI's end-to-end tests run the built binary. Without building
+        # them here they fall back to fetching tsx over the network, which is
+        # not a declared dependency and made the suite fail on CI.
+        run: |
+          npm run build --workspace @waypoint/core
+          npm run build --workspace @waypoint/app-core
+          npm run build --workspace @waypoint/cli
+          npm run build --workspace waypoint
+          npm run build --workspace waypoint-app
 
       - name: Run package tests
         run: npm run test --workspaces --if-present
