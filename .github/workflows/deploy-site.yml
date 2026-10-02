@@ -3,7 +3,15 @@ name: Deploy site
 on:
   push:
     branches: [master, main]
-    paths: ['site/**', '.github/workflows/deploy-site.yml']
+    paths:
+      # The builder bundles code from packages/harness, so a change there has
+      # to redeploy the site as well. Leaving this as site/** alone means the
+      # deployed builder silently drifts from the templates it ships.
+      - 'site/**'
+      - 'packages/harness/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/deploy-site.yml'
   workflow_dispatch:
 
 permissions:
