@@ -31,6 +31,8 @@ export {
 
 export { ToolRegistry } from './tools/registry.js';
 
+export * from './builder/index.js';
+
 export {
   MemorySessionStorage,
   SESSION_VERSION,
