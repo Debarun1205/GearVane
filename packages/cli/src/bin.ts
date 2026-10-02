@@ -56,9 +56,13 @@ async function main(argv: string[]): Promise<number> {
     return 0;
   }
 
-  if (!args.command || flagBool(args, 'help') || args.command === 'help') {
+  // An explicit --help or help subcommand is a successful request. Only a
+  // bare invocation with no arguments at all is an error.
+  const wantsHelp = flagBool(args, 'help') || args.command === 'help';
+
+  if (!args.command || wantsHelp) {
     process.stdout.write(`${HELP}\n`);
-    return args.command ? 0 : 1;
+    return wantsHelp ? 0 : 1;
   }
 
   const { config, path: configPath, note } = loadConfig(flagString(args, 'config'));

@@ -1,328 +1,233 @@
 # Waypoint
 
-An open-source AI harness that routes each task to the right model tier —
-local, mid, or frontier — with escalation, cost control, and gated
-deployment tooling.
+Route each prompt to the cheapest model tier that can actually do the job.
 
-Built on OpenCode's model-agnostic approach: you bring your own API keys,
-and local models stay free.
-
-## Why
-
-Hosted models are billed per token, so the expensive ones should only run
-on work that needs them. Waypoint classifies a task, picks the cheapest
-tier likely to succeed, and escalates only when a cheaper model actually
-fails.
-
-## Architecture
+Simple edits run on a local model for free. Hard problems reach for a
+frontier model, and only then. When a cheap model fails, the task escalates
+instead of guessing.
 
 ```
-                    ┌──────────────────────────┐
-   task ──────────► │      Orchestrator        │
-                    │  budget gate → execute   │
-                    └────────────┬─────────────┘
+              ┌──────────────────────────────────────┐
+   prompt ──► │  classify → run → escalate on fail  │
+              └──────────────────┬───────────────────┘
                                  │
-                    ┌────────────▼─────────────┐
-                    │       TierRouter         │
-                    │  heuristics + learned    │
-                    │  manual override         │
-                    └────────────┬─────────────┘
-                                 │
-              ┌──────────────────┼──────────────────┐
-              ▼                  ▼                  ▼
-        ┌──────────┐      ┌──────────┐       ┌────────────┐
-        │  local   │      │   mid    │       │  frontier  │
-        │ Ollama   │      │ Haiku    │       │ Claude/GPT │
-        │ LM Studio│      │ Flash    │       │            │
-        │ llama.cpp│      │ mini     │       │            │
-        └────┬─────┘      └────┬─────┘       └─────┬──────┘
-             │                 │                  │
-             └─────────────────┴──────────────────┘
-                               │
-                  ┌────────────▼─────────────┐
-                  │  providers (urllib)      │
-                  │  Ollama / OpenAI-compat  │
-                  │  Anthropic               │
-                  └────────────┬─────────────┘
-                               │
-       cost tracking · health checks · retry · circuit breaker
-       approval gates · feedback loop · deployment tooling
+        ┌────────────────────────┼────────────────────────┐
+        ▼                        ▼                        ▼
+   ┌─────────┐             ┌─────────┐             ┌───────────┐
+   │  local  │             │   mid   │             │ frontier  │
+   │ Ollama  │             │ Haiku   │             │ Claude    │
+   │ LM St.  │             │ Flash   │             │ GPT-4o    │
+   │ free    │             │ cheap   │             │ billed    │
+   └─────────┘             └─────────┘             └───────────┘
+```
+
+## What is in this repository
+
+| Component | Path | Platform |
+|-----------|------|----------|
+| TypeScript engine | `packages/core` | Node, browser, Electron, Android |
+| CLI | `packages/cli` | Node |
+| Desktop app | `apps/desktop` | Windows, Linux, macOS, Android |
+| VS Code extension | `apps/vscode-extension` | VS Code and forks |
+| Website | `site` | any static host |
+| Python engine | `waypoint/` | reference implementation |
+
+Two engines exist because Android cannot bundle a Python runtime. The
+TypeScript port is what the CLI, app, and extension use; the Python package
+remains the reference and is tested for identical routing behaviour.
+
+## Quick start
+
+Pick a local model and nothing leaves your machine:
+
+```bash
+# Install a local model once
+ollama pull qwen2.5-coder
+
+# Ask something trivial, and watch it stay on the free tier
+waypoint route --task "Fix the typo in README.md" --files README.md
+
+# Ask something hard, and watch it escalate
+waypoint run --task "Investigate a race condition in the cache writer under load"
 ```
 
 ## Install
 
+### The app
+
+Download a build for your platform from
+[the releases page](https://github.com/Debarun1205/Waypoint/releases):
+Windows `.exe`, Linux `AppImage` or `.deb`, macOS `.dmg`, and an Android
+`.apk`. All from the same renderer bundle.
+
+### The VS Code extension
+
+```bash
+cd apps/vscode-extension
+npm install && npm run build
+npx @vscode/vsce package
+code --install-extension waypoint-0.2.0.vsix
+```
+
+### The CLI
+
 ```bash
 git clone https://github.com/Debarun1205/Waypoint
 cd Waypoint
+npm install
+npm run build --workspace @waypoint/core
+npm run build --workspace @waypoint/cli
+node packages/cli/dist/bin.js --help
+```
 
-python -m venv venv
-source venv/bin/activate        # Windows: venv\Scripts\activate
+### Python
 
+```bash
+python -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
 pip install -e .
+waypoint --help
 ```
 
-Requires Python 3.9+. The core is stdlib-only: providers use `urllib` and
-the learned classifier is implemented directly, so there is no HTTP client
-or ML framework to install.
+## Commands
 
-## Configure
+Both CLIs implement the same commands:
 
-```bash
-cp config.example.yaml config.yaml
-```
-
-`config.example.yaml` is a documented reference covering every key the
-code reads. Two things to set:
-
-**Local models** — install [Ollama](https://ollama.com), then:
-
-```bash
-ollama pull qwen2.5-coder
-```
-
-**Hosted models** — export a key if you use them:
-
-```bash
-export ANTHROPIC_API_KEY=<your-anthropic-key>
-export OPENROUTER_API_KEY=<your-openrouter-key>
-```
-
-Keys are read from the environment only, never stored in config.
-
-To run everything locally with no keys at all, delete the `mid` and
-`frontier` tiers and set `router.default_tier: local`.
-
-## Use
-
-```bash
-# See where a task would run, without running it
-waypoint route --task "Fix a typo in README" --files README.md
-
-waypoint run --task "Fix a typo in README" --files README.md
-
-# Stream tokens as they arrive
-waypoint run --task "Explain this module" --files src/app.py --stream
-
-# Check every configured model against its real endpoint
-waypoint health
-waypoint health --offline      # local providers only
-
-# Local models and provider status
-waypoint models
-
-# Cost, spend limits, routing stats
-waypoint cost
-waypoint safety spend
-waypoint stats
-
-# Monitoring dashboard
-waypoint dashboard --output dashboard.html
-```
+| Command | Purpose |
+|---------|---------|
+| `waypoint route` | Show which tier would handle a prompt, without spending anything |
+| `waypoint run` | Execute a prompt; `--stream` for token-by-token output |
+| `waypoint health` | Probe every configured model against its real endpoint |
+| `waypoint models` | List local models and which providers are running |
+| `waypoint cost` | Cost and spend breakdown by tier and model |
+| `waypoint stats` | Routing statistics for the session |
+| `waypoint safety` | `spend`, `pending`, or `check --command "..."` |
+| `waypoint approve` | Approve a gated operation |
+| `waypoint deploy` | Run a deployment through the approval gate |
+| `waypoint train` | Train the learned classifier from recorded outcomes |
+| `waypoint dashboard` | Generate the HTML monitoring dashboard (Python) |
 
 Add `--json` to any command for machine-readable output.
 
-## Tiers
+## Configure
 
-| Tier | Models | Use for |
-|------|--------|---------|
-| `local` | Ollama, LM Studio, llama.cpp | Simple edits, boilerplate, small refactors |
-| `mid` | Haiku, Flash, GPT-4o-mini | Medium complexity, multi-file changes |
-| `frontier` | Claude Sonnet/Opus, GPT-4o, o3 | Architecture, debugging, performance work |
+Both engines look for `waypoint.yaml` (or `config.yaml`, or a `.json`
+variant) in the working directory, then each parent directory, then your home
+directory. Failing that they use built-in defaults, so nothing needs setting
+up to try it.
 
-Classification blends cheap signals — task keywords, files touched, error
-loops, test failures — into a tier decision with a confidence score.
+```yaml
+router:
+  default_tier: local
 
-## Escalation
+tiers:
+  local:
+    providers:
+      - name: ollama
+        base_url: http://localhost:11434
+        models: [qwen2.5-coder]
 
-When a task fails, the failure is fed back into the next classification. After
-`max_attempts_per_tier` consecutive failures the task moves up a tier. A
-permanent failure (bad API key, invalid request) is never retried.
-
+safety:
+  spend_limits:
+    per_task: 1.0
+    per_session: 5.0
+    per_day: 20.0
 ```
-attempt 1  local    fails  ─┐
-attempt 2  local    fails  ─┘ 2 failures ≥ threshold
-attempt 3  mid      fails
-attempt 4  frontier succeeds
+
+`config.example.yaml` documents every key the code reads.
+
+### API keys
+
+Read from the environment, never from config:
+
+```bash
+export ANTHROPIC_API_KEY=...
+export OPENROUTER_API_KEY=...
 ```
 
-`max_escalations` bounds how far a task can climb, so a genuinely
-impossible task cannot burn every tier in sequence.
+Local servers are never sent a key. See [SECURITY.md](SECURITY.md).
+
+## How routing decides
+
+Signals are scored into a tier, and every decision reports its reasons:
+
+- **Task keywords** — `refactor` and `architecture` push toward frontier;
+  `typo` and `formatting` toward local
+- **Files touched** — glob or regex patterns, so `*.rs` and `src/core/*` both work
+- **File count** — three or more files is a multi-file change
+- **Error loops and test failures** — evidence the task is harder than it looked
+- **Previous attempts** — a task that already failed here gets promoted
+
+Failures feed back in, so escalation is driven by observed behaviour rather
+than by the original guess.
+
+Once you have recorded outcomes you can train the learned classifier, which
+refines the choice but always defers to the heuristic on disagreement. See
+`waypoint train`.
 
 ## Cost control
 
-Budget is checked *before* tokens are spent, using the tier's
-`cost_per_token`. A task that cannot fit the budget never reaches a
-provider.
-
-```yaml
-safety:
-  spend_limits:
-    per_task: 5.0
-    per_session: 10.0
-    per_day: 50.0
-```
+Budget is checked **before** tokens are spent, using the tier's
+`cost_per_token`. A task that cannot fit the limit never reaches a provider.
 
 ```bash
 waypoint safety spend
 # Session: $2.31 / $7.69 remaining
 ```
 
-## Learned classifier
-
-The heuristics are transparent but never improve. Record outcomes, then
-train a small logistic-regression model on them:
-
-```bash
-waypoint run --task "..."          # runs and logs the decision
-waypoint train                     # trains from feedback.jsonl
-```
-
-Then enable it in config:
-
-```yaml
-learned_classifier:
-  enabled: true
-  model_file: learned_model.json
-  min_samples: 10
-  blend: 0.5
-```
-
-It only engages after `min_samples` outcomes exist. On disagreement the
-heuristic wins at reduced confidence, so a poorly trained model degrades
-to current behaviour instead of silently rerouting work.
-
-`waypoint train` prints the strongest features per tier, so you can see
-what it learned.
-
 ## Safety
 
-Commands run through an allowlist. Anything not permitted requires approval,
-and some commands never run:
-
-```yaml
-safety:
-  require_approval: [git_push, deploy_production, merge_pr]
-  sandbox_allowed: ["git status", "git log", "pytest", "ls"]
-  blocked_commands: ["rm -rf", "sudo", "chmod 777"]
-```
+Commands pass through an allowlist. Anything not permitted needs approval,
+and some never run at all:
 
 ```bash
-waypoint deploy github --github-action push   # refuses without approval
-waypoint safety pending                       # list gated operations
-waypoint approve --command "git push origin main"
+waypoint safety check --command "git push origin main"
+# pending  git_push  Operation 'git_push' requires approval
+
+waypoint deploy github push        # refuses until approved
 ```
 
-## OpenCode integration
-
-Waypoint integrates as a plugin rather than a fork, so it does not track
-upstream changes:
-
-```python
-from waypoint.opencode_plugin import WaypointPlugin
-
-plugin = WaypointPlugin()
-
-# Route without executing
-plugin.classify_task("Fix a typo", files=["README.md"])
-# {'tier': 'local', 'provider': 'ollama', 'model': 'qwen2.5-coder', ...}
-
-# Execute
-plugin.execute_task("Summarize this module", files=["src/app.py"])
-# {'success': True, 'content': '...', 'cost_usd': 0.0, ...}
-```
-
-Module-level functions (`classify_task`, `execute_task`, `select_model`,
-`stats`) are available for hosts that call functions rather than managing
-an instance.
-
-## Deployment
-
-GitHub, Docker, Fly.io, Vercel, and Cloudflare, each behind an approval
-gate. Enabled per tool in config.
-
-```bash
-waypoint deploy github --github-action status
-waypoint deploy github --github-action push --dry-run
-waypoint deploy docker --docker-action build --tag myapp:latest
-```
-
-## CLI reference
-
-| Command | Purpose |
-|---------|---------|
-| `route` | Show the routing decision without executing |
-| `run` | Execute a task; `--stream` for tokens |
-| `health` | Probe every configured model |
-| `models` | List local models and provider status |
-| `cost` | Cost breakdown by tier and model |
-| `stats` | Routing statistics |
-| `feedback` | Recorded outcomes and accuracy |
-| `train` | Train the learned classifier |
-| `dashboard` | Generate the HTML dashboard |
-| `safety spend\|pending\|check` | Budget, gated operations, command check |
-| `approve` | Approve a pending operation |
-| `deploy` | Run deployment operations |
+Waypoint **does not sandbox** execution. It gates commands and relies on
+your host environment for isolation.
 
 ## Development
 
 ```bash
-pip install -r requirements-dev.txt
+npm install
 
-pytest tests/                       # 262 tests
-pytest tests/ --cov=waypoint        # coverage
-flake8 waypoint/ tests/
-black --check waypoint/ tests/
-isort --check-only waypoint/ tests/
-mypy waypoint/
+npm run build          # all TypeScript packages
+npm run test           # package tests
+npm run test:repo      # site, gitignore, engine parity
+npm run typecheck
+npm run lint
+
+python -m pytest tests/ -q    # Python suite
 ```
 
-CI runs tests on Python 3.9–3.12, all four linters, a CLI smoke job that
-executes the shipped commands, and a package build.
+Current totals: 335 package tests, 55 repository tests, 461 Python tests.
 
-## Project layout
+CI runs the Python suite on 3.9 to 3.12, builds and tests every TypeScript
+package, lints both trees, checks that the renderer bundle stays
+self-contained, and asserts the two engines route identically.
 
-```
-Waypoint/
-├── waypoint/
-│   ├── classifier.py          heuristic tier classification
-│   ├── learned_classifier.py  logistic regression over task features
-│   ├── router.py              tier selection, escalation, overrides
-│   ├── providers.py           Ollama, OpenAI-compat, Anthropic clients
-│   ├── orchestrator.py        end-to-end execution with budget gates
-│   ├── retry.py               backoff, jitter, circuit breaker
-│   ├── health.py              model availability probing
-│   ├── cost.py                cost tracking and budget alerts
-│   ├── logger.py              routing decision logs
-│   ├── feedback.py            outcome recording
-│   ├── safety.py              approval gates, spend limits, sandboxing
-│   ├── deployment.py          GitHub, Docker, Fly.io, Vercel, Cloudflare
-│   ├── dashboard.py           HTML monitoring dashboard
-│   ├── model_manager.py       local model discovery
-│   ├── plugin.py              plugin lifecycle and hooks
-│   ├── opencode_plugin.py     OpenCode host integration
-│   └── cli.py                 command line interface
-├── tests/                     262 tests
-├── config.example.yaml        documented configuration reference
-└── Dockerfile                 container image
-```
+## Building installers
+
+Requires platform toolchains this repository does not carry. See
+[apps/desktop/BUILDING.md](apps/desktop/BUILDING.md) for what builds where
+and which artifacts are unsigned.
 
 ## Status
 
-Alpha. The router, providers, escalation, budget gates, and CLI are
-tested end to end. The learned classifier trains and predicts but has not
-been evaluated against real production traffic yet, which is the obvious
-next step.
+Alpha, and honest about it:
 
-## Security
+- The router, escalation, budget gates, provider clients, and CLIs are
+  tested end to end.
+- The learned classifier trains and predicts but has **not** been evaluated
+  against real production traffic.
+- Release binaries are **unsigned**, so Gatekeeper and SmartScreen will
+  warn.
+- The harness gates destructive operations but does not sandbox them.
 
-API keys are read from the environment only and are never written to a
-config file, log, or dashboard. Deployments sit behind approval gates that
-refuse to run even under `--dry-run`.
-
-See [SECURITY.md](SECURITY.md) for credential handling, how to report a
-vulnerability, and the behaviours the approval gates depend on.
-
-## License
+## Licence
 
 MIT
