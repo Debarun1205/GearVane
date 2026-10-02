@@ -31,11 +31,34 @@ export {
 
 export { ToolRegistry } from './tools/registry.js';
 
+export {
+  CHARS_PER_TOKEN,
+  SAFETY_MARGIN,
+  availableForHistory,
+  checkFit,
+  compact,
+  estimateConversationTokens,
+  estimateMessageTokens,
+  estimateTokens,
+  oldestRemovableIndex,
+  protectedHead,
+  trimToFit,
+  type CompactionOptions,
+  type CompactionResult,
+  type ContextBudget,
+  type FitResult,
+} from './context/budget.js';
+
 import type {
   CompleteOptions,
   ConversationMessage,
   ToolDefinition,
 } from '@waypoint/core';
+import {
+  compact,
+  type CompactionResult,
+  type ContextBudget,
+} from './context/budget.js';
 import type { ToolRegistry } from './tools/registry.js';
 import type { ToolContext } from './tools/types.js';
 
@@ -85,12 +108,30 @@ export interface AgentResult {
   tokensOut: number;
   /** Tools the model asked for that failed. Non-fatal, but worth surfacing. */
   failedToolCalls: Array<{ name: string; error: string }>;
+  /**
+   * Times history had to be compacted. Zero when a budget was supplied and
+   * nothing overflowed, and when no budget was supplied at all.
+   */
+  compactions: number;
 }
 
 export interface AgentOptions {
   model: AgentModel;
   registry: ToolRegistry;
+
+  /** Workspace and limits the tools run under. */
   context: ToolContext;
+
+  /**
+   * Token budget for the conversation.
+   *
+   * When set, history is trimmed before each request so it fits, and a
+   * summariser can preserve the gist of what was dropped. Without it the loop
+   * sends the full history every turn, which is fine for a short task and
+   * fails with a context-length error on a long one.
+   */
+  contextBudget?: ContextBudget;
+
   /** Ceiling on loop iterations. The real stops are below. */
   maxIterations?: number;
   /**
@@ -105,8 +146,22 @@ export interface AgentOptions {
   temperature?: number;
   maxTokens?: number;
   signal?: AbortSignal;
+
+  /**
+   * Summarise history that had to be dropped.
+   *
+   * Costs a model call, so it runs only when something was actually pushed
+   * out of the window. The summary is carried as a user turn: fabricating an
+   * assistant turn would misrepresent what happened, and inserting a tool
+   * result without its call produces a request the provider rejects.
+   */
+  summarize?: (dropped: ConversationMessage[]) => Promise<string>;
+
   /** Called after every iteration, for progress display. */
   onStep?: (step: AgentStep) => void;
+
+  /** Called when history is trimmed, so a UI can tell the user. */
+  onCompact?: (result: CompactionResult) => void;
 }
 
 const DEFAULT_MAX_ITERATIONS = 25;
@@ -144,6 +199,30 @@ export async function runAgent(
   let tokensOut = 0;
   let repeats = 0;
   let previousKey = '';
+  let compactions = 0;
+
+  /**
+   * Fit the history to the budget before a request.
+   *
+   * The full history stays in `messages` for reporting; only the copy handed to
+   * the model is trimmed, so a caller can still show everything that happened
+   * after old turns have left the window.
+   */
+  const fit = async (): Promise<ConversationMessage[]> => {
+    if (!options.contextBudget) return messages;
+
+    const result = await compact(messages, {
+      ...options.contextBudget,
+      ...(options.summarize ? { summarize: options.summarize } : {}),
+    });
+
+    if (result.droppedMessages > 0) {
+      compactions += 1;
+      options.onCompact?.(result);
+    }
+
+    return result.messages;
+  };
 
   for (let iteration = 1; iteration <= maxIterations; iteration += 1) {
     if (options.signal?.aborted) {
@@ -155,6 +234,7 @@ export async function runAgent(
         tokensIn,
         tokensOut,
         failedToolCalls,
+        compactions,
       };
     }
 
@@ -166,7 +246,7 @@ export async function runAgent(
         maxTokens: options.maxTokens,
         signal: options.signal,
         tools,
-        messages,
+        messages: await fit(),
       });
     } catch (error) {
       // The reason is put in `content` as well as the stop reason, because a
@@ -181,6 +261,7 @@ export async function runAgent(
         tokensIn,
         tokensOut,
         failedToolCalls,
+        compactions,
       };
     }
 
@@ -208,6 +289,7 @@ export async function runAgent(
         tokensIn,
         tokensOut,
         failedToolCalls,
+        compactions,
       };
     }
 
@@ -245,6 +327,7 @@ export async function runAgent(
         tokensIn,
         tokensOut,
         failedToolCalls,
+        compactions,
       };
     }
 
@@ -295,6 +378,7 @@ export async function runAgent(
     tokensIn,
     tokensOut,
     failedToolCalls,
+    compactions,
   };
 }
 

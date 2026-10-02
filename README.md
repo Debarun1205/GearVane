@@ -40,8 +40,8 @@ remains the reference and is tested for identical routing behaviour.
 
 The harness is under construction. It has workspace path containment, a tool
 layer with file tools and a gated shell, tool-calling support in the provider
-clients, and a working agent loop. **Context management and session
-persistence are not built.**
+clients, a working agent loop, and context budgeting. **Session persistence is
+not built.**
 
 Be clear about what the shell tool is: it gates commands through
 `SafetyManager`, refuses blocked ones, pins the working directory to the

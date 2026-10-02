@@ -26,7 +26,7 @@ multi-model harness needs most and usually gets wrong.
 | File tools: read, write, edit, list, mkdir | done |
 | Tool call **advertising** to a provider (OpenAI-compatible, Anthropic) | done |
 | Agent loop | done |
-| Context management | **not done** |
+| Context management: budget, trim, compact | done |
 | Session persistence | **not done** |
 | Shell tool: gated, cwd-pinned, bounded | done |
 | Sandboxing (OS-level containment) | **not done, and not planned here** |
@@ -80,7 +80,7 @@ packages/harness
   tools/fs      read, write, edit, list, mkdir
   tools/shell   command execution, gated by core's SafetyManager
   workspace/    path containment
-  context/      token budget, history, compaction                 [not built]
+  context/      token estimate, budget, trim, compact
   session/      persist and resume                                [not built]
 ```
 
@@ -155,6 +155,41 @@ POSIX) and settles on a grace timer rather than trusting `close`. It was found
 by measuring the running behaviour — no `close` event within three seconds —
 rather than by reasoning about it. Tests cover both the prompt settling and
 the case where output had already arrived before the process hung.
+
+## Context management
+
+A tool-using loop grows faster than anything else in a harness: every
+iteration appends a model turn, a tool call, and a result, and a large file
+read can be thousands of tokens on its own. Without budgeting, a long task
+fails with a context-length error rather than getting worse gradually.
+
+**The token count is an estimate and is treated as one.** Counting tokens
+properly means running a tokenizer, which means a dependency or shipping model
+vocabulary; core has neither by design. The estimate is roughly four characters
+per token, which runs low more often than high — code, JSON, and file paths all
+tokenize worse than prose. So budgets carry a twelve percent margin, and nothing
+here claims a request definitely fits. It claims it probably does.
+
+The alternative was a real tokenizer, and it was rejected deliberately: exact
+and slow on every turn, versus approximate and fast with a margin. An
+undercount costs one failed request and a retry; a tokenizer on the hot path
+costs throughput on every request.
+
+**Trimming never orphans a tool result.** A tool result whose assistant turn
+has been dropped makes the provider reject the entire request, which is a worse
+outcome than sending too much: the whole turn fails instead of losing some
+history. So the window always begins on a complete exchange.
+
+**Compaction is optional and reported.** A summary costs a model call, which is
+itself context, so it only runs when something was actually pushed out of the
+window, and the result says whether it summarised or merely discarded. The
+summary is carried as a user turn: fabricating an assistant turn would
+misrepresent what happened, and inserting a tool result without its call
+produces a request the provider rejects.
+
+**The loop keeps the full history even after trimming.** Only the copy sent to
+the model is trimmed, so a caller can still show the user everything that
+happened after old turns left the window.
 
 ## Multi-model
 

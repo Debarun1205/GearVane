@@ -58,6 +58,11 @@ describe('the document does not overstate what exists', () => {
       mustContain: "'tools'",
     },
     {
+      label: 'Context management',
+      path: join('packages', 'harness', 'src', 'context', 'budget.ts'),
+      mustContain: 'compact',
+    },
+    {
       label: 'Tool layer',
       path: join('packages', 'harness', 'src', 'tools', 'registry.ts'),
     },
@@ -200,6 +205,29 @@ describe('the document keeps the risks stated', () => {
     // A local model that cannot do tool calls is a real deployment
     // constraint, and the loop has to handle it deliberately.
     expect(prose).toMatch(/not universally supported/i);
+  });
+
+  it('says the token count is an estimate', () => {
+    // A budget sized against a count that looks exact would overflow on real
+    // traffic, and a reader would have no reason to leave headroom.
+    expect(prose).toMatch(/token count is an estimate/i);
+    expect(prose).toMatch(/four characters per token/i);
+  });
+
+  it('records why a real tokenizer was rejected', () => {
+    // Otherwise the next person to read this will "fix" the estimate by adding
+    // a dependency, without knowing the trade was deliberate.
+    expect(prose).toMatch(/rejected deliberately/i);
+  });
+
+  it('warns that trimming must not orphan a tool result', () => {
+    expect(prose).toMatch(/never orphans a tool result/i);
+  });
+
+  it('notes the loop keeps full history after trimming', () => {
+    // A user must still be able to see what happened once old turns have left
+    // the model's window.
+    expect(prose).toMatch(/keeps the full history even after trimming/i);
   });
 
   it('states the layering and its dependency direction', () => {

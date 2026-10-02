@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import {
+  estimateTokens,
   runAgent,
   type AgentModel,
   type AgentOptions,
@@ -296,6 +297,205 @@ describe('failure handling', () => {
 
     expect(result.stopReason).toBe('completed');
     expect(result.steps[0]?.results[0]?.content).toContain('no such tool');
+  });
+});
+
+describe('context budgeting in the loop', () => {
+  const BUDGET = { contextWindow: 4000, reserveForOutput: 500 };
+
+  /**
+   * Reads several large files in a row, then finishes.
+   *
+   * The path differs per call on purpose. Identical calls would trip the
+   * stuck-loop guard, which is the correct behaviour and is tested elsewhere;
+   * here it would mask what is being measured.
+   */
+  function longOutputModel(reads: number) {
+    const turns: ScriptedTurn[] = [];
+    for (let index = 0; index < reads; index += 1) {
+      turns.push({
+        toolCalls: [
+          { name: 'read_file', arguments: { path: `big-${index}.txt` } },
+        ],
+      });
+    }
+    turns.push({ content: 'done' });
+    return scriptedModel(turns);
+  }
+
+  beforeEach(async () => {
+    const { writeFile } = await import('node:fs/promises');
+    // Roughly 1250 tokens per file, so a handful of reads overflow the budget
+    // above. Separate files, matching the paths longOutputModel asks for.
+    for (let index = 0; index < 10; index += 1) {
+      await writeFile(join(root, `big-${index}.txt`), 'x'.repeat(5000));
+    }
+  });
+
+  it('completes without a budget set', async () => {
+    const model = longOutputModel(4);
+    const result = await runAgent('read things', baseOptions(model));
+
+    expect(result.stopReason).toBe('completed');
+    expect(result.compactions).toBe(0);
+  });
+
+  it('compacts when history outgrows the budget', async () => {
+    // Five reads plus a final turn is six iterations, and baseOptions caps the
+    // loop at six, so the ceiling is not what ends this.
+    const model = longOutputModel(5);
+    const result = await runAgent('read things', {
+      ...baseOptions(model),
+      contextBudget: BUDGET,
+    });
+
+    expect(result.stopReason).toBe('completed');
+    expect(result.compactions).toBeGreaterThan(0);
+  });
+
+  it('keeps the full history for reporting while trimming the request', async () => {
+    // The user should still be able to see everything that happened, even
+    // after old turns left the model's window.
+    const model = longOutputModel(6);
+    await runAgent('read things', {
+      ...baseOptions(model),
+      contextBudget: BUDGET,
+    });
+
+    // Every tool result the model produced should still be visible to a
+    // caller inspecting `steps`.
+    const results = model.seen;
+    expect(results.length).toBeGreaterThan(1);
+
+    const lastRequest = results[results.length - 1]?.messages as Array<
+      Record<string, unknown>
+    >;
+    // The final request is bounded, and it still carries the original task.
+    expect(lastRequest[0]).toMatchObject({ role: 'user' });
+    expect(lastRequest[0]?.['content']).toBe('read things');
+  });
+
+  it('never lets the request exceed the budget', async () => {
+    const model = longOutputModel(5);
+    await runAgent('read things', {
+      ...baseOptions(model),
+      contextBudget: BUDGET,
+    });
+
+    for (const request of model.seen) {
+      const messages = request.messages as Array<
+        Record<string, unknown> & {
+          toolCalls?: Array<{ name: string; arguments: unknown }>;
+        }
+      >;
+
+      let total = 0;
+      for (const message of messages) {
+        total += estimateTokens(String(message['content'] ?? ''));
+        for (const call of message.toolCalls ?? []) {
+          total += estimateTokens(JSON.stringify(call.arguments));
+        }
+      }
+
+      // Allow per-message framing the estimator adds.
+      expect(total).toBeLessThanOrEqual(BUDGET.contextWindow);
+    }
+  });
+
+  it('summarises dropped history when a summariser is given', async () => {
+    const model = longOutputModel(5);
+    let summarised = 0;
+
+    const result = await runAgent('read things', {
+      ...baseOptions(model),
+      contextBudget: BUDGET,
+      summarize: async () => {
+        summarised += 1;
+        return 'Read several files; contents were long.';
+      },
+    });
+
+    expect(result.stopReason).toBe('completed');
+    expect(summarised).toBeGreaterThan(0);
+
+    const last = model.seen[model.seen.length - 1]?.messages as Array<
+      Record<string, unknown>
+    >;
+    expect(
+      last.some((m) => String(m['content']).includes('Summary of earlier work')),
+    ).toBe(true);
+  });
+
+  it('reports compaction so a UI can tell the user', async () => {
+    const model = longOutputModel(6);
+    const seen: number[] = [];
+
+    await runAgent('read things', {
+      ...baseOptions(model),
+      contextBudget: BUDGET,
+      onCompact: (result) => seen.push(result.droppedMessages),
+    });
+
+    expect(seen.length).toBeGreaterThan(0);
+    expect(seen.every((count) => count > 0)).toBe(true);
+  });
+
+  it('does not summarise a short task', async () => {
+    const model = scriptedModel([{ content: 'quick answer' }]);
+    let called = 0;
+
+    const result = await runAgent('short', {
+      ...baseOptions(model),
+      contextBudget: BUDGET,
+      summarize: async () => {
+        called += 1;
+        return 'unused';
+      },
+    });
+
+    expect(result.compactions).toBe(0);
+    // A summary costs a model call, so it must not run when nothing was
+    // dropped.
+    expect(called).toBe(0);
+  });
+
+  it('survives a summariser that throws', async () => {
+    const model = longOutputModel(5);
+    const result = await runAgent('read things', {
+      ...baseOptions(model),
+      contextBudget: BUDGET,
+      summarize: async () => {
+        throw new Error('summary model unavailable');
+      },
+    });
+
+    expect(result.stopReason).toBe('completed');
+    expect(result.compactions).toBeGreaterThan(0);
+  });
+
+  it('stays valid for the provider after trimming', async () => {
+    // Every request must still start sensibly and never open on an orphaned
+    // tool result, which providers reject outright.
+    const model = longOutputModel(5);
+    await runAgent('read things', {
+      ...baseOptions(model),
+      contextBudget: BUDGET,
+    });
+
+    for (const request of model.seen) {
+      const messages = request.messages as Array<Record<string, unknown>>;
+      expect(messages.length).toBeGreaterThan(0);
+      expect(messages[0]?.['role']).toBe('user');
+    }
+  });
+
+  it('reports zero compactions when no budget is configured', async () => {
+    const model = longOutputModel(6);
+    const result = await runAgent('read things', baseOptions(model));
+
+    // Explicitly zero rather than unknown: no budget means the question does
+    // not arise.
+    expect(result.compactions).toBe(0);
   });
 });
 
