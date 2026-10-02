@@ -183,7 +183,7 @@
               <p>NSIS installer and a portable executable, x64.</p>
               <a
                 class="button button-small"
-                href="https://github.com/Debarun1205/Waypoint/releases"
+                href="https://github.com/Debarun1205/Waypoint/releases/download/v0.2.0/Waypoint.Setup.0.2.0.exe"
                 rel="noopener"
                 >Download .exe</a
               >
@@ -191,10 +191,10 @@
 
             <article class="download-card">
               <h3>Linux</h3>
-              <p>AppImage and .deb, for x64 and arm64.</p>
+              <p>AppImage (x64) and .deb (x64 and arm64).</p>
               <a
                 class="button button-small"
-                href="https://github.com/Debarun1205/Waypoint/releases"
+                href="https://github.com/Debarun1205/Waypoint/releases/download/v0.2.0/Waypoint-0.2.0.AppImage"
                 rel="noopener"
                 >Download AppImage</a
               >
@@ -202,10 +202,10 @@
 
             <article class="download-card">
               <h3>macOS</h3>
-              <p>Universal .dmg, Intel and Apple Silicon.</p>
+              <p>Separate .dmg for Intel and Apple Silicon.</p>
               <a
                 class="button button-small"
-                href="https://github.com/Debarun1205/Waypoint/releases"
+                href="https://github.com/Debarun1205/Waypoint/releases/download/v0.2.0/Waypoint-0.2.0-arm64.dmg"
                 rel="noopener"
                 >Download .dmg</a
               >
@@ -213,10 +213,10 @@
 
             <article class="download-card">
               <h3>Android</h3>
-              <p>Debug APK built from the same renderer bundle.</p>
+              <p>Debug APK, built from the same renderer bundle.</p>
               <a
                 class="button button-small"
-                href="https://github.com/Debarun1205/Waypoint/releases"
+                href="https://github.com/Debarun1205/Waypoint/releases/download/v0.2.0/app-debug.apk"
                 rel="noopener"
                 >Download APK</a
               >
@@ -292,10 +292,14 @@ code --install-extension waypoint-0.2.0.vsix</code></pre>
           </div>
 
           <p class="note">
-            Signed installers are produced by CI on each release tag. This
-            repository does not contain signing keys, so a locally built
-            binary will be flagged by Gatekeeper and SmartScreen until you
-            sign it yourself.
+            <strong>These builds are not code signed.</strong> macOS
+            Gatekeeper and Windows SmartScreen will warn on first launch, and
+            the Android APK is debug-signed rather than Play-Store ready.
+            Signing needs certificates that deliberately do not live in this
+            repository. To get past the macOS warning, right-click the app and
+            choose Open, or run
+            <code>xattr -d com.apple.quarantine /Applications/Waypoint.app</code>.
+            On Windows, choose More info then Run anyway.
           </p>
         </div>
       </section>

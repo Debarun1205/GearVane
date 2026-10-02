@@ -75,10 +75,51 @@ describe('sections', () => {
 });
 
 describe('downloads', () => {
-  it('links every platform to the releases page', () => {
-    const links = html.match(/href="https:\/\/github\.com\/[^"]*\/releases"/g) ?? [];
-    // Four platform cards, each with a download link.
-    expect(links.length).toBeGreaterThanOrEqual(4);
+  it('links every platform straight to a real release asset', () => {
+    // Regression: these pointed at the generic releases page, so a visitor
+    // had to find the right file themselves. Now each card resolves to an
+    // actual artifact on a versioned tag.
+    const assetLinks = html.match(
+      /href="https:\/\/github\.com\/Debarun1205\/Waypoint\/releases\/download\/v[\d.]+\/[^"]+"/g,
+    ) ?? [];
+
+    expect(assetLinks.length).toBeGreaterThanOrEqual(4);
+    for (const link of assetLinks) {
+      // A link to a directory or the tag page is not a download.
+      expect(link).toMatch(/\.(exe|AppImage|dmg|apk|deb|vsix)"/);
+    }
+  });
+
+  it('covers every platform the release publishes', () => {
+    // The exact asset names from the v0.2.0 release. If a future release
+    // renames one of these, this test is what should notice.
+    const published = [
+      'Waypoint.Setup.0.2.0.exe',
+      'Waypoint.0.2.0.exe',
+      'Waypoint-0.2.0.dmg',
+      'Waypoint-0.2.0-arm64.dmg',
+      'Waypoint-0.2.0.AppImage',
+      'waypoint-app_0.2.0_amd64.deb',
+      'waypoint-app_0.2.0_arm64.deb',
+      'app-debug.apk',
+    ];
+
+    const linked = new Set(
+      [...html.matchAll(/\/releases\/download\/v[\d.]+\/([^"]+)"/g)].map(
+        (match) => match[1] ?? '',
+      ),
+    );
+
+    // Every platform gets a link; not every artifact needs its own button,
+    // but nothing may be linked that was never published.
+    for (const asset of linked) {
+      expect(published).toContain(asset);
+    }
+
+    expect(linked.size).toBeGreaterThanOrEqual(4);
+    for (const platform of ['.exe', '.AppImage', '.dmg', '.apk']) {
+      expect([...linked].some((asset) => asset.endsWith(platform))).toBe(true);
+    }
   });
 
   it('opens external links safely', () => {
@@ -95,8 +136,23 @@ describe('downloads', () => {
   it('states that binaries are unsigned', () => {
     // A download button that quietly ships an unsigned binary sets the wrong
     // expectation; the caveat has to be on the page.
-    expect(html).toMatch(/signing keys/i);
+    expect(html).toMatch(/not code signed/i);
     expect(html).toMatch(/Gatekeeper|SmartScreen/);
+    expect(html).toMatch(/debug-signed/i);
+  });
+
+  it('never claims the builds are signed', () => {
+    // Regression: the page asserted 'Signed installers are produced by CI on
+    // each release tag', which was false. No signing certificate exists in
+    // this project, so any claim of signed artifacts is a lie.
+    expect(html).not.toMatch(/signed installers are produced/i);
+    expect(html).not.toMatch(/code[- ]signed builds? (are|is) available/i);
+    expect(html).not.toMatch(/fully signed/i);
+  });
+
+  it('does not describe the macOS build as universal', () => {
+    // There is no universal binary; Intel and Apple Silicon ship separately.
+    expect(html).not.toMatch(/universal\s+\.dmg/i);
   });
 });
 

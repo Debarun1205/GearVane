@@ -64,11 +64,19 @@ Download a build for your platform from the
 | Windows x64 (portable) | `Waypoint.0.2.0.exe` | 78 MB |
 | macOS Intel | `Waypoint-0.2.0.dmg` | 98 MB |
 | macOS Apple Silicon | `Waypoint-0.2.0-arm64.dmg` | 94 MB |
+| Linux x64 (AppImage) | `Waypoint-0.2.0.AppImage` | 103 MB |
+| Linux x64 (deb) | `waypoint-app_0.2.0_amd64.deb` | 71 MB |
+| Linux arm64 (deb) | `waypoint-app_0.2.0_arm64.deb` | 67 MB |
+| Android (debug APK) | `app-debug.apk` | 3.6 MB |
 | VS Code | `waypoint-0.2.0.vsix` | 10 KB |
 
-Linux and Android are built on their own runners and published as release
-artifacts when those jobs succeed; the AppImage is x64 only, while the `.deb`
-covers x64 and arm64.
+Linux notes: the AppImage is x64 only, because arm64 AppImages cannot be
+cross-built reliably on an x64 runner. The `.deb` covers both architectures.
+
+Android notes: the APK is **debug-signed**, so it installs for testing but is
+not distributable through the Play Store. A release build needs a keystore
+supplied as a repository secret; see
+[the build guide](apps/desktop/BUILDING.md).
 
 **These binaries are not code signed.** macOS Gatekeeper and Windows
 SmartScreen will warn on first launch. See
@@ -239,7 +247,7 @@ Alpha, and honest about it:
 - The learned classifier trains and predicts but has **not** been evaluated
   against real production traffic.
 - Release binaries are **unsigned**, so Gatekeeper and SmartScreen will
-  warn.
+  warn. The Android APK is debug-signed, not Play-Store ready.
 - The harness gates destructive operations but does not sandbox them.
 - Linux and Android artifacts are published on a best-effort basis; the
   Windows and macOS builds are the tested path.
