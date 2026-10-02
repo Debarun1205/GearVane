@@ -24,9 +24,8 @@ multi-model harness needs most and usually gets wrong.
 | Workspace path containment for file tools | done |
 | Tool layer: schema, validation, registry, dispatch | done |
 | File tools: read, write, edit, list, mkdir | done |
-| Tool call **advertising** to a provider | **not done** |
-| Agent loop | **not done** |
-| Agent loop | **not done** |
+| Tool call **advertising** to a provider (OpenAI-compatible, Anthropic) | done |
+| Agent loop | done |
 | Context management | **not done** |
 | Session persistence | **not done** |
 | Shell containment and sandboxing | **not done** |
@@ -36,11 +35,22 @@ confined today. Command execution is not: the shell tool does not exist, so
 there is nothing confining it yet. Collapsing the two into one row would let
 "sandboxed" be written next to a feature that only protects files.
 
-The last two rows are the same bug seen twice: `Completion.toolCalls` is
+Tool calling was once the same bug in two places: `Completion.toolCalls` is
 populated by `normaliseToolCalls`, so the plumbing to *read* a tool call
-exists, but no code path ever sends a `tools` parameter to a model. A model
-that is never told what tools exist cannot ask to use one. The harness cannot
-work until that is closed.
+existed, but no code path ever sent a `tools` parameter to a model. A model
+that is never told what tools exist cannot ask to use one, so every tool call
+would have been permanently empty. Both halves are now implemented and tested
+against the wire format of each provider.
+
+The two providers disagree on the details, which is why the wire format is
+tested rather than assumed:
+
+- OpenAI-compatible takes `{type, function}` and returns `tool_calls` with
+  JSON-string arguments.
+- Anthropic takes a bare function object with `input_schema`, returns
+  `tool_use` content blocks, and sends a tool result back as a **user** turn
+  carrying `tool_result`, not as a `tool` role. It also requires strict
+  role alternation, so two tool results in a row have to be merged.
 
 ## Layering
 
@@ -50,14 +60,17 @@ test keeps comparing like with like.
 
 ```
 packages/harness
-  tools/        tool schemas, registry, dispatch
-  tools/fs      read, write, edit, list, glob, grep
-  tools/shell   command execution, gated by core's SafetyManager
+  index.ts      the agent loop, runAgent()
+  tools/        tool schemas, validation, registry, dispatch
+  tools/fs      read, write, edit, list, mkdir
+  tools/shell   command execution, gated by core's SafetyManager  [not built]
   workspace/    path containment
-  agent/        the loop
-  context/      token budget, history, compaction
-  session/      persist and resume
+  context/      token budget, history, compaction                 [not built]
+  session/      persist and resume                                [not built]
 ```
+
+The loop lives at the package root rather than in `agent/` because it is the
+only thing a caller needs to import.
 
 Dependency direction is strictly downward: `agent` may use `tools`, `tools`
 may use `workspace`, and `workspace` may use nothing from this package.

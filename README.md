@@ -38,9 +38,11 @@ Two engines exist because Android cannot bundle a Python runtime. The
 TypeScript port is what the CLI, app, and extension use; the Python package
 remains the reference and is tested for identical routing behaviour.
 
-The harness is under construction and is **not** an agent yet. What exists is
-workspace path containment for file tools. The agent loop, tool execution,
-command containment, context management, and sessions are not built.
+The harness is under construction. It has workspace path containment, a tool
+layer with five file tools, tool-calling support in the provider clients, and
+a working agent loop. **Command containment, context management, and session
+persistence are not built** — there is no shell tool, so the harness has file
+containment but no sandbox.
 [docs/harness-architecture.md](docs/harness-architecture.md) is the source of
 truth, and a test checks its status table against the repository so it cannot
 drift.

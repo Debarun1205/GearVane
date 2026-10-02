@@ -43,11 +43,56 @@ export type FetchLike = (
   },
 ) => Promise<Response>;
 
+/**
+ * A tool offered to the model.
+ *
+ * Structurally the JSON Schema subset the OpenAI and Ollama tool-calling APIs
+ * both accept, declared locally so core keeps its zero-dependency property.
+ */
+export interface ToolDefinition {
+  name: string;
+  description: string;
+  parameters: Record<string, unknown>;
+}
+
+/**
+ * A message in an ongoing conversation.
+ *
+ * `toolCalls` is set on an assistant turn that requested tools; `toolCallId`
+ * and `name` identify which call a `tool` turn is answering. Providers that do
+ * not support tool calling ignore `toolCalls` and return prose instead.
+ */
+export interface ConversationMessage {
+  role: 'system' | 'user' | 'assistant' | 'tool';
+  content: string;
+  toolCalls?: ToolCall[];
+  toolCallId?: string;
+  name?: string;
+}
+
 export interface CompleteOptions {
   system?: string;
   temperature?: number;
   maxTokens?: number;
   signal?: AbortSignal;
+
+  /**
+   * Tools the model may call.
+   *
+   * Until this is set, a model is never told what it can do and therefore
+   * cannot ask to do it. The response parser has always understood
+   * `tool_calls`; what was missing was the request that provokes one.
+   */
+  tools?: ToolDefinition[];
+
+  /**
+   * Full conversation history, for multi-turn tool use.
+   *
+   * Takes precedence over `system` when both are supplied. When omitted the
+   * call degrades to a single user turn, which is what every existing caller
+   * does and why this is additive rather than a breaking change.
+   */
+  messages?: ConversationMessage[];
 }
 
 export abstract class ProviderClient {
@@ -315,13 +360,16 @@ export class OpenAICompatClient extends ProviderClient {
   async complete(prompt: string, options: CompleteOptions = {}): Promise<Completion> {
     const data = await this.post(
       '/v1/chat/completions',
-      {
-        model: this.model,
-        messages: buildMessages(prompt, options.system),
-        temperature: options.temperature ?? 0,
-        max_tokens: options.maxTokens ?? 2048,
-        stream: false,
-      },
+      withTools(
+        {
+          model: this.model,
+          messages: buildMessages(prompt, options),
+          temperature: options.temperature ?? 0,
+          max_tokens: options.maxTokens ?? 2048,
+          stream: false,
+        },
+        options,
+      ),
       undefined,
       options.signal,
     );
@@ -354,13 +402,16 @@ export class OpenAICompatClient extends ProviderClient {
     prompt: string,
     options: CompleteOptions = {},
   ): AsyncGenerator<string, void, unknown> {
-    const payload = {
-      model: this.model,
-      messages: buildMessages(prompt, options.system),
-      temperature: options.temperature ?? 0,
-      max_tokens: options.maxTokens ?? 2048,
-      stream: true,
-    };
+    const payload = withTools(
+      {
+        model: this.model,
+        messages: buildMessages(prompt, options),
+        temperature: options.temperature ?? 0,
+        max_tokens: options.maxTokens ?? 2048,
+        stream: true,
+      },
+      options,
+    );
 
     for await (const chunk of this.sse(
       '/v1/chat/completions',
@@ -416,9 +467,19 @@ export class AnthropicClient extends ProviderClient {
       model: this.model,
       max_tokens: options.maxTokens ?? 2048,
       temperature: options.temperature ?? 0,
-      messages: [{ role: 'user', content: prompt }],
+      messages: buildAnthropicMessages(prompt, options),
     };
     if (options.system) payload['system'] = options.system;
+
+    // Anthropic names the parameter `tools` and takes a bare function object
+    // per entry, without the OpenAI `type` wrapper.
+    if (options.tools && options.tools.length > 0) {
+      payload['tools'] = options.tools.map((tool) => ({
+        name: tool.name,
+        description: tool.description,
+        input_schema: tool.parameters,
+      }));
+    }
 
     const data = await this.post(
       '/v1/messages',
@@ -427,14 +488,26 @@ export class AnthropicClient extends ProviderClient {
       options.signal,
     );
 
-    // Anthropic returns content as a list of typed blocks; concatenate the
-    // text ones and ignore thinking blocks.
+    // Anthropic returns content as a list of typed blocks. Text blocks
+    // concatenate into the reply; tool_use blocks become tool calls, and a
+    // response that is nothing but a tool call has no text at all.
     const blocks = data['content'];
     let content = '';
+    const toolCalls: ToolCall[] = [];
+
     if (Array.isArray(blocks)) {
       for (const block of blocks as Record<string, unknown>[]) {
         if (block['type'] === 'text' && typeof block['text'] === 'string') {
           content += block['text'];
+        } else if (block['type'] === 'tool_use') {
+          const input = block['input'];
+          toolCalls.push({
+            name: String(block['name'] ?? ''),
+            arguments:
+              input && typeof input === 'object'
+                ? (input as Record<string, unknown>)
+                : {},
+          });
         }
       }
     }
@@ -449,7 +522,7 @@ export class AnthropicClient extends ProviderClient {
         tokensOut: Number(usage['output_tokens'] ?? 0),
       },
       finishReason: String(data['stop_reason'] ?? 'stop'),
-      toolCalls: [],
+      toolCalls: toolCalls.filter((call) => call.name !== ''),
     };
   }
 
@@ -496,14 +569,160 @@ export class AnthropicClient extends ProviderClient {
   }
 }
 
+/**
+ * Anthropic requires user and assistant turns to alternate strictly, and a
+ * tool result is a user turn carrying `tool_result` rather than a `tool` role.
+ * Sending the OpenAI shape verbatim is rejected with a 400.
+ */
+function buildAnthropicMessages(
+  prompt: string,
+  options: CompleteOptions,
+): Array<Record<string, unknown>> {
+  if (!options.messages || options.messages.length === 0) {
+    return [{ role: 'user', content: prompt }];
+  }
+
+  const messages: Array<Record<string, unknown>> = [];
+
+  for (const message of options.messages) {
+    if (message.role === 'system') continue;
+
+    if (message.role === 'tool') {
+      messages.push({
+        role: 'user',
+        content: [
+          {
+            type: 'tool_result',
+            tool_use_id: message.toolCallId ?? message.name ?? 'tool',
+            content: message.content,
+          },
+        ],
+      });
+      continue;
+    }
+
+    if (message.role === 'assistant' && message.toolCalls?.length) {
+      const blocks: Array<Record<string, unknown>> = [];
+      if (message.content) blocks.push({ type: 'text', text: message.content });
+      for (const [index, call] of message.toolCalls.entries()) {
+        blocks.push({
+          type: 'tool_use',
+          id: message.toolCallId ?? `call_${index}`,
+          name: call.name,
+          input: call.arguments,
+        });
+      }
+      messages.push({ role: 'assistant', content: blocks });
+      continue;
+    }
+
+    messages.push({ role: message.role, content: message.content });
+  }
+
+  // Consecutive same-role turns are an error, so merge any that appeared.
+  const merged: Array<Record<string, unknown>> = [];
+  for (const message of messages) {
+    const previous = merged[merged.length - 1];
+    if (previous && previous['role'] === message['role']) {
+      const before = Array.isArray(previous['content'])
+        ? (previous['content'] as Array<Record<string, unknown>>)
+        : [{ type: 'text', text: String(previous['content'] ?? '') }];
+      const after = Array.isArray(message['content'])
+        ? (message['content'] as Array<Record<string, unknown>>)
+        : [{ type: 'text', text: String(message['content'] ?? '') }];
+      previous['content'] = [...before, ...after];
+      continue;
+    }
+    merged.push(message);
+  }
+
+  return merged;
+}
+
+/** Shape a tool for the OpenAI-compatible `tools` array. */
+export function toOpenAITool(tool: ToolDefinition): Record<string, unknown> {
+  return {
+    type: 'function',
+    function: {
+      name: tool.name,
+      description: tool.description,
+      parameters: tool.parameters,
+    },
+  };
+}
+
+/**
+ * Build the request message array.
+ *
+ * With history, passes it through and only fills in a system prompt when one
+ * was supplied separately. Without history, degrades to the single-turn shape
+ * every existing caller expects.
+ */
 function buildMessages(
   prompt: string,
-  system?: string,
-): Array<{ role: string; content: string }> {
-  const messages: Array<{ role: string; content: string }> = [];
-  if (system) messages.push({ role: 'system', content: system });
+  options: CompleteOptions,
+): Array<Record<string, unknown>> {
+  if (options.messages && options.messages.length > 0) {
+    const messages: Array<Record<string, unknown>> = [];
+
+    if (options.system) {
+      messages.push({ role: 'system', content: options.system });
+    }
+
+    for (const message of options.messages) {
+      // An assistant turn that called tools carries the calls alongside
+      // whatever prose preceded them; content is allowed to be empty.
+      if (message.role === 'assistant' && message.toolCalls?.length) {
+        messages.push({
+          role: 'assistant',
+          content: message.content || null,
+          tool_calls: message.toolCalls.map((call, index) => ({
+            id: `call_${index}`,
+            type: 'function',
+            function: {
+              name: call.name,
+              arguments: JSON.stringify(call.arguments),
+            },
+          })),
+        });
+        continue;
+      }
+
+      const entry: Record<string, unknown> = {
+        role: message.role,
+        content: message.content,
+      };
+      if (message.role === 'tool') {
+        entry['tool_call_id'] = message.toolCallId ?? `call_${message.name ?? 'tool'}`;
+        if (message.name) entry['name'] = message.name;
+      }
+      messages.push(entry);
+    }
+
+    return messages;
+  }
+
+  const messages: Array<Record<string, unknown>> = [];
+  if (options.system) messages.push({ role: 'system', content: options.system });
   messages.push({ role: 'user', content: prompt });
   return messages;
+}
+
+/**
+ * Add the tools array when any were offered.
+ *
+ * Kept separate from `buildMessages` because sending `tools: []` is not the
+ * same as sending nothing: some providers reject an empty array outright.
+ */
+function withTools(
+  body: Record<string, unknown>,
+  options: CompleteOptions,
+): Record<string, unknown> {
+  if (options.tools && options.tools.length > 0) {
+    body['tools'] = options.tools.map(toOpenAITool);
+    body['tool_choice'] = 'auto';
+  }
+  return body;
 }
 
 function normaliseToolCalls(value: unknown): ToolCall[] {

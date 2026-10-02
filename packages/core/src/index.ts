@@ -46,9 +46,12 @@ export {
   ProviderFactory,
   ProviderClient,
   setFetchImpl,
+  toOpenAITool,
   type ClientFactoryOptions,
   type CompleteOptions,
+  type ConversationMessage,
   type FetchLike,
+  type ToolDefinition,
 } from './providers.js';
 export {
   CircuitBreaker,

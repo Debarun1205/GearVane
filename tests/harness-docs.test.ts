@@ -45,8 +45,17 @@ describe('the document does not overstate what exists', () => {
    */
   const CAPABILITIES = [
     {
+      // The loop is the package's main export rather than a directory.
       label: 'Agent loop',
-      path: join('packages', 'harness', 'src', 'agent'),
+      path: join('packages', 'harness', 'src', 'index.ts'),
+      // Also require the export, so renaming the function cannot leave the
+      // row reading "done" with nothing behind it.
+      mustContain: 'runAgent',
+    },
+    {
+      label: 'Tool call **advertising**',
+      path: join('packages', 'core', 'src', 'providers.ts'),
+      mustContain: "'tools'",
     },
     {
       label: 'Tool layer',
@@ -57,8 +66,10 @@ describe('the document does not overstate what exists', () => {
       path: join('packages', 'harness', 'src', 'tools', 'fs.ts'),
     },
     {
-      label: 'Workspace path containment',
-      path: join('packages', 'harness', 'src', 'workspace'),
+      // Matched loosely because the doc row names the layer, not the class.
+      label: 'path containment for file tools',
+      path: join('packages', 'harness', 'src', 'workspace', 'containment.ts'),
+      mustContain: 'class Workspace',
     },
     {
       // The shell tool is what would make this true.
@@ -69,8 +80,10 @@ describe('the document does not overstate what exists', () => {
 
   it.each(CAPABILITIES)(
     'agrees with the repository about "$label"',
-    ({ label, path }) => {
-      const exists = existsSync(join(REPO, path));
+    ({ label, path, mustContain }) => {
+      const target = join(REPO, path);
+      const exists = existsSync(target);
+      const source = exists ? read(target) : '';
 
       const row = doc
         .split('\n')
@@ -82,19 +95,35 @@ describe('the document does not overstate what exists', () => {
       expect(
         markedDone,
         `"${label}" is marked ${markedDone ? 'done' : 'not done'} in the document but ` +
-          `${exists ? 'the directory exists' : 'the directory is missing'}`,
+          `${exists ? 'the file exists' : 'the file is missing'}`,
       ).toBe(exists);
+
+      if (exists && mustContain) {
+        expect(
+          source.includes(mustContain),
+          `"${label}" is marked done but ${path} does not contain "${mustContain}"`,
+        ).toBe(true);
+      }
     },
   );
 
   it('does not claim tool advertising before it is sent', () => {
-    // The single most misleading claim available right now: the parsing half
-    // of tool calls exists, so "tool calls are supported" reads as true.
-    const advertises = /\btools\b\s*:/.test(coreSrc);
+    // The most misleading claim available: the parsing half of tool calls has
+    // always existed, so "tool calls are supported" reads as true while the
+    // request that provokes one is missing.
+    //
+    // Checked by looking for an actual assignment in the request body, not for
+    // the word "tools" appearing anywhere in the file.
+    const advertises = /body\[['\"]tools['\"]\]\s*=|payload\[['\"]tools['\"]\]\s*=/.test(
+      coreSrc,
+    );
 
     if (!advertises) {
       expect(prose).toMatch(/tool call \*\*advertising\*\*/i);
       expect(prose).toMatch(/\*\*not done\*\*/);
+    } else {
+      // Both halves must be claimed together, never one without the other.
+      expect(coreSrc).toMatch(/normaliseToolCalls|tool_use/);
     }
   });
 
