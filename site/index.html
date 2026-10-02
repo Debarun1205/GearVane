@@ -8,7 +8,10 @@
       name="description"
       content="Waypoint classifies each request and picks the cheapest model tier that can do the job. Local models for simple edits, frontier models for hard problems, and nothing in between you did not ask for."
     />
-    <link rel="canonical" href="https://waypoint.dev/" />
+    <link
+      rel="canonical"
+      href="https://debarun1205.github.io/Waypoint/"
+    />
     <link rel="stylesheet" href="./assets/styles.css" />
   </head>
   <body>
@@ -25,6 +28,8 @@
           <a href="#tiers">Tiers</a>
           <a href="#demos">Demos</a>
           <a href="#download">Download</a>
+          <a href="#versions">Versions</a>
+          <a href="#about">About</a>
           <a href="#faq">FAQ</a>
           <a
             class="button button-small"
@@ -301,6 +306,188 @@ code --install-extension waypoint-0.2.0.vsix</code></pre>
             <code>xattr -d com.apple.quarantine /Applications/Waypoint.app</code>.
             On Windows, choose More info then Run anyway.
           </p>
+        </div>
+      </section>
+
+      <!-- version history --------------------------------------------------- -->
+      <section class="section" id="versions">
+        <div class="wrap">
+          <h2>Version history</h2>
+          <p class="section-lede">
+            Every tagged release, with what shipped and what was still broken.
+          </p>
+
+          <ol class="release-list">
+            <li class="release">
+              <div class="release-head">
+                <h3>
+                  <a
+                    href="https://github.com/Debarun1205/Waypoint/releases/tag/v0.2.0"
+                    rel="noopener">v0.2.0</a
+                  >
+                </h3>
+                <p class="release-meta">
+                  <time datetime="2026-10-02">2 October 2026</time>
+                  <span class="tag tag-current">current</span>
+                </p>
+              </div>
+
+              <p class="release-summary">
+                The first tagged release. Ships the TypeScript engine, the CLI,
+                the desktop app for four platforms, the VS Code extension, and
+                this site.
+              </p>
+
+              <div class="release-cols">
+                <div>
+                  <h4>In this release</h4>
+                  <ul>
+                    <li>Tier router with escalation on real failure</li>
+                    <li>Local, mid, and frontier providers</li>
+                    <li>Budget gates checked before any token is spent</li>
+                    <li>CLI: route, run, health, models, cost, safety, approve, deploy, train</li>
+                    <li>Electron app: Windows, Linux, macOS</li>
+                    <li>Android APK from the same renderer bundle</li>
+                    <li>VS Code extension</li>
+                  </ul>
+                </div>
+                <div>
+                  <h4>Known limitations</h4>
+                  <ul class="limitation-list">
+                    <li>Artifacts are <strong>unsigned</strong></li>
+                    <li>APK is debug-signed, not Play-Store ready</li>
+                    <li>AppImage is x64 only; <code>.deb</code> covers both architectures</li>
+                    <li>Learned classifier is unevaluated against production traffic</li>
+                    <li>No sandboxing, despite the safety gates</li>
+                  </ul>
+                </div>
+              </div>
+
+              <p class="release-links">
+                <a
+                  class="button button-small"
+                  href="https://github.com/Debarun1205/Waypoint/releases/tag/v0.2.0"
+                  rel="noopener"
+                  >Release notes and all 9 downloads</a
+                >
+                <a
+                  href="https://github.com/Debarun1205/Waypoint/compare/v0.2.0...HEAD"
+                  rel="noopener"
+                  >Commits since this release</a
+                >
+              </p>
+            </li>
+          </ol>
+
+          <p class="note">
+            v0.2.0 is the only tagged release so far. Work before it was
+            developed on the default branch without tags, so there is no
+            earlier version to install. The
+            <a
+              href="https://github.com/Debarun1205/Waypoint/releases"
+              rel="noopener"
+              >full release list</a
+            >
+            stays authoritative as more land.
+          </p>
+        </div>
+      </section>
+
+      <!-- about -------------------------------------------------------------- -->
+      <section class="section section-alt" id="about">
+        <div class="wrap">
+          <h2>About Waypoint</h2>
+          <p class="section-lede">
+            What this project is, how it is put together, and what it is not.
+          </p>
+
+          <div class="about-grid">
+            <article>
+              <h3>What it is</h3>
+              <p>
+                A routing layer that sits between you and your model providers.
+                It reads a request, classifies which tier can plausibly handle
+                it, runs the cheapest one first, and escalates only when a
+                cheaper tier actually fails. The point is not to be clever
+                about which model to use; it is to stop paying frontier prices
+                for work a free local model does perfectly well.
+              </p>
+            </article>
+
+            <article>
+              <h3>Why it exists</h3>
+              <p>
+                Teams buy a frontier model for everything by default, then
+                discover that most of the traffic is typo fixes and lint
+                cleanup. Waypoint makes the cheap path the default and makes the
+                expensive path something you have to justify by watching it
+                fail first.
+              </p>
+            </article>
+
+            <article>
+              <h3>How it is built</h3>
+              <p>
+                The engine is written in TypeScript with no runtime
+                dependencies, which is what lets the same code run in Node, in
+                the browser, in Electron, and inside an Android webview without
+                a Python runtime present. A Python implementation is kept in the
+                repository as the reference, and a parity test asserts both
+                route identically.
+              </p>
+            </article>
+
+            <article>
+              <h3>What it is not</h3>
+              <p>
+                It is not a model and it does not host one. It is not a
+                sandbox: the safety layer gates destructive operations and
+                asks for approval, but it does not contain them. It is not
+                production-ready, and the learned classifier has never been
+                measured against real traffic. See the
+                <a href="#versions">known limitations</a>.
+              </p>
+            </article>
+          </div>
+
+          <div class="about-facts">
+            <dl>
+              <div>
+                <dt>License</dt>
+                <dd>MIT</dd>
+              </div>
+              <div>
+                <dt>Language</dt>
+                <dd>TypeScript, plus a Python reference implementation</dd>
+              </div>
+              <div>
+                <dt>Runtime dependencies</dt>
+                <dd>None in the engine</dd>
+              </div>
+              <div>
+                <dt>Platforms</dt>
+                <dd>Windows, Linux, macOS, Android, VS Code</dd>
+              </div>
+              <div>
+                <dt>Your keys</dt>
+                <dd>Stay with you; the local tier needs none</dd>
+              </div>
+              <div>
+                <dt>Status</dt>
+                <dd>Alpha, and honest about it</dd>
+              </div>
+            </dl>
+          </div>
+
+          <div class="hero-actions">
+            <a
+              class="button"
+              href="https://github.com/Debarun1205/Waypoint"
+              rel="noopener"
+              >Read the source</a
+            >
+            <a class="button button-ghost" href="#faq">Read the FAQ</a>
+          </div>
         </div>
       </section>
 

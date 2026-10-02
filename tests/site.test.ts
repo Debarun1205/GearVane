@@ -15,6 +15,16 @@ const html = read(SITE, 'index.html');
 const demos = read(ASSETS, 'demos.js');
 const css = read(ASSETS, 'styles.css');
 
+/**
+ * The HTML with runs of whitespace collapsed to single spaces.
+ *
+ * Source prose is wrapped across lines for readability, so a phrase like
+ * "not production-ready" can straddle a line break in the markup. Assertions
+ * about wording should match what a reader sees, not how the file happens to
+ * be formatted, so they run against this rather than the raw source.
+ */
+const prose = html.replace(/\s+/g, ' ');
+
 describe('site structure', () => {
   it('has an entry point, stylesheet, and script', () => {
     expect(existsSync(join(SITE, 'index.html'))).toBe(true);
@@ -54,6 +64,8 @@ describe('sections', () => {
     ['tiers', 'Tiers'],
     ['demos', 'See it decide'],
     ['download', 'Download'],
+    ['versions', 'Version history'],
+    ['about', 'About Waypoint'],
     ['faq', 'FAQ'],
   ])('has the %s section', (id, heading) => {
     expect(html).toMatch(new RegExp(`id="${id}"`));
@@ -61,16 +73,93 @@ describe('sections', () => {
   });
 
   it('links every section from the header', () => {
-    for (const anchor of ['#how', '#tiers', '#demos', '#download', '#faq']) {
+    for (const anchor of [
+      '#how',
+      '#tiers',
+      '#demos',
+      '#download',
+      '#versions',
+      '#about',
+      '#faq',
+    ]) {
       expect(html).toContain(`href="${anchor}"`);
     }
   });
 
-  it('covers all three platforms', () => {
+  it('covers all four platforms', () => {
     expect(html).toMatch(/>Windows</);
     expect(html).toMatch(/>Linux</);
     expect(html).toMatch(/>macOS</);
     expect(html).toMatch(/>Android</);
+  });
+});
+
+describe('version history', () => {
+  it('lists only versions that were actually released', () => {
+    // The versions named on the page must exist as GitHub releases. A history
+    // entry for a version that was never tagged would be fiction.
+    const mentioned = new Set(
+      [...html.matchAll(/\bv(\d+\.\d+\.\d+)\b/g)].map((match) => match[1] ?? ''),
+    );
+
+    // v0.2.0 is the only tagged release; see tests/site.test.ts notes.
+    expect([...mentioned].sort()).toEqual(['0.2.0']);
+  });
+
+  it('states plainly that this is the first release', () => {
+    // Without this a single-entry history reads as if entries were lost.
+    expect(prose).toMatch(/only tagged release so far/i);
+  });
+
+  it('pairs each version with what shipped and what was broken', () => {
+    expect(html).toMatch(/In this release/);
+    expect(html).toMatch(/Known limitations/);
+  });
+
+  it('repeats the unsigned and debug-signed caveats in the history', () => {
+    // A changelog that omits the caveats is marketing, not history.
+    expect(html).toMatch(/<strong>unsigned<\/strong>/i);
+    expect(prose).toMatch(/debug-signed/i);
+    expect(prose).toMatch(/unevaluated against production traffic/i);
+  });
+
+  it('links the release notes for the version it lists', () => {
+    expect(html).toContain(
+      'https://github.com/Debarun1205/Waypoint/releases/tag/v0.2.0',
+    );
+  });
+
+  it('uses a machine-readable date', () => {
+    expect(html).toMatch(/<time datetime="\d{4}-\d{2}-\d{2}"/);
+  });
+});
+
+describe('about', () => {
+  it('says what the project is, why, how, and what it is not', () => {
+    for (const heading of [
+      'What it is',
+      'Why it exists',
+      'How it is built',
+      'What it is not',
+    ]) {
+      expect(html).toMatch(new RegExp(`>${heading}<`));
+    }
+  });
+
+  it('states the license', () => {
+    expect(html).toMatch(/<dt>License<\/dt>\s*<dd>MIT<\/dd>/);
+  });
+
+  it('does not overstate readiness', () => {
+    // The about section is where a reader decides whether to trust the
+    // project, so an unqualified "production ready" here would be the most
+    // damaging possible claim.
+    expect(prose).toMatch(/not production-ready/i);
+    expect(prose).not.toMatch(/production[- ]ready\.(?!It is not)/i);
+  });
+
+  it('admits it is not a sandbox', () => {
+    expect(prose).toMatch(/not a sandbox/i);
   });
 });
 
@@ -152,7 +241,17 @@ describe('downloads', () => {
 
   it('does not describe the macOS build as universal', () => {
     // There is no universal binary; Intel and Apple Silicon ship separately.
-    expect(html).not.toMatch(/universal\s+\.dmg/i);
+    expect(prose).not.toMatch(/universal\s+\.dmg/i);
+  });
+
+  it('does not claim a canonical URL the project does not control', () => {
+    // Regression: the canonical pointed at waypoint.dev, a domain this
+    // project does not own. Search engines would have been told to index a
+    // URL that is not the site being served.
+    const canonical = html.match(/rel="canonical"\s+href="([^"]+)"/)?.[1];
+    expect(canonical).toBeDefined();
+    expect(canonical).not.toMatch(/waypoint\.dev/);
+    expect(canonical).toMatch(/^https:\/\/debarun1205\.github\.io\/Waypoint\/?$/);
   });
 });
 
@@ -243,6 +342,38 @@ describe('demo prompts', () => {
     // Text from the demo file must never be interpolated into markup.
     expect(demos).not.toMatch(/innerHTML/);
     expect(demos).toMatch(/textContent/);
+  });
+});
+
+describe('files served to the browser', () => {
+  it('parses demos.js as JavaScript', async () => {
+    // Regression: demos.js shipped with TypeScript annotations (`: void`,
+    // `<HTMLButtonElement>`, `as X`). Browsers cannot parse those, so the
+    // module threw a SyntaxError and the "See it decide" section rendered
+    // empty on the live site. Every other demo assertion read the file as
+    // text, so nothing noticed: eight prompts were in the file and none were
+    // ever displayed.
+    //
+    // Importing it is what makes that class of bug fail the build.
+    const module = await import('../site/assets/demos.js');
+
+    expect(Array.isArray(module.DEMOS)).toBe(true);
+    expect(module.DEMOS.length).toBeGreaterThanOrEqual(8);
+  });
+
+  it('carries no TypeScript-only syntax in browser-served JavaScript', () => {
+    // A belt-and-braces guard that does not depend on the bundler used by the
+    // test runner. These are the constructs that have actually appeared here.
+    const code = demos
+      // Comments are documentation, not code, and mention the syntax.
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/^\s*\/\/.*$/gm, '');
+
+    expect(code).not.toMatch(/:\s*void\b/);
+    expect(code).not.toMatch(/\bas\s+[A-Z][A-Za-z]*\b/);
+    expect(code).not.toMatch(/<[A-Z][A-Za-z]*>\(/);
+    expect(code).not.toMatch(/\binterface\s+\w+/);
+    expect(code).not.toMatch(/^\s*(export\s+)?type\s+\w+\s*=/m);
   });
 });
 

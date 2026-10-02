@@ -1,12 +1,18 @@
 /**
  * Demo prompts shown on the site.
  *
- * Kept in a JSON-like module rather than inline in the HTML so the same list
- * can be reused by the app and asserted by a test. The site loads this file;
- * the app imports the equivalent from @waypoint/app-core.
+ * Kept in a plain data module rather than inline in the HTML so the same list
+ * can be reused by the app and asserted by a test. The site loads this file
+ * directly; the app imports the equivalent from @waypoint/app-core.
  *
- * `expectedTier` is the tier the shipped classifier produces. A test
- * verifies that, so the marketing copy cannot drift from the engine.
+ * `tier` is the tier the shipped classifier produces. A test runs every prompt
+ * through the real classifier and requires the tier to match, so the marketing
+ * copy cannot drift from the engine.
+ *
+ * This file is served to the browser as-is. It must therefore be valid
+ * JavaScript with no type annotations: browsers do not understand `: void`,
+ * and a stray annotation fails to parse silently, leaving the section empty.
+ * tests/site.test.ts imports this module, so a syntax error fails the build.
  */
 
 export const DEMOS = [
@@ -78,7 +84,7 @@ const TIER_LABEL = {
   frontier: 'frontier',
 };
 
-function render(): void {
+function render() {
   const container = document.getElementById('demo-list');
   if (!container) return;
 
@@ -119,11 +125,11 @@ function render(): void {
 }
 
 /** Tabs for the install snippets. */
-function wireTabs(): void {
-  const tabs = Array.from(document.querySelectorAll<HTMLButtonElement>('.tab'));
+function wireTabs() {
+  const tabs = Array.from(document.querySelectorAll('.tab'));
   if (tabs.length === 0) return;
 
-  const show = (tab: HTMLButtonElement): void => {
+  const show = (tab) => {
     for (const other of tabs) {
       const isActive = other === tab;
       other.classList.toggle('is-active', isActive);
@@ -147,10 +153,19 @@ function wireTabs(): void {
       const delta = event.key === 'ArrowRight' ? 1 : -1;
       const next = tabs[(index + delta + tabs.length) % tabs.length];
       next?.focus();
-      show(next as HTMLButtonElement);
+      show(next);
     });
   }
 }
 
-render();
-wireTabs();
+/**
+ * Wire the page up, but only where there is a page.
+ *
+ * The guard keeps this module importable from Node, which is what lets the
+ * test suite execute it and catch a syntax error. In a browser `document`
+ * always exists and the behaviour is unchanged.
+ */
+if (typeof document !== 'undefined') {
+  render();
+  wireTabs();
+}
