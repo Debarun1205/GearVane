@@ -3,6 +3,7 @@
   "productName": "Waypoint",
   "version": "0.2.0",
   "description": "Route each prompt to the cheapest model tier that can do the job",
+  "author": "Debarun",
   "license": "MIT",
   "private": true,
   "type": "module",
@@ -38,6 +39,7 @@
   "build": {
     "appId": "dev.waypoint.app",
     "productName": "Waypoint",
+    "electronVersion": "33.4.11",
     "directories": {
       "output": "release",
       "buildResources": "resources"
@@ -61,9 +63,6 @@
     "mac": {
       "target": [{ "target": "dmg", "arch": ["x64", "arm64"] }],
       "category": "public.app-category.developer-tools"
-    },
-    "android": {
-      "target": "apk"
     }
   }
 }

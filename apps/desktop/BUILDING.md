@@ -28,6 +28,12 @@ npm run dist:win
 Output lands in `release/`. Produces an NSIS installer and a portable
 executable for x64.
 
+**Symlink privilege:** electron-builder extracts its `winCodeSign` helper
+with symbolic links, which Windows refuses without Developer Mode or an
+elevated shell. If packaging fails with `Cannot create symbolic link`, enable
+Developer Mode in *Settings → System → For developers*, or run the build from
+an elevated shell. CI runners are unaffected.
+
 ## Linux
 
 ```bash
