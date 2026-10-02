@@ -351,6 +351,37 @@ export class Orchestrator {
           history,
         };
       } catch (error) {
+        // An abort is the caller cancelling, not a provider fault. Retrying
+        // would re-issue a request the user already cancelled, and the
+        // replacement call never sees a fresh abort event, so it hangs.
+        if (options.signal?.aborted) {
+          history.push({
+            attempt: attempt + 1,
+            tier: decision.tier,
+            model: decision.model,
+            success: false,
+            error: 'cancelled',
+          });
+          return {
+            taskId,
+            success: false,
+            content: '',
+            tier: decision.tier,
+            provider: decision.provider.name,
+            model: decision.model,
+            attempts: attempt + 1,
+            escalated: escalatedAny,
+            costUsd: round(totalCost),
+            tokensIn: totalIn,
+            tokensOut: totalOut,
+            durationMs: Date.now() - startedAt,
+            confidence: decision.confidence,
+            reasons: decision.reasons,
+            error: 'cancelled',
+            history,
+          };
+        }
+
         const message = describeError(error);
 
         this.router.reportFailure(taskId);
