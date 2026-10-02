@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process';
-import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
+import { access, constants, mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
@@ -10,6 +10,44 @@ import { createZip, renderPreview, toBase64 } from '../src/builder/bundle.js';
 import { plan, type ScaffoldFile } from '../src/builder/scaffold.js';
 
 const exec = promisify(execFile);
+
+/**
+ * Extract with whatever the platform actually provides.
+ *
+ * An earlier version shelled out to PowerShell, which made these tests pass
+ * locally and fail on the Linux runner with 'spawn powershell ENOENT'. A test
+ * that only runs on the author's machine is not a test.
+ *
+ * `unzip` on POSIX, PowerShell on Windows, and a skip if neither exists, which
+ * is the honest outcome rather than a false pass.
+ */
+async function extract(zipPath: string, outDir: string): Promise<'unzip' | 'powershell' | null> {
+  if (process.platform === 'win32') {
+    const script =
+      `Add-Type -AssemblyName System.IO.Compression.FileSystem; ` +
+      `[System.IO.Compression.ZipFile]::ExtractToDirectory('${zipPath}', '${outDir}')`;
+    await exec('powershell', ['-NoProfile', '-Command', script], { timeout: 60_000 });
+    return 'powershell';
+  }
+
+  try {
+    await access('/usr/bin/unzip', constants.X_OK);
+  } catch {
+    return null;
+  }
+
+  await exec('unzip', ['-q', zipPath, '-d', outDir], { timeout: 60_000 });
+  return 'unzip';
+}
+
+/** An extractor available on this machine, or null if there is none. */
+let extractor: Awaited<ReturnType<typeof extract>> | undefined;
+
+/** Describe why a verification is unavailable, if it is. */
+const extractorNote = (): string =>
+  extractor === null
+    ? 'no zip extractor available on this platform'
+    : `using ${extractor}`;
 
 const FILES: ScaffoldFile[] = [
   { path: 'index.html', contents: '<!doctype html><title>Hi</title><h1>Hello</h1>' },
@@ -114,22 +152,17 @@ describe('zip structure', () => {
 });
 
 describe('a real extractor agrees', () => {
-  it('extracts through PowerShell Expand-Archive', async () => {
+  it('extracts an archive we produced', async () => {
+    extractor = await extractProbe();
+
     const base = await mkdtemp(join(tmpdir(), 'waypoint-zip-'));
     const zipPath = join(base, 'out.zip');
     const outDir = join(base, 'out');
 
     await writeFile(zipPath, createZip(FILES));
 
-    const script =
-      `Add-Type -AssemblyName System.IO.Compression.FileSystem; ` +
-      `[System.IO.Compression.ZipFile]::ExtractToDirectory('${zipPath}', '${outDir}')`;
-
-    await exec(
-      'powershell',
-      ['-NoProfile', '-Command', script],
-      { timeout: 60_000 },
-    );
+    const used = await extract(zipPath, outDir);
+    expect(used, extractorNote()).not.toBeNull();
 
     const index = await readFile(join(outDir, 'index.html'), 'utf8');
     expect(index).toContain('Hello');
@@ -137,7 +170,49 @@ describe('a real extractor agrees', () => {
     const nested = await readFile(join(outDir, 'nested', 'deep', 'file.txt'), 'utf8');
     expect(nested).toBe('nested content');
   }, 90_000);
+
+  it('extracts a scaffold, dotfile included', async () => {
+    extractor = await extractProbe();
+
+    const result = plan({
+      templateId: 'landing',
+      values: {
+        projectName: 'Zip Test',
+        tagline: 'Check the archive',
+        features: 'One\nTwo',
+      },
+    });
+
+    const base = await mkdtemp(join(tmpdir(), 'waypoint-zip-scaffold-'));
+    const zipPath = join(base, 'site.zip');
+    const outDir = join(base, 'out');
+
+    await writeFile(zipPath, createZip(result.files));
+
+    const used = await extract(zipPath, outDir);
+    expect(used, extractorNote()).not.toBeNull();
+
+    const html = await readFile(join(outDir, 'index.html'), 'utf8');
+    expect(html).toContain('Zip Test');
+    expect(html).toContain('One');
+
+    // The gitignore is a dotfile, which is the case most likely to be dropped.
+    const gitignore = await readFile(join(outDir, '.gitignore'), 'utf8');
+    expect(gitignore).toContain('node_modules/');
+  }, 90_000);
 });
+
+/** Probe once, so a missing extractor is reported rather than thrown. */
+async function extractProbe(): Promise<'unzip' | 'powershell' | null> {
+  if (extractor !== undefined) return extractor;
+
+  const base = await mkdtemp(join(tmpdir(), 'waypoint-zip-probe-'));
+  const probe = join(base, 'probe.zip');
+  await writeFile(probe, createZip([{ path: 'probe.txt', contents: 'ok' }]));
+
+  extractor = await extract(probe, join(base, 'out')).catch(() => null);
+  return extractor;
+}
 
 describe('preview rendering', () => {
   it('shows a complete document as-is', () => {
@@ -174,41 +249,4 @@ describe('preview rendering', () => {
     const output = renderPreview({ path: 'README.md', contents: '# Title' }, []);
     expect(output).toContain('needs a renderer');
   });
-});
-
-describe('scaffold output zips cleanly', () => {
-  it('produces an extractable archive from a real scaffold', async () => {
-    const result = plan({
-      templateId: 'landing',
-      values: {
-        projectName: 'Zip Test',
-        tagline: 'Check the archive',
-        features: 'One\nTwo',
-      },
-    });
-
-    const base = await mkdtemp(join(tmpdir(), 'waypoint-zip-scaffold-'));
-    const zipPath = join(base, 'site.zip');
-    const outDir = join(base, 'out');
-
-    await writeFile(zipPath, createZip(result.files));
-
-    const script =
-      `Add-Type -AssemblyName System.IO.Compression.FileSystem; ` +
-      `[System.IO.Compression.ZipFile]::ExtractToDirectory('${zipPath}', '${outDir}')`;
-
-    await exec(
-      'powershell',
-      ['-NoProfile', '-Command', script],
-      { timeout: 60_000 },
-    );
-
-    const html = await readFile(join(outDir, 'index.html'), 'utf8');
-    expect(html).toContain('Zip Test');
-    expect(html).toContain('One');
-
-    // The gitignore is a dotfile, which is the case most likely to be dropped.
-    const gitignore = await readFile(join(outDir, '.gitignore'), 'utf8');
-    expect(gitignore).toContain('node_modules/');
-  }, 90_000);
 });
