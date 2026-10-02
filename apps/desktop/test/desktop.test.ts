@@ -42,12 +42,26 @@ describe('desktop manifest', () => {
     }
   });
 
-  it('targets multiple Linux architectures', () => {
+  it('covers both Linux architectures via deb', () => {
     const linux = manifest.build.linux as unknown as {
-      target: Array<{ arch?: string[] }>;
+      target: Array<{ target: string; arch?: string[] }>;
     };
-    expect(linux.target[0]?.arch).toContain('x64');
-    expect(linux.target[0]?.arch).toContain('arm64');
+
+    const deb = linux.target.find((entry) => entry.target === 'deb');
+    expect(deb?.arch).toContain('x64');
+    expect(deb?.arch).toContain('arm64');
+  });
+
+  it('builds the AppImage for x64 only', () => {
+    // arm64 AppImages cannot be cross-built reliably on an x64 runner, so
+    // they are dropped rather than failing the whole release. deb covers
+    // arm64.
+    const linux = manifest.build.linux as unknown as {
+      target: Array<{ target: string; arch?: string[] }>;
+    };
+
+    const appImage = linux.target.find((entry) => entry.target === 'AppImage');
+    expect(appImage?.arch).toEqual(['x64']);
   });
 
   it('includes the renderer in the packaged files', () => {
