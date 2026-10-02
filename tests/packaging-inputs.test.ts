@@ -15,7 +15,7 @@ const APP = join(REPO, 'apps', 'desktop');
 const RESOURCES = join(APP, 'resources');
 
 const manifest = JSON.parse(readFileSync(join(APP, 'package.json'), 'utf8')) as {
-  author?: string;
+  author?: { name?: string; email?: string } | string;
   homepage?: string;
   repository?: unknown;
   devDependencies: { electron: string };
@@ -114,8 +114,17 @@ describe('electron-builder configuration is valid', () => {
   });
 
   it('declares an author at the top level, not inside build', () => {
-    expect(manifest.author).toBeTruthy();
     expect(Object.keys(manifest.build)).not.toContain('author');
+  });
+
+  it('gives the author a name and an email', () => {
+    // Regression: the deb target needs an email in the maintainer field and
+    // fails with 'Please specify author email'. A bare author string was
+    // enough for Windows and macOS, so only the Linux job surfaced it.
+    const author = manifest.author as { name?: string; email?: string };
+    expect(typeof author).toBe('object');
+    expect(author.name).toBeTruthy();
+    expect(author.email).toMatch(/^[^@\s]+@[^@\s]+\.[^@\s]+$/);
   });
 
   it('pins electronVersion so detection is not required', () => {
