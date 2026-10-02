@@ -22,8 +22,10 @@ multi-model harness needs most and usually gets wrong.
 | CLI, Electron app, VS Code extension, Android app | done |
 | Tool call **parsing** from a provider response | done |
 | Workspace path containment for file tools | done |
+| Tool layer: schema, validation, registry, dispatch | done |
+| File tools: read, write, edit, list, mkdir | done |
 | Tool call **advertising** to a provider | **not done** |
-| Tool execution | **not done** |
+| Agent loop | **not done** |
 | Agent loop | **not done** |
 | Context management | **not done** |
 | Session persistence | **not done** |

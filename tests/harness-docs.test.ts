@@ -49,8 +49,12 @@ describe('the document does not overstate what exists', () => {
       path: join('packages', 'harness', 'src', 'agent'),
     },
     {
-      label: 'Tool execution',
-      path: join('packages', 'harness', 'src', 'tools'),
+      label: 'Tool layer',
+      path: join('packages', 'harness', 'src', 'tools', 'registry.ts'),
+    },
+    {
+      label: 'File tools',
+      path: join('packages', 'harness', 'src', 'tools', 'fs.ts'),
     },
     {
       label: 'Workspace path containment',
