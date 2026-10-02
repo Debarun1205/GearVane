@@ -5,12 +5,25 @@ deploys to any static host by copying this directory.
 
 ## Deploy
 
-```bash
-# Any static host
-cp -r site/* /path/to/public/
+### GitHub Pages
 
-# GitHub Pages
-gh-pages -d site
+One prerequisite, which is a repository setting rather than a code change:
+
+1. Open **Settings → Pages**
+2. Under **Build and deployment**, set **Source** to **GitHub Actions**
+
+Until that is set, the `Deploy site` workflow fails at the
+`actions/configure-pages` step. The site itself builds fine; only the upload
+step needs the setting. Enabling it requires admin rights on the repository,
+so it cannot be done from a fine-grained token.
+
+After enabling, pushes to `master` publish `site/` automatically.
+
+### Any other static host
+
+```bash
+# No build step: copy the directory
+cp -r site/* /path/to/public/
 
 # Netlify, Vercel, Cloudflare Pages, S3: publish directory is site/
 ```
