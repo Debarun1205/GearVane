@@ -9,12 +9,20 @@ import {
   type WaypointConfig,
 } from '@waypoint/core';
 
-/** Searched in order when no config path is given. */
+/**
+ * Searched in order when no config path is given.
+ *
+ * Includes config.example.yaml so this CLI behaves like the Python one in a
+ * fresh checkout, where the example is the only config present. Without it
+ * the two CLIs would route the same prompt to different tiers purely because
+ * of which file they happened to find.
+ */
 const CONFIG_FILENAMES = [
   'waypoint.config.json',
   'waypoint.config.yaml',
   'waypoint.yaml',
   'config.yaml',
+  'config.example.yaml',
   '.waypoint/config.yaml',
 ];
 

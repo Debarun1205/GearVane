@@ -8,6 +8,7 @@ from pathlib import Path
 
 import yaml
 
+from . import __version__
 from .classifier import TaskContext, Tier
 from .cost import CostTracker
 from .dashboard import DashboardGenerator
@@ -573,6 +574,7 @@ def build_parser() -> argparse.ArgumentParser:
         description="Waypoint - Open-source AI harness with intelligent task routing",
     )
     parser.add_argument("--config", default="config.yaml", help="Path to config file")
+    parser.add_argument("--version", action="version", version=f"waypoint {__version__}")
     subparsers = parser.add_subparsers(dest="command", help="Command to run")
 
     # route
@@ -665,6 +667,11 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main():
     parser = build_parser()
+    # --version and --help are argparse actions that exit during parse_args,
+    # so they must not be short-circuited by the subcommand check below.
+    if len(sys.argv) > 1 and sys.argv[1] in ("--version", "-V"):
+        parser.parse_args()
+
     # Dispatch on sys.argv[1] directly. Subparser options can collide with the
     # parser's own "command" dest, so args.command is not reliable here.
     subcommand = sys.argv[1] if len(sys.argv) > 1 and not sys.argv[1].startswith("-") else None

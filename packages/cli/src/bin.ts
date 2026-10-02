@@ -23,6 +23,8 @@ import { loadConfig } from './config-loader.js';
 
 const HELP = `waypoint ${VERSION} - route each task to the cheapest model tier that can do the job
 
+waypoint --version
+
 Usage:
   waypoint route --task "<description>" [--files a b] [--json]
   waypoint run   --task "<description>" [--files a b] [--stream] [--json]
@@ -47,6 +49,8 @@ async function main(argv: string[]): Promise<number> {
   const args = parseArgs(argv);
   const useColor = !flagBool(args, 'no-color') && process.stdout.isTTY === true;
 
+  // Handled before the subcommand check, because --version is not a
+  // subcommand and must not fall through to the help path.
   if (flagBool(args, 'version')) {
     process.stdout.write(`${VERSION}\n`);
     return 0;

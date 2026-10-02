@@ -2,38 +2,178 @@ name: Release
 
 on:
   push:
-    tags:
-      - "v*.*.*"
+    tags: ['v*.*.*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
-  release:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
+  # Desktop installers. Each platform builds on its own runner: electron-builder
+  # cannot produce a macOS installer off macOS, and a Linux AppImage built on
+  # Windows is not supported.
+  desktop:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            platform: mac
+          - os: windows-latest
+            platform: win
+          - os: ubuntu-latest
+            platform: linux
 
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-node@v4
         with:
-          python-version: "3.11"
+          node-version: 20
+          cache: npm
 
       - name: Install dependencies
+        run: npm ci
+
+      - name: Build core and app packages
         run: |
-          pip install build twine
+          npm run build --workspace @waypoint/core
+          npm run build --workspace @waypoint/app-core
+          npm run build --workspace waypoint-app
 
-      - name: Build package
-        run: python -m build
+      - name: Package installers
+        working-directory: apps/desktop
+        run: npx electron-builder --${{ matrix.platform }} --publish never
 
-      - name: Create Release
+      - name: Collect artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: waypoint-${{ matrix.platform }}
+          path: |
+            apps/desktop/release/*.exe
+            apps/desktop/release/*.dmg
+            apps/desktop/release/*.AppImage
+            apps/desktop/release/*.deb
+            apps/desktop/release/*.zip
+          if-no-files-found: error
+
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Install Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build shared packages
+        run: |
+          npm run build --workspace @waypoint/core
+          npm run build --workspace @waypoint/app-core
+          npm run build --workspace waypoint-app
+
+      - name: Create the native Android project
+        working-directory: apps/desktop
+        run: npx cap add android
+
+      - name: Sync the renderer
+        working-directory: apps/desktop
+        run: npx cap sync android
+
+      - name: Build a debug APK
+        working-directory: apps/desktop
+        # A debug APK needs no keystore. A signed release needs one supplied as
+        # a repository secret; see apps/desktop/BUILDING.md.
+        run: cd android && ./gradlew assembleDebug --no-daemon
+
+      - name: Collect the APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: waypoint-android
+          path: apps/desktop/android/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+
+  vscode:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: |
+          npm run build --workspace @waypoint/core
+          npm run build --workspace waypoint
+
+      - name: Package the extension
+        working-directory: apps/vscode-extension
+        run: npx vsce package --no-dependencies --allow-missing-repository
+
+      - name: Collect the VSIX
+        uses: actions/upload-artifact@v4
+        with:
+          name: waypoint-vscode
+          path: apps/vscode-extension/*.vsix
+          if-no-files-found: error
+
+  publish:
+    needs: [desktop, android, vscode]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download every artifact
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: List what will be published
+        run: ls -lh artifacts
+
+      # Binaries are unsigned: macOS Gatekeeper and Windows SmartScreen will
+      # warn. Signing needs certificates that do not belong in this repository.
+      - name: Create the GitHub release
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/*
+          files: artifacts/*
           generate_release_notes: true
+          fail_on_unmatched_files: true
+          body: |
+            ## Unsigned builds
 
-      - name: Publish to PyPI
-        env:
-          TWINE_USERNAME: __token__
-          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
-        run: twine upload dist/*
+            These artifacts are **not code signed**. macOS Gatekeeper and Windows
+            SmartScreen will warn on first launch.
+
+            - macOS: right-click the app and choose Open, or
+              `xattr -d com.apple.quarantine /Applications/Waypoint.app`
+            - Windows: choose More info then Run anyway
+
+            ## Checksums
+
+            Verify before running:
+
+            ```
+            sha256sum *
+            ```

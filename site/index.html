@@ -1,0 +1,450 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Waypoint - route each prompt to the cheapest model that can do the job</title>
+    <meta
+      name="description"
+      content="Waypoint classifies each request and picks the cheapest model tier that can do the job. Local models for simple edits, frontier models for hard problems, and nothing in between you did not ask for."
+    />
+    <link rel="canonical" href="https://waypoint.dev/" />
+    <link rel="stylesheet" href="./assets/styles.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <header class="site-header">
+      <div class="wrap header-inner">
+        <a class="logo" href="#top">
+          <span class="logo-mark" aria-hidden="true"></span>
+          <span>Waypoint</span>
+        </a>
+        <nav aria-label="Main">
+          <a href="#how">How it works</a>
+          <a href="#tiers">Tiers</a>
+          <a href="#demos">Demos</a>
+          <a href="#download">Download</a>
+          <a href="#faq">FAQ</a>
+          <a
+            class="button button-small"
+            href="https://github.com/Debarun1205/Waypoint"
+            rel="noopener"
+            >GitHub</a
+          >
+        </nav>
+      </div>
+    </header>
+
+    <main id="main">
+      <!-- hero ------------------------------------------------------------ -->
+      <section class="hero" id="top">
+        <div class="wrap">
+          <p class="eyebrow">Open source, MIT licensed</p>
+          <h1>Stop paying frontier prices for a typo fix.</h1>
+          <p class="lede">
+            Waypoint reads what you asked for, decides which model tier can
+            actually do the job, and escalates only when a cheaper model
+            fails. Simple edits run on a local model for free.
+          </p>
+          <div class="hero-actions">
+            <a class="button" href="#download">Download</a>
+            <a class="button button-ghost" href="#demos">See it decide</a>
+          </div>
+          <p class="hero-note">
+            Works on Windows, Linux, macOS, and Android. Bring your own keys,
+            or run entirely on your own machine.
+          </p>
+        </div>
+      </section>
+
+      <!-- how it works ---------------------------------------------------- -->
+      <section class="section" id="how">
+        <div class="wrap">
+          <h2>How it works</h2>
+          <p class="section-lede">
+            Three tiers, classified per request, with escalation on real
+            failure rather than guesswork.
+          </p>
+
+          <ol class="steps">
+            <li>
+              <span class="step-number">1</span>
+              <h3>Classify</h3>
+              <p>
+                Keywords, files touched, error loops, and test failures are
+                scored into a tier with a confidence you can inspect. Every
+                decision shows its reasons.
+              </p>
+            </li>
+            <li>
+              <span class="step-number">2</span>
+              <h3>Run</h3>
+              <p>
+                The cheapest tier that plausibly works runs first. Budget is
+                checked before a single token is spent.
+              </p>
+            </li>
+            <li>
+              <span class="step-number">3</span>
+              <h3>Escalate only if it fails</h3>
+              <p>
+                Failures feed back into the next decision. A local model that
+                cannot do the job moves the task up a tier, bounded so an
+                impossible task cannot burn every model in sequence.
+              </p>
+            </li>
+          </ol>
+        </div>
+      </section>
+
+      <!-- tiers ----------------------------------------------------------- -->
+      <section class="section section-alt" id="tiers">
+        <div class="wrap">
+          <h2>Tiers</h2>
+          <p class="section-lede">
+            Configure one, two, or all three. Local-only works with no API key
+            at all.
+          </p>
+
+          <div class="tier-grid">
+            <article class="tier tier-local">
+              <header>
+                <h3>local</h3>
+                <span class="tier-cost">free</span>
+              </header>
+              <p>Ollama, LM Studio, llama.cpp, vLLM</p>
+              <ul>
+                <li>Typos, formatting, renames</li>
+                <li>Small mechanical refactors</li>
+                <li>Boilerplate and documentation</li>
+              </ul>
+            </article>
+
+            <article class="tier tier-mid">
+              <header>
+                <h3>mid</h3>
+                <span class="tier-cost">low</span>
+              </header>
+              <p>Haiku, Flash, GPT-4o-mini, and similar</p>
+              <ul>
+                <li>Multi-file changes</li>
+                <li>Adding an endpoint or a test</li>
+                <li>Edge-case reasoning</li>
+              </ul>
+            </article>
+
+            <article class="tier tier-frontier">
+              <header>
+                <h3>frontier</h3>
+                <span class="tier-cost">billed</span>
+              </header>
+              <p>Claude Sonnet and Opus, GPT-4o, o3</p>
+              <ul>
+                <li>Architecture and design</li>
+                <li>Concurrency and debugging</li>
+                <li>Performance investigation</li>
+              </ul>
+            </article>
+          </div>
+
+          <p class="note">
+            Cost is checked against your own limits before a request runs. A
+            task that cannot fit the budget never reaches a provider.
+          </p>
+        </div>
+      </section>
+
+      <!-- demos ----------------------------------------------------------- -->
+      <section class="section" id="demos">
+        <div class="wrap">
+          <h2>See it decide</h2>
+          <p class="section-lede">
+            Real prompts, and the tier Waypoint picks for each. These are the
+            same examples shipped in the app.
+          </p>
+          <div class="demo-list" id="demo-list">
+            <!-- populated by demos.js from a single shared data file -->
+          </div>
+        </div>
+      </section>
+
+      <!-- download -------------------------------------------------------- -->
+      <section class="section section-alt" id="download">
+        <div class="wrap">
+          <h2>Download</h2>
+          <p class="section-lede">
+            The routing engine is the same on every platform. Pick yours.
+          </p>
+
+          <div class="download-grid">
+            <article class="download-card">
+              <h3>Windows</h3>
+              <p>NSIS installer and a portable executable, x64.</p>
+              <a
+                class="button button-small"
+                href="https://github.com/Debarun1205/Waypoint/releases"
+                rel="noopener"
+                >Download .exe</a
+              >
+            </article>
+
+            <article class="download-card">
+              <h3>Linux</h3>
+              <p>AppImage and .deb, for x64 and arm64.</p>
+              <a
+                class="button button-small"
+                href="https://github.com/Debarun1205/Waypoint/releases"
+                rel="noopener"
+                >Download AppImage</a
+              >
+            </article>
+
+            <article class="download-card">
+              <h3>macOS</h3>
+              <p>Universal .dmg, Intel and Apple Silicon.</p>
+              <a
+                class="button button-small"
+                href="https://github.com/Debarun1205/Waypoint/releases"
+                rel="noopener"
+                >Download .dmg</a
+              >
+            </article>
+
+            <article class="download-card">
+              <h3>Android</h3>
+              <p>Debug APK built from the same renderer bundle.</p>
+              <a
+                class="button button-small"
+                href="https://github.com/Debarun1205/Waypoint/releases"
+                rel="noopener"
+                >Download APK</a
+              >
+            </article>
+          </div>
+
+          <div class="alt-install">
+            <h3>Prefer to install from source?</h3>
+            <p>
+              The VS Code extension, the TypeScript CLI, and the Python package
+              are all in the repository.
+            </p>
+            <div class="install-tabs" role="tablist" aria-label="Install methods">
+              <button
+                class="tab is-active"
+                role="tab"
+                aria-selected="true"
+                aria-controls="panel-npm"
+                id="tab-npm"
+                data-panel="panel-npm"
+                type="button"
+              >
+                npm
+              </button>
+              <button
+                class="tab"
+                role="tab"
+                aria-selected="false"
+                aria-controls="panel-pip"
+                id="tab-pip"
+                data-panel="panel-pip"
+                type="button"
+              >
+                Python
+              </button>
+              <button
+                class="tab"
+                role="tab"
+                aria-selected="false"
+                aria-controls="panel-vsix"
+                id="tab-vsix"
+                data-panel="panel-vsix"
+                type="button"
+              >
+                VS Code
+              </button>
+            </div>
+
+            <div class="install-panel is-active" id="panel-npm" role="tabpanel" aria-labelledby="tab-npm">
+              <pre><code>git clone https://github.com/Debarun1205/Waypoint
+cd Waypoint
+npm install
+npm run build --workspace @waypoint/core
+npm run build --workspace @waypoint/cli
+node packages/cli/dist/bin.js route --task "fix a typo"</code></pre>
+            </div>
+
+            <div class="install-panel" id="panel-pip" role="tabpanel" aria-labelledby="tab-pip" hidden>
+              <pre><code>python -m venv venv
+source venv/bin/activate        # Windows: venv\Scripts\activate
+pip install -r requirements.txt
+pip install -e .
+waypoint route --task "fix a typo"</code></pre>
+            </div>
+
+            <div class="install-panel" id="panel-vsix" role="tabpanel" aria-labelledby="tab-vsix" hidden>
+              <pre><code>cd apps/vscode-extension
+npm install
+npm run build
+npx @vscode/vsce package
+code --install-extension waypoint-0.2.0.vsix</code></pre>
+            </div>
+          </div>
+
+          <p class="note">
+            Signed installers are produced by CI on each release tag. This
+            repository does not contain signing keys, so a locally built
+            binary will be flagged by Gatekeeper and SmartScreen until you
+            sign it yourself.
+          </p>
+        </div>
+      </section>
+
+      <!-- faq ------------------------------------------------------------- -->
+      <section class="section" id="faq">
+        <div class="wrap">
+          <h2>FAQ</h2>
+
+          <details class="faq-item">
+            <summary>Do I need an API key?</summary>
+            <p>
+              Not to start. Install Ollama, pull a coder model, and Waypoint
+              routes everything local with no key at all. Add a hosted key
+              only if you want the mid and frontier tiers available.
+            </p>
+          </details>
+
+          <details class="faq-item">
+            <summary>Where are my keys stored?</summary>
+            <p>
+              In your shell environment, and nowhere else. Waypoint reads
+              <code>ANTHROPIC_API_KEY</code> and similar variables, and never
+              writes a credential to a config file, a log, or the dashboard.
+              Local model servers are never sent a key at all.
+            </p>
+          </details>
+
+          <details class="faq-item">
+            <summary>Does it work offline?</summary>
+            <p>
+              With only the local tier configured, yes. Nothing leaves your
+              machine. You can verify this by checking that no hosted provider
+              is present in your config.
+            </p>
+          </details>
+
+          <details class="faq-item">
+            <summary>How accurate is the routing?</summary>
+            <p>
+              The heuristic classifier is deterministic and shows its reasons,
+              so you can argue with it. Accuracy depends on your keywords and
+              file patterns, which you control. Once you have recorded enough
+              outcomes you can train the learned classifier, which
+              refines the choice but always defers to the heuristic on
+              disagreement.
+            </p>
+          </details>
+
+          <details class="faq-item">
+            <summary>What happens when a local model fails?</summary>
+            <p>
+              The failure is fed back into the next routing decision. After
+              the configured number of consecutive failures the task moves up
+              a tier. Escalation is bounded, so a task that genuinely cannot
+              be done will not march through every model in sequence.
+            </p>
+          </details>
+
+          <details class="faq-item">
+            <summary>Can I control the cost?</summary>
+            <p>
+              Yes. Set per-task, per-session, and per-day ceilings. Budget is
+              checked before tokens are spent, so a task that would exceed the
+              limit is refused rather than truncated. The app shows session
+              spend as a live meter.
+            </p>
+          </details>
+
+          <details class="faq-item">
+            <summary>Can it push code or deploy for me?</summary>
+            <p>
+              The harness ships gating for those operations, but by default it
+              will not act on your repository. Anything gated requires an
+              explicit approval, and a set of commands such as
+              <code>rm -rf</code> never run at all. Waypoint does not sandbox
+              execution, so treat approvals as you would treat running the
+              command yourself.
+            </p>
+          </details>
+
+          <details class="faq-item">
+            <summary>Which providers are supported?</summary>
+            <p>
+              Anything speaking the OpenAI chat completions API, which covers
+              OpenRouter, Groq, Together, vLLM, LM Studio, and llama.cpp's
+              server. Ollama has dedicated support, and the Anthropic Messages
+              API is supported directly.
+            </p>
+          </details>
+
+          <details class="faq-item">
+            <summary>Why both a Python package and a TypeScript one?</summary>
+            <p>
+              The Python package came first and remains the reference
+              implementation. It cannot be bundled into an Android app, so the
+              engine was ported to TypeScript with the same behaviour and its
+              own test suite. The CLI, the app, and the VS Code extension all
+              use the TypeScript engine.
+            </p>
+          </details>
+
+          <details class="faq-item">
+            <summary>Is it production ready?</summary>
+            <p>
+              No. It is alpha. The router, escalation, budget gates, and
+              provider clients are tested end to end. The learned classifier
+              trains and predicts but has not been evaluated against real
+              production traffic, which is the obvious next step.
+            </p>
+          </details>
+        </div>
+      </section>
+
+      <!-- closing --------------------------------------------------------- -->
+      <section class="section section-cta">
+        <div class="wrap cta">
+          <h2>Try it on one real task</h2>
+          <p>
+            Install a local model, run a typo fix through Waypoint, and watch
+            it stay on the free tier. Then try something hard and see it
+            escalate.
+          </p>
+          <div class="hero-actions">
+            <a class="button" href="#download">Download</a>
+            <a
+              class="button button-ghost"
+              href="https://github.com/Debarun1205/Waypoint"
+              rel="noopener"
+              >Read the source</a
+            >
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="wrap footer-inner">
+        <p>Waypoint is open source under the MIT licence.</p>
+        <nav aria-label="Footer">
+          <a href="https://github.com/Debarun1205/Waypoint" rel="noopener"
+            >GitHub</a
+          >
+          <a href="./SECURITY.md">Security</a>
+          <a href="./LICENSE">Licence</a>
+        </nav>
+      </div>
+    </footer>
+
+    <script type="module" src="./assets/demos.js"></script>
+  </body>
+</html>
