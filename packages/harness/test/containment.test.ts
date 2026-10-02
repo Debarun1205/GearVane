@@ -1,8 +1,8 @@
 import { mkdir, mkdtemp, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, sep } from 'node:path';
 
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 
 import {
   ContainmentError,
@@ -114,9 +114,20 @@ describe('Workspace.resolve accepts legitimate paths', () => {
     );
   });
 
-  it('normalises a forward slash on Windows', async () => {
+  it('normalises separators to the platform separator', async () => {
+    // Written platform-agnostically on purpose. An earlier version asserted
+    // the absence of '/', which is true on Windows and false everywhere else,
+    // so it passed locally and failed on the Linux CI runner.
     const resolved = await workspace.resolve('src/index.ts');
-    expect(resolved.includes('/')).toBe(false);
+    expect(resolved).toBe(join(root, 'src', 'index.ts'));
+    expect(resolved).not.toContain(sep === '/' ? '\\' : '/');
+  });
+
+  it('rejects traversal written with a forward slash', async () => {
+    // The shape a model emits, regardless of the platform it is running on.
+    await expect(
+      workspace.resolve('src/../../secrets/key.txt'),
+    ).rejects.toThrow(ContainmentError);
   });
 });
 
@@ -174,25 +185,31 @@ describe('Workspace.resolve rejects escapes', () => {
   });
 });
 
+/**
+ * Whether this platform lets us create a symlink.
+ *
+ * Probed at module scope, not in `beforeAll`. `it.skipIf` is evaluated while
+ * tests are being collected, which happens *before* any hook runs, so a flag
+ * set in `beforeAll` is still false at that point and the tests would skip on
+ * every platform, including the Linux CI runner that can create links fine.
+ */
+const symlinksAvailable = await (async () => {
+  const base = await mkdtemp(join(tmpdir(), 'waypoint-link-probe-'));
+  try {
+    await symlink(join(base, 'target'), join(base, 'link'));
+    return true;
+  } catch {
+    // Windows without Developer Mode or elevation returns EPERM here.
+    return false;
+  }
+})();
+
 describe('symbolic link escapes', () => {
   /**
-   * Windows requires Developer Mode or an elevated shell to create a symlink,
-   * so these tests are skipped there rather than failing. The logic itself is
-   * covered portably in the next block by injecting the resolver, which is the
-   * part that can actually be wrong.
+   * Skipped on Windows, which needs Developer Mode to create a link. The logic
+   * itself is covered portably in the next block by injecting the resolver,
+   * which is the part that can actually be wrong.
    */
-  let symlinksAvailable = false;
-
-  beforeAll(async () => {
-    const base = await mkdtemp(join(tmpdir(), 'waypoint-link-probe-'));
-    try {
-      await symlink(join(base, 'target'), join(base, 'link'));
-      symlinksAvailable = true;
-    } catch {
-      symlinksAvailable = false;
-    }
-  });
-
   const maybe = (name: string, fn: () => Promise<void>): void => {
     it.skipIf(!symlinksAvailable)(name, fn);
   };
