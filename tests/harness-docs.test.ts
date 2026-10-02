@@ -37,11 +37,30 @@ describe('the document does not overstate what exists', () => {
    * Capabilities the harness is intended to have. Each entry is marked either
    * done or not done in the document; this test verifies the marks match the
    * repository rather than the author's optimism.
+   *
+   * The marker a row must contain depends on what proves it. That matters for
+   * sandboxing in particular: the file half of containment is built, so keying
+   * that row on the workspace directory alone would let "sandboxed" appear
+   * next to a feature that protects files only.
    */
   const CAPABILITIES = [
-    { label: 'Agent loop', path: join('packages', 'harness', 'src', 'agent') },
-    { label: 'Tool execution', path: join('packages', 'harness', 'src', 'tools') },
-    { label: 'Sandboxing', path: join('packages', 'harness', 'src', 'workspace') },
+    {
+      label: 'Agent loop',
+      path: join('packages', 'harness', 'src', 'agent'),
+    },
+    {
+      label: 'Tool execution',
+      path: join('packages', 'harness', 'src', 'tools'),
+    },
+    {
+      label: 'Workspace path containment',
+      path: join('packages', 'harness', 'src', 'workspace'),
+    },
+    {
+      // The shell tool is what would make this true.
+      label: 'Shell containment and sandboxing',
+      path: join('packages', 'harness', 'src', 'tools', 'shell'),
+    },
   ];
 
   it.each(CAPABILITIES)(
@@ -49,7 +68,6 @@ describe('the document does not overstate what exists', () => {
     ({ label, path }) => {
       const exists = existsSync(join(REPO, path));
 
-      // Find the row mentioning this capability and read its state.
       const row = doc
         .split('\n')
         .find((line) => line.includes(label) && line.trim().startsWith('|'));
@@ -76,15 +94,23 @@ describe('the document does not overstate what exists', () => {
     }
   });
 
-  it('never claims the harness has a sandbox while none is built', () => {
-    const hasWorkspace = existsSync(
-      join(REPO, 'packages', 'harness', 'src', 'workspace'),
+  it('never claims the harness has a sandbox while the shell tool is missing', () => {
+    const hasShell = existsSync(
+      join(REPO, 'packages', 'harness', 'src', 'tools', 'shell'),
     );
 
-    if (!hasWorkspace) {
-      expect(prose).toMatch(/Sandboxing\s*\|\s*\*\*not done\*\*/);
+    if (!hasShell) {
+      expect(prose).toMatch(/Shell containment and sandboxing\s*\|\s*\*\*not done\*\*/);
       expect(prose).toMatch(/no sandbox/i);
     }
+  });
+
+  it('separates file containment from command containment', () => {
+    // The distinction that keeps "sandboxed" honest while only files are
+    // confined.
+    expect(prose).toMatch(/separate rows on purpose/i);
+    expect(prose).toMatch(/file half/i);
+    expect(prose).toMatch(/command half/i);
   });
 });
 

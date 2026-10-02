@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
@@ -35,14 +35,16 @@ describe('repository layout', () => {
   });
 
   it('documents every workspace in the README', () => {
-    for (const workspace of pkg.workspaces) {
-      const prefix = workspace.replace('/*', '');
-      if (prefix === 'packages' || prefix === 'apps') continue;
-      // Every concrete package directory should be mentioned somewhere.
-      for (const entry of ['core', 'cli', 'app-core']) {
-        if (existsSync(join(REPO, prefix, entry))) {
-          expect(readme).toContain(`${prefix}/${entry}`);
-        }
+    // Discovered rather than hardcoded: a hardcoded list silently stops
+    // requiring documentation the moment a package is added, which is exactly
+    // when it is most likely to be forgotten.
+    for (const prefix of ['packages', 'apps']) {
+      for (const entry of readdirSync(join(REPO, prefix), { withFileTypes: true })) {
+        if (!entry.isDirectory()) continue;
+        expect(
+          readme.includes(`${prefix}/${entry.name}`),
+          `${prefix}/${entry.name} exists but is not documented in the README`,
+        ).toBe(true);
       }
     }
   });

@@ -21,12 +21,18 @@ multi-model harness needs most and usually gets wrong.
 | Cost tracking and budget gates | done |
 | CLI, Electron app, VS Code extension, Android app | done |
 | Tool call **parsing** from a provider response | done |
+| Workspace path containment for file tools | done |
 | Tool call **advertising** to a provider | **not done** |
-| Agent loop | **not done** |
 | Tool execution | **not done** |
+| Agent loop | **not done** |
 | Context management | **not done** |
 | Session persistence | **not done** |
-| Sandboxing | **not done** |
+| Shell containment and sandboxing | **not done** |
+
+Path containment and sandboxing are separate rows on purpose. File paths are
+confined today. Command execution is not: the shell tool does not exist, so
+there is nothing confining it yet. Collapsing the two into one row would let
+"sandboxed" be written next to a feature that only protects files.
 
 The last two rows are the same bug seen twice: `Completion.toolCalls` is
 populated by `normaliseToolCalls`, so the plumbing to *read* a tool call
@@ -77,18 +83,21 @@ This is the part that becomes critical rather than cosmetic once an agent can
 write files and run commands.
 
 Gating is not containment. Asking "may I run this command?" does not stop a
-command that was already allowed from touching anything on the machine. The
-tool layer therefore confines **every** path operation to a workspace root:
+command that was already allowed from touching anything on the machine.
 
-- paths resolve against the root, and the resolved real path must stay inside
-  it, so `..`, absolute paths, and symlinks out of the tree are all rejected
+What exists today is the file half. `Workspace` in `packages/harness` resolves
+every path against a root and re-checks the *real* path, so `..`, absolute
+paths, and symlinks pointing out of the tree are all rejected. What does not
+exist is the command half, so the remaining requirements are:
+
 - reads have a size cap so a model cannot pull a whole disk into its context
 - writes require the parent directory to exist or be created explicitly
-- the shell tool runs through `SafetyManager` and additionally has its working
-  directory pinned to the workspace
+- the shell tool runs through `SafetyManager` with its working directory pinned
+  to the workspace, and cannot be talked out of that by the command string
 
-Until that is built and tested, the honest statement is that the harness has
-no sandbox. The README says so, and a test asserts it keeps saying so.
+Until the command half is built, the honest statement is that the harness has
+file containment and **no sandbox**. The README says so, and a test asserts it
+keeps saying so.
 
 ## Multi-model
 

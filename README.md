@@ -26,7 +26,9 @@ instead of guessing.
 | Component | Path | Platform |
 |-----------|------|----------|
 | TypeScript engine | `packages/core` | Node, browser, Electron, Android |
+| Harness | `packages/harness` | Node |
 | CLI | `packages/cli` | Node |
+| Shared app logic | `apps/app-core` | Node, browser |
 | Desktop app | `apps/desktop` | Windows, Linux, macOS, Android |
 | VS Code extension | `apps/vscode-extension` | VS Code and forks |
 | Website | `site` | any static host |
@@ -35,6 +37,13 @@ instead of guessing.
 Two engines exist because Android cannot bundle a Python runtime. The
 TypeScript port is what the CLI, app, and extension use; the Python package
 remains the reference and is tested for identical routing behaviour.
+
+The harness is under construction and is **not** an agent yet. What exists is
+workspace path containment for file tools. The agent loop, tool execution,
+command containment, context management, and sessions are not built.
+[docs/harness-architecture.md](docs/harness-architecture.md) is the source of
+truth, and a test checks its status table against the repository so it cannot
+drift.
 
 ## Quick start
 

@@ -89,6 +89,7 @@ jobs:
         # not a declared dependency and made the suite fail on CI.
         run: |
           npm run build --workspace @waypoint/core
+          npm run build --workspace @waypoint/harness
           npm run build --workspace @waypoint/app-core
           npm run build --workspace @waypoint/cli
           npm run build --workspace waypoint
