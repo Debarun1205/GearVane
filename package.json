@@ -15,7 +15,7 @@
     "test:repo": "vitest run",
     "test:python": "python -m pytest tests/ -q",
     "test:all": "npm run test && npm run test:repo && npm run test:python",
-    "build:site": "npm run build --workspace @waypoint/harness && esbuild site/assets/builder.js --bundle --format=esm --platform=browser --target=es2022 --outfile=site/assets/builder.bundle.js",
+    "build:site": "npm run build --workspace @waypoint/core && npm run build --workspace @waypoint/harness && esbuild site/assets/builder.js --bundle --format=esm --platform=browser --target=es2022 --outfile=site/assets/builder.bundle.js",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
     "clean": "npm run clean --workspaces --if-present"

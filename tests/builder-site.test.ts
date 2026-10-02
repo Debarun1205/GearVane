@@ -125,6 +125,31 @@ describe('the browser bundle cannot pull in Node', () => {
   });
 });
 
+describe('the site build command stands alone', () => {
+  /**
+   * `npm run build:site` is what the deploy workflow runs, on a clean
+   * checkout. It once built only the harness, which imports core, so the
+   * harness build failed with 'Cannot find module @waypoint/core' and the
+   * builder never deployed. A command that only works when something else
+   * happened to run first is a trap.
+   */
+  it('builds every workspace the bundle depends on', () => {
+    const scripts = JSON.parse(read(REPO, 'package.json')) as {
+      scripts: Record<string, string>;
+    };
+
+    const build = scripts.scripts['build:site'] ?? '';
+    expect(build).toContain('@waypoint/core');
+    expect(build).toContain('@waypoint/harness');
+    expect(build).toContain('esbuild');
+  });
+
+  it('is what the deploy workflow runs', () => {
+    const workflow = read(REPO, '.github', 'workflows', 'deploy-site.yml');
+    expect(workflow).toContain('npm run build:site');
+  });
+});
+
 describe('the website builder does not offer to publish', () => {
   /**
    * The page has no backend and cannot hold a credential safely, so it must not
