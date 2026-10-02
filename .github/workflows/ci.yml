@@ -121,9 +121,14 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build core and app-core
+      - name: Build dependencies
+        # Typecheck resolves each workspace through package exports, so a
+        # workspace that imports another one needs that one's dist present.
+        # The harness was missed here and the desktop typecheck failed with
+        # 'Cannot find module @waypoint/harness'.
         run: |
           npm run build --workspace @waypoint/core
+          npm run build --workspace @waypoint/harness
           npm run build --workspace @waypoint/app-core
 
       - name: Typecheck
@@ -226,8 +231,11 @@ jobs:
         run: npm ci
 
       - name: Build
+        # The desktop app imports the harness for the builder, so it has to be
+        # built before the renderer can be bundled.
         run: |
           npm run build --workspace @waypoint/core
+          npm run build --workspace @waypoint/harness
           npm run build --workspace @waypoint/app-core
           npm run build --workspace waypoint-app
 

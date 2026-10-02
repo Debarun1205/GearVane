@@ -36,9 +36,12 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build core and app packages
+      - name: Build shared packages
+        # The harness is needed because the desktop app imports it for the
+        # builder, and package exports means it must be built first.
         run: |
           npm run build --workspace @waypoint/core
+          npm run build --workspace @waypoint/harness
           npm run build --workspace @waypoint/app-core
           npm run build --workspace waypoint-app
 
@@ -90,8 +93,11 @@ jobs:
         run: npm ci
 
       - name: Build shared packages
+        # The harness is needed because the desktop app imports it for the
+        # builder, and package exports means it must be built first.
         run: |
           npm run build --workspace @waypoint/core
+          npm run build --workspace @waypoint/harness
           npm run build --workspace @waypoint/app-core
           npm run build --workspace waypoint-app
 

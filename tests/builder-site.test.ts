@@ -45,6 +45,40 @@ function stripComments(source: string): string {
 
 const deployCode = stripComments(deployTs).replace(/\s+/g, ' ');
 
+describe('workspace build order is declared correctly', () => {
+  /**
+   * The desktop app imports the harness, and TypeScript resolves that through
+   * package exports, so the harness's dist must exist first. Three separate CI
+   * jobs missed that step before this was checked mechanically.
+   */
+  it('every build step that needs the harness lists it', () => {
+    const harnessImports = read(
+      REPO,
+      'apps',
+      'desktop',
+      'src',
+      'builder-host.ts',
+    );
+    expect(harnessImports).toContain("from '@waypoint/harness'");
+
+    // tools/check_workflow_order.py reads the imports from source and asserts
+    // each workflow step builds what it needs. It is a tool rather than a test
+    // because it reports on YAML, which is not this suite's subject.
+    const checker = join(REPO, 'tools', 'check_workflow_order.py');
+    expect(existsSync(checker)).toBe(true);
+
+    const source = read(checker);
+    // Dependencies are read from source, never hardcoded: a stale map produces
+    // false failures that teach people to ignore the checker. The pattern is
+    // matched loosely, since asserting on the checker's own regex text would
+    // be asserting on trivia.
+    expect(source).toContain('@waypoint/');
+    expect(source).toMatch(/rglob\(/);
+    expect(source).toMatch(/dependencies: dict\[str, set\[str\]\] = \{\}/);
+    expect(source).not.toMatch(/^\s*"@waypoint\/\w+":\s*\{/m);
+  });
+});
+
 describe('the browser bundle cannot pull in Node', () => {
   /**
    * esbuild resolves `node:fs` at bundle time even behind a dynamic import, so
