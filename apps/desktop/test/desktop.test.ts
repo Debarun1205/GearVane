@@ -99,18 +99,18 @@ describe('desktop manifest', () => {
 describe('main process', () => {
   const source = read(APP, 'src', 'main.ts');
 
-  it('documents the node integration trade for the IDE', () => {
-    // The IDE needs filesystem access, so the renderer runs with Node
-    // integration on. That widens the blast radius of a compromised
-    // dependency, so this test pins both the setting and the justification:
-    // a trusted local app, no Node in the Android webview, and sensitive
-    // operations still routed through the preload bridge.
-    expect(source).toMatch(/nodeIntegration: true/);
-    expect(source).toMatch(/contextIsolation: false/);
+  it('documents the isolation settings for the IDE', () => {
+    // The renderer is node-free (the Android webview runs the same bundle),
+    // so node integration stays off and contextIsolation stays on: the
+    // preload uses contextBridge, which throws when isolation is disabled.
+    // That combination kept the bridge out of every build up to v0.3.0,
+    // so both the setting and the justification are pinned here.
+    expect(source).toMatch(/nodeIntegration: false/);
+    expect(source).toMatch(/contextIsolation: true/);
     expect(source).toMatch(/sandbox: false/);
-    expect(source).toMatch(/trusted local app/);
     expect(source).toMatch(/Android webview/);
     expect(source).toMatch(/preload bridge/);
+    expect(source).toMatch(/contextBridge/);
   });
 
   it('declares narrow IPC handlers rather than a generic bridge', () => {

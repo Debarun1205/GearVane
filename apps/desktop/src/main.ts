@@ -88,22 +88,25 @@ function createWindow(): BrowserWindow {
     backgroundColor: '#0b1120',
     webPreferences: {
       preload: join(HERE, 'preload.cjs'),
-      // Node integration is on because the IDE needs filesystem access, and
-      // this is a trusted local app the user installed rather than a website.
-      //
-      // The trade is real and worth stating: a compromised dependency in the
-      // renderer could reach the filesystem. The Android webview shares this
-      // renderer but does not get Node access, so the IDE is desktop-only.
-      // Sensitive operations still go through the preload bridge, and the
-      // builder and terminal already route through the main process.
-      nodeIntegration: true,
-      contextIsolation: false,
+      // The renderer is node-free by design: the Android webview runs the
+      // same bundle, and every sensitive operation (files, shell, builder)
+      // crosses the preload bridge to a main-process host that validates
+      // it. contextIsolation must be on because the preload uses
+      // contextBridge - with it off, contextBridge throws at load, the
+      // bridge never injects, and the IDE cannot mount. That combination
+      // silently broke every build up to and including v0.3.0.
+      nodeIntegration: false,
+      contextIsolation: true,
       sandbox: false,
     },
   });
 
+  // The loader takes the window as an argument on purpose. It used to read
+  // the module-level `mainWindow` instead, but createWindow has not returned
+  // when this runs, so the variable was still null and the function returned
+  // without loading anything: every non-packaged run showed a blank window.
   if (isDevelopment()) {
-    void loadFile();
+    void loadFile(window);
   } else {
     void window.loadFile(join(RENDERER_DIR, 'index.html'));
   }
@@ -122,11 +125,10 @@ function createWindow(): BrowserWindow {
   return window;
 }
 
-async function loadFile(): Promise<void> {
-  if (!mainWindow) return;
+async function loadFile(window: BrowserWindow): Promise<void> {
   const indexPath = resolve(RENDERER_DIR, 'index.html');
   if (existsSync(indexPath)) {
-    await mainWindow.loadFile(indexPath);
+    await window.loadFile(indexPath);
   }
 }
 
