@@ -99,7 +99,9 @@ function typeOf(value: unknown): string {
  *
  * Coercion is limited to defaults and to a string that is unambiguously a
  * number or boolean, because models emit `"3"` for an integer more often than
- * one would like and rejecting it wastes a whole turn.
+ * one would like and rejecting it wastes a whole turn. A JSON number that is
+ * whole satisfies an integer schema directly: JSON has no integer type, so
+ * requiring one would reject every real number a caller can produce.
  *
  * @throws {ToolArgumentError} on a missing required argument or a bad type
  */
@@ -125,7 +127,16 @@ export function validateArgs(
 
     const actual = typeOf(provided);
 
-    if (actual !== property.type) {
+    // JSON has no integer type, so a whole number satisfies an integer schema.
+    // Without this, every integer parameter rejects every number any caller
+    // can actually pass, and only numeric strings get through.
+    const typeMatches =
+      actual === property.type ||
+      (property.type === 'integer' &&
+        typeof provided === 'number' &&
+        Number.isInteger(provided));
+
+    if (!typeMatches) {
       const coerced = coerce(tool.name, key, property.type, provided);
       if (coerced === undefined) {
         throw new ToolArgumentError(

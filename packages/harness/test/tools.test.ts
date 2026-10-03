@@ -377,6 +377,31 @@ describe('tool registry', () => {
     expect(result.ok).toBe(true);
   });
 
+  it('accepts a plain number for an integer parameter', async () => {
+    // JSON has no integer type, so typeof any whole number is 'number'. An
+    // earlier version of the validator rejected those and only accepted
+    // numeric strings, which meant every integer parameter in every tool
+    // failed for every real caller, models included.
+    const registry = new ToolRegistry(fileTools());
+    const result = await registry.execute(
+      'read_file',
+      { path: 'src/a.ts', limit: 1 },
+      ctx,
+    );
+    expect(result.ok).toBe(true);
+  });
+
+  it('rejects a fractional number for an integer parameter', async () => {
+    const registry = new ToolRegistry(fileTools());
+    const result = await registry.execute(
+      'read_file',
+      { path: 'src/a.ts', limit: 1.5 },
+      ctx,
+    );
+    expect(result.ok).toBe(false);
+    expect(result.content).toContain('should be integer but was number');
+  });
+
   it('turns a throwing tool into a failed result', async () => {
     // An exception here would unwind the agent loop instead of letting the
     // model read the message and try again.
