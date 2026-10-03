@@ -56,6 +56,13 @@ describe('gitignore', () => {
     expect(isIgnored('dashboard.html')).toBe(true);
   });
 
+  it('ignores generated renderer styles and Playwright output', () => {
+    // Built from Monaco's CSS imports during build:renderer, never tracked.
+    expect(isIgnored('apps/desktop/renderer/renderer.css')).toBe(true);
+    expect(isIgnored('apps/desktop/test-results/')).toBe(true);
+    expect(isIgnored('apps/desktop/playwright-report/')).toBe(true);
+  });
+
   it('ignores coverage output', () => {
     expect(isIgnored('coverage.xml')).toBe(true);
     expect(isIgnored('htmlcov/')).toBe(true);

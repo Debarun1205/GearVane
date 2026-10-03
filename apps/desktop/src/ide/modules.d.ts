@@ -1,15 +1,12 @@
 /**
  * Type declarations for modules without them.
  *
- * Monaco's AMD build ships no types for the `min/vs` entry point, and the
- * worker is bundled as a text file. Both need declarations or TypeScript
- * treats them as `any`, which would silently disable checking on the whole
- * module.
+ * The editor worker is bundled as a text file, which has no type of its own.
+ * Without this declaration TypeScript treats it as `any`, which would
+ * silently disable checking wherever the worker source is used. Monaco's own
+ * types come from its package `types` field now that the ESM entry is the
+ * import.
  */
-
-declare module 'monaco-editor/min/vs/editor/editor.main.js' {
-  export * from 'monaco-editor/esm/vs/editor/editor.api';
-}
 
 declare module '*.txt' {
   const content: string;

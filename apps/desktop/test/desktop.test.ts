@@ -189,7 +189,12 @@ describe('renderer assets', () => {
     const html = read(RENDERER, 'index.html');
     expect(html).toMatch(/Content-Security-Policy/);
     expect(html).toMatch(/default-src 'self'/);
-    // No inline scripts, so script-src can stay locked to self.
+    // No inline scripts, so script-src can stay locked to self. The two
+    // fallbacks beside it are load-bearing: Monaco starts its worker from a
+    // Blob URL and ships its icon font as a data URL, and without these
+    // directives both fall back to default-src and are refused at runtime.
+    expect(html).toMatch(/worker-src 'self' blob:/);
+    expect(html).toMatch(/font-src 'self' data:/);
     expect(html).not.toMatch(/<script>[^<]/);
   });
 

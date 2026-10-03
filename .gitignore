@@ -71,6 +71,11 @@ apps/desktop/src/ide/editor.worker.txt
 apps/desktop/renderer/renderer.js
 apps/desktop/renderer/renderer.js.map
 
+# Monaco's styles, collected from the ESM build's CSS imports by
+# esbuild during build:renderer. Generated, linked from index.html,
+# rebuilt rather than tracked - same rule as the JavaScript bundle.
+apps/desktop/renderer/renderer.css
+
 # OS
 .DS_Store
 Thumbs.db
@@ -78,6 +83,8 @@ Thumbs.db
 # Testing
 .pytest_cache/
 .coverage
+apps/desktop/test-results/
+apps/desktop/playwright-report/
 htmlcov/
 
 # Environment

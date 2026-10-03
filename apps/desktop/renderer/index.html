@@ -5,10 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src *; img-src 'self' data: blob:; object-src 'none'; base-uri 'none'"
+      content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; worker-src 'self' blob:; font-src 'self' data:; connect-src *; img-src 'self' data: blob:; object-src 'none'; base-uri 'none'"
     />
     <title>Waypoint</title>
     <link rel="stylesheet" href="./styles.css" />
+    <!-- Monaco's ESM build ships its styles as CSS modules; esbuild
+         collects them into this one file during build:renderer. -->
+    <link rel="stylesheet" href="./renderer.css" />
   </head>
   <body>
     <div class="ambience" aria-hidden="true"></div>

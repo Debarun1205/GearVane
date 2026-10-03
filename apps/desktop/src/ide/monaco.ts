@@ -13,16 +13,26 @@
  * turned into an object URL at runtime. It costs nothing at build time and
  * works in any context that can create a Worker, which includes Electron.
  *
- * ## Why the AMD build
+ * ## Why the ESM build
  *
- * `monaco-editor` resolves to the AMD build, which is a single UMD file with
- * no static imports to trace. The ESM build is a graph of hundreds of modules
- * that esbuild would have to walk. AMD also handles its own worker creation
- * through `MonacoEnvironment`, which is exactly the hook the Blob approach
- * needs.
+ * Monaco ships two builds. The AMD one (`min/vs/editor/editor.main.js`)
+ * registers every module by calling a global `define` that only exists after
+ * `vs/loader` has run, and a bundled renderer never loads `vs/loader`, so
+ * importing it throws `globalDefine is not a function` the moment the IDE
+ * mounts. The ESM build is a plain module graph esbuild can walk, the
+ * package's `module` field points straight at it, and its worker factory
+ * still honours `MonacoEnvironment.getWorkerUrl`, so the Blob approach above
+ * is unaffected.
+ *
+ * ## Why there is a second stylesheet
+ *
+ * The ESM build imports its ~110 style sheets as CSS, which esbuild collects
+ * into `renderer.css` beside `renderer.js`; index.html links it. The one
+ * asset that is not inlined (codicon.ttf) is emitted as a data URL by the
+ * `dataurl` loader so the renderer directory stays self-contained.
  */
 
-import * as monaco from 'monaco-editor/min/vs/editor/editor.main.js';
+import * as monaco from 'monaco-editor';
 
 /**
  * The editor worker, as a string.
