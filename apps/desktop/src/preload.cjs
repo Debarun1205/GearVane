@@ -31,6 +31,48 @@ const api = {
   },
 
   /**
+   * Terminal bridge.
+   *
+   * The renderer cannot load node-pty, so the main process owns the PTY and
+   * this forwards keystrokes one way and output the other.
+   */
+  terminal: {
+    start: (cwd) => ipcRenderer.invoke('terminal:start', cwd),
+    write: (data) => ipcRenderer.send('terminal:write', data),
+    resize: (cols, rows) => ipcRenderer.send('terminal:resize', cols, rows),
+    kill: () => ipcRenderer.send('terminal:kill'),
+    onData: (handler) => {
+      ipcRenderer.on('terminal:data', (_event, data) => handler(data));
+    },
+    onExit: (handler) => {
+      ipcRenderer.on('terminal:exit', () => handler());
+    },
+  },
+
+  /**
+   * The directory the IDE works in.
+   *
+   * The renderer has no filesystem, so the main process asks for a folder.
+   * Returns null when the user cancels, which the renderer reports rather than
+   * defaulting to an arbitrary directory.
+   */
+  workspaceRoot: () => ipcRenderer.invoke('workspace:root'),
+
+  /**
+   * IDE filesystem bridge.
+   *
+   * Listing, reading, and saving go through the main process, which enforces
+   * the same `Workspace` containment as the harness tools. The renderer never
+   * touches `node:fs`, which is what keeps this bundle loadable inside the
+   * Android webview.
+   */
+  ideFs: {
+    list: (root) => ipcRenderer.invoke('ide:list', root),
+    read: (root, path) => ipcRenderer.invoke('ide:read', root, path),
+    write: (root, path, content) => ipcRenderer.invoke('ide:write', root, path, content),
+  },
+
+  /**
    * Subscribe to a main-process message.
    *
    * Returns an unsubscribe function so the renderer cannot leak listeners

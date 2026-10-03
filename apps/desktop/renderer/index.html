@@ -25,6 +25,7 @@
           <span id="spend-meter" class="spend-meter" title="Session spend against your limit">
             <span id="spend-fill" class="spend-fill"></span>
           </span>
+          <button id="ide-toggle" class="ghost-button" type="button">IDE</button>
           <button id="builder-toggle" class="ghost-button" type="button">Builder</button>
           <button id="health-button" class="ghost-button" type="button">Health</button>
           <button id="clear-button" class="ghost-button" type="button">Clear</button>
@@ -61,6 +62,13 @@
         </p>
       </footer>
     </div>
+
+    <dialog id="ide-dialog" class="dialog dialog-ide" aria-label="Waypoint IDE">
+      <div id="ide" class="ide"></div>
+      <form method="dialog">
+        <button class="ghost-button" type="submit">Close</button>
+      </form>
+    </dialog>
 
     <dialog id="builder-dialog" class="dialog dialog-wide" aria-label="Site builder">
       <div id="builder" class="builder"></div>

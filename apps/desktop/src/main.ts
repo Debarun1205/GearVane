@@ -16,6 +16,8 @@ import { fileURLToPath } from 'node:url';
 import { parseConfig, defaultConfig, type WaypointConfig } from '@waypoint/core';
 
 import { registerBuilderHandlers } from './builder-host.js';
+import { registerIdeFsHandlers } from './ide-fs-host.js';
+import { registerTerminalHandlers } from './terminal-host.js';
 
 const HERE = fileURLToPath(new URL('.', import.meta.url));
 const RENDERER_DIR = join(HERE, '..', 'renderer');
@@ -85,11 +87,17 @@ function createWindow(): BrowserWindow {
     backgroundColor: '#0b1120',
     webPreferences: {
       preload: join(HERE, 'preload.cjs'),
-      // The renderer only talks to the local provider endpoints the user
-      // configured, so node integration stays off and context isolation on.
-      nodeIntegration: false,
-      contextIsolation: true,
-      sandbox: true,
+      // Node integration is on because the IDE needs filesystem access, and
+      // this is a trusted local app the user installed rather than a website.
+      //
+      // The trade is real and worth stating: a compromised dependency in the
+      // renderer could reach the filesystem. The Android webview shares this
+      // renderer but does not get Node access, so the IDE is desktop-only.
+      // Sensitive operations still go through the preload bridge, and the
+      // builder and terminal already route through the main process.
+      nodeIntegration: true,
+      contextIsolation: false,
+      sandbox: false,
     },
   });
 
@@ -182,5 +190,13 @@ ipcMain.handle('shell:open', (_event, url: unknown) => {
 // The builder needs a filesystem, which the renderer does not have. See
 // builder-host.ts for why the split matters.
 registerBuilderHandlers();
+
+// The terminal needs a PTY, which the renderer cannot load. See
+// terminal-host.ts for why the split matters.
+registerTerminalHandlers();
+
+// The IDE needs a filesystem, which the renderer does not have. See
+// ide-fs-host.ts for why the split matters.
+registerIdeFsHandlers();
 
 export { mainWindow, createWindow };

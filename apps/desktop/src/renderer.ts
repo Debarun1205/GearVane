@@ -27,6 +27,7 @@ import {
 // Type-only, so the builder view is not pulled into the Android bundle at the
 // entry point. It is loaded on demand below, and only where the bridge exists.
 import type { BuilderBridge } from './builder-view.js';
+import type { TerminalBridge } from './ide/terminal.js';
 
 /** Capabilities the host may provide. Every one is optional. */
 interface HostBridge {
@@ -41,6 +42,21 @@ interface HostBridge {
    * is no filesystem to write to and no folder picker to ask with.
    */
   builder?: BuilderBridge;
+
+  /** Terminal bridge, present only where a PTY can be created. */
+  terminal?: TerminalBridge;
+
+  /** The directory the IDE should work in. */
+  workspaceRoot?(): Promise<string | null>;
+
+  /** IDE filesystem bridge. Absent where there is no filesystem to use. */
+  ideFs?: IdeFsBridge;
+}
+
+interface IdeFsBridge {
+  list(root: string): Promise<{ ok: boolean; entries?: Array<{ name: string; path: string; isDirectory: boolean; size?: number }>; error?: string }>;
+  read(root: string, path: string): Promise<{ ok: boolean; content?: string; error?: string }>;
+  write(root: string, path: string, content: string): Promise<{ ok: boolean; error?: string }>;
 }
 
 declare global {
@@ -412,6 +428,16 @@ async function main(): Promise<void> {
     });
   }
 
+  // The IDE needs a workspace and a terminal bridge, so it only mounts in the
+  // desktop app with a folder open.
+  const ideToggle = document.getElementById('ide-toggle');
+  const ideDialog = document.getElementById('ide-dialog');
+  if (ideToggle && ideDialog) {
+    ideToggle.addEventListener('click', () => {
+      if (ideDialog instanceof HTMLDialogElement) ideDialog.showModal();
+    });
+  }
+
   els.clear.addEventListener('click', () => {
     controller?.cancelAll();
     activeTaskId = null;
@@ -460,6 +486,37 @@ async function main(): Promise<void> {
       new BuilderView(builderHost, bridge.builder).start();
     } catch (error) {
       builderHost.textContent = `Builder unavailable: ${(error as Error).message}`;
+    }
+  }
+
+  // The IDE needs a workspace, a terminal bridge, and a filesystem bridge, so
+  // it only mounts where all three exist. Monaco is loaded on demand, because
+  // it is several megabytes and the chat view must not pay for it.
+  const ideHost = document.getElementById('ide');
+  if ((!bridge.terminal || !bridge.ideFs) && ideToggle instanceof HTMLButtonElement) {
+    ideToggle.hidden = true;
+  }
+  if (ideHost && bridge.terminal && bridge.ideFs) {
+    try {
+      const { IdeView } = await import('./ide/ide-view.js');
+      const root = bridge.workspaceRoot ? await bridge.workspaceRoot() : null;
+      if (root) {
+        const ideFs = bridge.ideFs;
+        const view = new IdeView({
+          workspaceRoot: root,
+          terminal: bridge.terminal,
+          fs: {
+            list: () => ideFs.list(root),
+            read: (path) => ideFs.read(root, path),
+            write: (path, content) => ideFs.write(root, path, content),
+          },
+        });
+        view.mount(ideHost);
+      } else {
+        ideHost.textContent = 'Choose a folder to use the IDE.';
+      }
+    } catch (error) {
+      ideHost.textContent = `IDE unavailable: ${(error as Error).message}`;
     }
   }
 
