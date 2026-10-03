@@ -291,6 +291,21 @@ jobs:
           node-version: 20
           cache: npm
 
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install Python dependencies
+        # tests/parity.test.ts shells out to `python -m waypoint` to prove
+        # both engines route identically. The ubuntu image happens to carry
+        # PyYAML; the Windows and macOS images do not, and the subprocess
+        # died with `No module named 'yaml'`.
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+          pip install -e .
+
       - name: Install dependencies
         run: |
           npm ci

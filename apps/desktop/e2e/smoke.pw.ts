@@ -74,9 +74,15 @@ test('onboarding previews live, saves once, and never returns', async ({ page })
   await page.locator('#appearance-save').click();
   await expect(dialog).toBeHidden();
   expect(await bg(page)).toBe(previewed);
-  expect(await page.evaluate(() => localStorage.getItem('waypoint.appearance'))).toContain(
-    'nebula',
-  );
+  // Persisting happens in the dialog's close handler, which runs in a task
+  // after the dialog is already hidden. Reading storage immediately races
+  // that task, and the macOS CI runner lost the race; poll for the effect.
+  await expect
+    .poll(
+      async () =>
+        (await page.evaluate(() => localStorage.getItem('waypoint.appearance'))) ?? '',
+    )
+    .toContain('nebula');
 
   // Reload: the look survived and onboarding does not run a second time.
   await page.reload();
@@ -106,7 +112,9 @@ test('settings mode reopens and cancel reverts the live preview', async ({ page 
   // Cancel and Escape must both revert: nothing was persisted.
   await page.keyboard.press('Escape');
   await expect(dialog).toBeHidden();
-  expect(await bg(page)).toBe(saved);
+  // The revert runs in the close handler, a task after hidden; poll for it
+  // rather than racing it (the macOS runner lost that race once).
+  await expect.poll(() => bg(page)).toBe(saved);
 
   expect(errors).toEqual([]);
 });
