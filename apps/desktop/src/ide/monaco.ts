@@ -55,6 +55,69 @@ export function installMonacoEnvironment(): void {
   };
 }
 
+/** Read a colour from the active theme on the document root. */
+function cssColor(name: string, fallback: string): string {
+  const value = getComputedStyle(document.documentElement)
+    .getPropertyValue(name)
+    .trim();
+  return value || fallback;
+}
+
+/** Expand #rgb or #rrggbb to #rrggbbaa; anything unparseable passes through. */
+function withAlpha(hex: string, alpha: number): string {
+  const match = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(hex);
+  const raw = match?.[1];
+  if (raw === undefined) return hex;
+  const digits =
+    raw.length === 3
+      ? raw
+          .split('')
+          .map((digit) => digit + digit)
+          .join('')
+      : raw;
+  const tail = Math.round(alpha * 255)
+    .toString(16)
+    .padStart(2, '0');
+  return `#${digits}${tail}`;
+}
+
+/**
+ * Define (or redefine) the accent-aware editor theme.
+ *
+ * Monaco draws its chrome itself and cannot read CSS variables, so the
+ * theme is rebuilt from the active look each time. Redefining the same id
+ * hot-swaps every open editor, main and diff alike, without touching the
+ * models the user has open.
+ */
+export function applyMonacoTheme(): void {
+  const bg = cssColor('--bg', '#0b1120');
+  const text = cssColor('--text', '#e2e8f0');
+  const dim = cssColor('--text-dim', '#8494b0');
+  const accent = cssColor('--accent', '#38bdf8');
+  const border = cssColor('--border', '#24304a');
+  const input = cssColor('--bg-input', '#0f1729');
+
+  monaco.editor.defineTheme('waypoint', {
+    base: 'vs-dark',
+    inherit: true,
+    rules: [],
+    colors: {
+      'editor.background': bg,
+      'editor.foreground': text,
+      'editorCursor.foreground': accent,
+      'editor.selectionBackground': withAlpha(accent, 0.35),
+      'editor.inactiveSelectionBackground': withAlpha(accent, 0.18),
+      'editor.lineHighlightBackground': withAlpha(accent, 0.1),
+      'editorLineNumber.foreground': withAlpha(dim, 0.55),
+      'editorLineNumber.activeForeground': accent,
+      'editorWidget.background': bg,
+      'editorWidget.border': border,
+      'input.background': input,
+      focusBorder: accent,
+    },
+  });
+}
+
 export { monaco };
 
 export { languageForPath } from './languages.js';

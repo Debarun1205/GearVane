@@ -23,6 +23,21 @@ import {
   defaultConfig,
   type WaypointConfig,
 } from '@waypoint/core';
+import {
+  ACCENTS,
+  APPEARANCE_EVENT,
+  BACKGROUNDS,
+  MOTIONS,
+  THEMES,
+  applyAppearance,
+  hasOnboarded,
+  loadAppearance,
+  markOnboarded,
+  resolveAppearance,
+  saveAppearance,
+  type Appearance,
+  type AppearanceStorage,
+} from './theme.js';
 
 // Type-only, so the builder view is not pulled into the Android bundle at the
 // entry point. It is loaded on demand below, and only where the bridge exists.
@@ -97,6 +112,34 @@ declare global {
 
 const bridge: HostBridge = window.waypoint ?? {};
 
+/**
+ * localStorage through a never-throwing wrapper.
+ *
+ * Accessing the property itself can throw where storage is disabled, which
+ * would kill the module before the themed first paint. Losing the look is
+ * acceptable; losing the app is not.
+ */
+const appearanceStorage: AppearanceStorage = {
+  getItem: (key) => {
+    try {
+      return window.localStorage.getItem(key);
+    } catch {
+      return null;
+    }
+  },
+  setItem: (key, value) => {
+    try {
+      window.localStorage.setItem(key, value);
+    } catch {
+      // The look is device-local and non-essential; skip it.
+    }
+  },
+};
+
+// Applied at module evaluation, before main(), so the first paint is
+// already the user's theme rather than the default flashing to it.
+applyAppearance(document.documentElement, loadAppearance(appearanceStorage));
+
 let state: AppState = initialState();
 let controller: AppController | undefined;
 let activeTaskId: string | null = null;
@@ -108,7 +151,7 @@ const els = {
   input: byId<HTMLTextAreaElement>('input'),
   send: byId<HTMLButtonElement>('send'),
   cancel: byId<HTMLButtonElement>('cancel'),
-  clear: byId<HTMLButtonElement>('clear'),
+  clear: byId<HTMLButtonElement>('clear-button'),
   health: byId<HTMLButtonElement>('health-button'),
   healthDialog: byId<HTMLDialogElement>('health-dialog'),
   healthBody: byId('health-body'),
@@ -116,6 +159,10 @@ const els = {
   spendFill: byId('spend-fill'),
   spendMeter: byId('spend-meter'),
   hint: byId('hint'),
+  appearanceDialog: byId<HTMLDialogElement>('appearance-dialog'),
+  appearanceTitle: byId('appearance-title'),
+  appearanceLede: byId('appearance-lede'),
+  appearanceCancel: byId<HTMLButtonElement>('appearance-cancel'),
 };
 
 function byId<T extends HTMLElement = HTMLElement>(id: string): T {
@@ -391,6 +438,173 @@ function autoGrow(): void {
   els.input.style.height = `${Math.min(els.input.scrollHeight, 192)}px`;
 }
 
+// --- appearance -------------------------------------------------------------
+
+/** State as last previewed, and the state to revert to on cancel. */
+let pendingAppearance: Appearance = loadAppearance(appearanceStorage);
+let appearanceSnapshot: Appearance = { ...pendingAppearance };
+
+/**
+ * Build the dialog's option buttons once.
+ *
+ * Everything is createElement and textContent: no template string is ever
+ * parsed as HTML, so a preset name cannot inject markup.
+ */
+function wireAppearance(): void {
+  const makeOption = (
+    container: HTMLElement,
+    kind: keyof Appearance,
+    id: string,
+    name: string,
+    vibe: string,
+  ): void => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'appearance-option';
+    button.dataset.kind = kind;
+    button.dataset.value = id;
+    button.setAttribute('aria-pressed', 'false');
+
+    if (kind === 'theme') {
+      const theme = THEMES.find((entry) => entry.id === id);
+      const swatch = document.createElement('span');
+      swatch.className = 'appearance-swatch';
+      if (theme) {
+        swatch.style.background = `linear-gradient(90deg, ${theme.swatch.join(', ')})`;
+      }
+      button.appendChild(swatch);
+    }
+
+    const head = document.createElement('span');
+    head.className = 'appearance-option-head';
+
+    const label = document.createElement('span');
+    label.className = 'appearance-option-name';
+    label.textContent = name;
+    head.appendChild(label);
+
+    const themePreset = kind === 'theme' ? THEMES.find((entry) => entry.id === id) : undefined;
+    if (themePreset?.suggested) {
+      const badge = document.createElement('span');
+      badge.className = 'appearance-badge';
+      badge.textContent = 'Suggested';
+      head.appendChild(badge);
+    }
+    button.appendChild(head);
+
+    const why = document.createElement('span');
+    why.className = 'appearance-option-vibe';
+    why.textContent = vibe;
+    button.appendChild(why);
+
+    button.addEventListener('click', () => previewAppearance(kind, id));
+    container.appendChild(button);
+  };
+
+  const themes = byId('appearance-themes');
+  for (const theme of THEMES) {
+    makeOption(themes, 'theme', theme.id, theme.name, theme.vibe);
+  }
+
+  const backgrounds = byId('appearance-backgrounds');
+  for (const background of BACKGROUNDS) {
+    makeOption(backgrounds, 'background', background.id, background.name, background.vibe);
+  }
+
+  const accents = byId('appearance-accents');
+  for (const accent of ACCENTS) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'appearance-accent';
+    button.dataset.kind = 'accent';
+    button.dataset.value = accent.id;
+    button.style.background = accent.color;
+    button.title = accent.name;
+    button.setAttribute('aria-label', `Accent: ${accent.name}`);
+    button.setAttribute('aria-pressed', 'false');
+    button.addEventListener('click', () => previewAppearance('accent', accent.id));
+    accents.appendChild(button);
+  }
+
+  const motions = byId('appearance-motion');
+  for (const motion of MOTIONS) {
+    makeOption(motions, 'motion', motion.id, motion.name, motion.vibe);
+  }
+
+  // Save persists; Cancel and the Escape key both land here with any other
+  // returnValue, which reverts the live preview to the opening snapshot.
+  els.appearanceDialog.addEventListener('close', () => {
+    const saved = els.appearanceDialog.returnValue === 'save';
+    if (saved) {
+      saveAppearance(appearanceStorage, pendingAppearance);
+      applyAppearance(document.documentElement, pendingAppearance);
+    } else {
+      applyAppearance(document.documentElement, appearanceSnapshot);
+      pendingAppearance = { ...appearanceSnapshot };
+    }
+    window.dispatchEvent(new CustomEvent(APPEARANCE_EVENT));
+  });
+
+  syncAppearanceButtons();
+}
+
+/** Apply a choice immediately; nothing is written until Save. */
+function previewAppearance(kind: keyof Appearance, id: string): void {
+  pendingAppearance = resolveAppearance({ ...pendingAppearance, [kind]: id });
+  applyAppearance(document.documentElement, pendingAppearance);
+  syncAppearanceButtons();
+  window.dispatchEvent(new CustomEvent(APPEARANCE_EVENT));
+}
+
+/** Move the aria-pressed state onto the current choice in each group. */
+function syncAppearanceButtons(): void {
+  // Array.from, not a direct for-of: the tsconfig does not include the
+  // DOM.Iterable lib, so a NodeList is not itself iterable here.
+  const buttons = Array.from(
+    els.appearanceDialog.querySelectorAll<HTMLButtonElement>('[data-kind]'),
+  );
+  for (const button of buttons) {
+    const kind = button.dataset.kind as keyof Appearance;
+    button.setAttribute(
+      'aria-pressed',
+      String(pendingAppearance[kind] === button.dataset.value),
+    );
+  }
+}
+
+/**
+ * Open the dialog, as first-run onboarding or as settings.
+ *
+ * returnValue is cleared here because it survives between openings: a stale
+ * 'save' from last time would otherwise make the Escape key persist a
+ * preview the user never confirmed.
+ */
+function openAppearance(mode: 'onboarding' | 'settings'): void {
+  pendingAppearance = loadAppearance(appearanceStorage);
+  appearanceSnapshot = { ...pendingAppearance };
+
+  if (mode === 'onboarding') {
+    els.appearanceTitle.textContent = 'Make Waypoint yours';
+    els.appearanceLede.textContent =
+      'Pick a theme, a background, an accent, and a motion style. ' +
+      'Choices apply as you make them; only Save look keeps them. ' +
+      'You can change all of it any time from Look in the top bar.';
+    els.appearanceCancel.textContent = 'Skip for now';
+  } else {
+    els.appearanceTitle.textContent = 'Appearance';
+    els.appearanceLede.textContent =
+      'Themes, background, accent, and motion. Changes apply instantly ' +
+      'and are only kept when you save.';
+    els.appearanceCancel.textContent = 'Cancel';
+  }
+
+  syncAppearanceButtons();
+  els.appearanceDialog.returnValue = '';
+  if (typeof els.appearanceDialog.showModal === 'function') {
+    els.appearanceDialog.showModal();
+  }
+}
+
 // --- wiring -----------------------------------------------------------------
 
 async function resolveConfig(): Promise<{ config: WaypointConfig; error: string | null }> {
@@ -431,6 +645,21 @@ function readEnv(): Record<string, string | undefined> {
 
 async function main(): Promise<void> {
   renderSamples();
+
+  // Appearance first: the dialog is part of the static markup, and showing
+  // it before the config resolves keeps first launch feeling instant.
+  wireAppearance();
+  const appearanceToggle = document.getElementById('appearance-toggle');
+  appearanceToggle?.addEventListener('click', () => openAppearance('settings'));
+  if (!hasOnboarded(appearanceStorage)) {
+    // Marked seen the moment it opens, not when it closes. The flag means
+    // "this dialog has been shown", and the close event is a queued task: a
+    // fast reopen can run openAppearance('settings') before that task fires,
+    // which made marking-on-close lose the flag entirely (reproduced under
+    // automated driving of the page).
+    openAppearance('onboarding');
+    markOnboarded(appearanceStorage);
+  }
 
   const { config, error } = await resolveConfig();
   state = { ...state, limits: config.safety.spendLimits };
@@ -641,6 +870,9 @@ async function main(): Promise<void> {
 
     const healthToggle = document.getElementById('ide-health-toggle');
     healthToggle?.addEventListener('click', () => void showHealth());
+
+    const appearanceIdeToggle = document.getElementById('ide-appearance-toggle');
+    appearanceIdeToggle?.addEventListener('click', () => openAppearance('settings'));
   }
 
   /** Last workspace, so the IDE opens where the user left it. */

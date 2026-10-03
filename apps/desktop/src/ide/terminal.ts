@@ -24,7 +24,35 @@
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 
+import { APPEARANCE_EVENT } from '../theme.js';
+
 export type TerminalStatus = 'ready' | 'unavailable' | 'error';
+
+/**
+ * The xterm palette follows the active theme.
+ *
+ * xterm draws to a canvas and cannot read CSS variables, so the terminal
+ * samples them once at construction and again on every appearance change.
+ * Without the listener the shell would sit in the default palette while the
+ * panes around it switched themes.
+ */
+function currentTheme(): {
+  background: string;
+  foreground: string;
+  cursor: string;
+  selectionBackground: string;
+} {
+  const css = getComputedStyle(document.documentElement);
+  const read = (name: string, fallback: string): string =>
+    css.getPropertyValue(name).trim() || fallback;
+
+  return {
+    background: read('--bg', '#0b1120'),
+    foreground: read('--text', '#e2e8f0'),
+    cursor: read('--accent', '#38bdf8'),
+    selectionBackground: read('--accent-dim', '#0e7490'),
+  };
+}
 
 export interface TerminalSession {
   terminal: Terminal;
@@ -57,11 +85,7 @@ export function createTerminal(
     cursorBlink: true,
     fontSize: 13,
     fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
-    theme: {
-      background: '#0b1120',
-      foreground: '#e2e8f0',
-      cursor: '#38bdf8',
-    },
+    theme: currentTheme(),
   });
 
   const fit = new FitAddon();
@@ -87,6 +111,13 @@ export function createTerminal(
 
   window.addEventListener('resize', measure);
 
+  // Re-read the palette whenever the look changes. Disposed below with the
+  // terminal, so a closed IDE does not leave listeners behind.
+  const onAppearance = (): void => {
+    terminal.options.theme = currentTheme();
+  };
+  window.addEventListener(APPEARANCE_EVENT, onAppearance);
+
   void bridge.start(cwd).then((result) => {
     if (result.ok) {
       measure();
@@ -107,6 +138,7 @@ export function createTerminal(
     },
     dispose: () => {
       window.removeEventListener('resize', measure);
+      window.removeEventListener(APPEARANCE_EVENT, onAppearance);
       bridge.kill();
       terminal.dispose();
     },

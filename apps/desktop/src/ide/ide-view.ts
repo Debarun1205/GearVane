@@ -15,9 +15,10 @@
 
 import type { AgentResult, AgentStep } from '@waypoint/harness';
 
-import { installMonacoEnvironment, languageForPath, monaco } from './monaco.js';
+import { applyMonacoTheme, installMonacoEnvironment, languageForPath, monaco } from './monaco.js';
 import { buildTree, renderTree, type TreeNode } from './file-tree.js';
 import { createTerminal, type TerminalBridge } from './terminal.js';
+import { APPEARANCE_EVENT } from '../theme.js';
 import {
   CompletionCache,
   MAX_CONSECUTIVE_FAILURES,
@@ -124,10 +125,21 @@ export class IdeView {
     this.options = options;
   }
 
+  /**
+   * Keep the editor palette on the active theme.
+   *
+   * Added on mount and removed in dispose so a closed IDE leaves no
+   * listener writing into a disposed Monaco instance.
+   */
+  private onAppearance = (): void => {
+    applyMonacoTheme();
+  };
+
   /** Mount the view into a container. */
   mount(container: HTMLElement): void {
     this.container = container;
     installMonacoEnvironment();
+    window.addEventListener(APPEARANCE_EVENT, this.onAppearance);
 
     container.append(
       this.buildTreePane(),
@@ -268,7 +280,11 @@ export class IdeView {
     host.className = 'ide-editor-host';
     pane.append(host);
 
+    // Defined before the first editor exists: Monaco needs the theme id at
+    // creation, and the palette is sampled from the active CSS variables.
+    applyMonacoTheme();
     this.editor = monaco.editor.create(host, {
+      theme: 'waypoint',
       automaticLayout: true,
       minimap: { enabled: false },
       fontSize: 13,
@@ -1051,6 +1067,7 @@ export class IdeView {
       languageForPath(change.path),
     );
     const diff = monaco.editor.createDiffEditor(host, {
+      theme: 'waypoint',
       automaticLayout: true,
       renderSideBySide: true,
       readOnly: true,
@@ -1107,6 +1124,7 @@ export class IdeView {
     this.agentUnsubscribe?.();
     this.ghostAbort?.abort();
     this.ghostRegistration?.dispose();
+    window.removeEventListener(APPEARANCE_EVENT, this.onAppearance);
     this.terminal?.dispose();
     this.editor?.dispose();
     for (const file of this.openFiles.values()) file.model.dispose();

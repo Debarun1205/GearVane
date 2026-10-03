@@ -11,6 +11,8 @@
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
+    <div class="ambience" aria-hidden="true"></div>
+
     <div id="ide-root" class="ide-root" hidden>
       <header class="ide-topbar">
         <div class="brand">
@@ -24,6 +26,7 @@
           <button id="ide-chat-toggle" class="ghost-button" type="button">Chat</button>
           <button id="ide-builder-toggle" class="ghost-button" type="button">Builder</button>
           <button id="ide-health-toggle" class="ghost-button" type="button">Health</button>
+          <button id="ide-appearance-toggle" class="ghost-button" type="button">Look</button>
         </div>
       </header>
 
@@ -47,6 +50,7 @@
           <button id="ide-toggle" class="ghost-button" type="button">IDE</button>
           <button id="builder-toggle" class="ghost-button" type="button">Builder</button>
           <button id="health-button" class="ghost-button" type="button">Health</button>
+          <button id="appearance-toggle" class="ghost-button" type="button">Look</button>
           <button id="clear-button" class="ghost-button" type="button">Clear</button>
         </div>
       </header>
@@ -94,6 +98,63 @@
       <div id="health-body" class="health-body">Checking...</div>
       <form method="dialog">
         <button class="ghost-button" type="submit">Close</button>
+      </form>
+    </dialog>
+
+    <dialog id="appearance-dialog" class="dialog dialog-appearance" aria-label="Appearance">
+      <h2 id="appearance-title">Make it yours</h2>
+      <p class="appearance-lede" id="appearance-lede">
+        Pick a theme, a background, and an accent. Choices apply as you make
+        them; nothing is kept until you save.
+      </p>
+
+      <section class="appearance-group">
+        <h3 id="appearance-themes-label">Theme</h3>
+        <div
+          class="appearance-options"
+          id="appearance-themes"
+          role="group"
+          aria-labelledby="appearance-themes-label"
+        ></div>
+      </section>
+
+      <section class="appearance-group">
+        <h3 id="appearance-backgrounds-label">Background</h3>
+        <div
+          class="appearance-options"
+          id="appearance-backgrounds"
+          role="group"
+          aria-labelledby="appearance-backgrounds-label"
+        ></div>
+      </section>
+
+      <section class="appearance-group">
+        <h3 id="appearance-accents-label">Accent</h3>
+        <div
+          class="appearance-swatches"
+          id="appearance-accents"
+          role="group"
+          aria-labelledby="appearance-accents-label"
+        ></div>
+      </section>
+
+      <section class="appearance-group">
+        <h3 id="appearance-motion-label">Motion</h3>
+        <div
+          class="appearance-options appearance-options-small"
+          id="appearance-motion"
+          role="group"
+          aria-labelledby="appearance-motion-label"
+        ></div>
+      </section>
+
+      <form method="dialog" class="appearance-actions">
+        <button id="appearance-cancel" class="ghost-button" type="submit" value="cancel">
+          Cancel
+        </button>
+        <button id="appearance-save" class="send-button" type="submit" value="save">
+          Save look
+        </button>
       </form>
     </dialog>
 
