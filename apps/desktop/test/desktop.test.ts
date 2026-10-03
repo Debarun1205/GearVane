@@ -77,6 +77,23 @@ describe('desktop manifest', () => {
     expect(manifest.dependencies['@waypoint/core']).toBeDefined();
     expect(manifest.dependencies['@waypoint/app-core']).toBeDefined();
   });
+
+  it('declares the IDE dependencies instead of relying on hoisting', () => {
+    // These were installed with --no-save during development, so they worked
+    // locally and failed on every CI runner with 'Cannot find module'. A
+    // dependency that is imported must be declared.
+    expect(manifest.dependencies['monaco-editor']).toBeDefined();
+    expect(manifest.dependencies['@xterm/xterm']).toBeDefined();
+    expect(manifest.dependencies['@xterm/addon-fit']).toBeDefined();
+  });
+
+  it('keeps node-pty optional with a runtime fallback', () => {
+    // node-pty needs a C++ toolchain that CI runners have and many user
+    // machines do not. A hard dependency would fail installation where the
+    // terminal cannot work anyway; the IDE reports it as unavailable instead.
+    expect(manifest.optionalDependencies?.['node-pty']).toBeDefined();
+    expect(manifest.dependencies?.['node-pty']).toBeUndefined();
+  });
 });
 
 describe('main process', () => {

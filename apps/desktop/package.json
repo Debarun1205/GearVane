@@ -35,7 +35,10 @@
   "dependencies": {
     "@waypoint/app-core": "0.2.0",
     "@waypoint/core": "0.2.0",
-    "@waypoint/harness": "0.2.0"
+    "@waypoint/harness": "0.2.0",
+    "@xterm/addon-fit": "^0.10.0",
+    "@xterm/xterm": "^5.5.0",
+    "monaco-editor": "^0.52.2"
   },
   "devDependencies": {
     "@capacitor/android": "^6.2.0",
@@ -54,16 +57,24 @@
       "output": "release",
       "buildResources": "resources"
     },
-    "files": ["dist/**/*", "renderer/**/*"],
+    "files": [
+      "dist/**/*",
+      "renderer/**/*"
+    ],
     "linux": {
       "target": [
         {
           "target": "AppImage",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         },
         {
           "target": "deb",
-          "arch": ["x64", "arm64"]
+          "arch": [
+            "x64",
+            "arm64"
+          ]
         }
       ],
       "category": "Development",
@@ -71,14 +82,35 @@
     },
     "win": {
       "target": [
-        { "target": "nsis", "arch": ["x64"] },
-        { "target": "portable", "arch": ["x64"] }
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
       ],
       "icon": "resources/icon.png"
     },
     "mac": {
-      "target": [{ "target": "dmg", "arch": ["x64", "arm64"] }],
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ],
       "category": "public.app-category.developer-tools"
     }
+  },
+  "optionalDependencies": {
+    "node-pty": "^1.0.0"
   }
 }
