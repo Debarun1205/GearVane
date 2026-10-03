@@ -209,12 +209,54 @@ describe('the IDE view runs prompts', () => {
   });
 });
 
-describe('the renderer gates the IDE on all four bridges', () => {
+describe('the renderer gates the IDE on all three bridges', () => {
   it('hides the toggle unless everything exists', () => {
-    expect(renderer).toMatch(/!bridge\.agent/);
+    // A single ideCapable flag computed from all three bridges, used for both
+    // the toggle and the mount. Splitting the two was how the toggle and the
+    // mount disagreed in an earlier version.
+    expect(renderer).toMatch(/bridge\.terminal && bridge\.ideFs && bridge\.agent/);
+    expect(renderer).toMatch(/if \(!ideCapable && ideToggle/);
   });
 
   it('passes the agent bridge into the view', () => {
     expect(renderer).toMatch(/agent:\s*\{/);
+  });
+
+  it('opens the IDE full-window instead of a dialog', () => {
+    // The IDE used to live in a <dialog>; it is the app now, so the dialog
+    // must be gone and the mount must target the window root.
+    const html = read(REPO, 'apps', 'desktop', 'renderer', 'index.html');
+    expect(html).not.toMatch(/ide-dialog/);
+    expect(html).toMatch(/id="ide-root"/);
+    expect(renderer).toMatch(/getElementById\('ide-root'\)/);
+  });
+
+  it('shows chat when the bridges are absent', () => {
+    // The same bundle runs in the Android webview, which has no bridges at
+    // all. Gating the IDE must leave the chat visible there, not a blank
+    // window with a hidden everything.
+    expect(renderer).toMatch(/ideCapable/);
+    expect(renderer).toMatch(/removeAttribute\('hidden'\)/);
+  });
+
+  it('remembers the workspace between launches', () => {
+    expect(renderer).toMatch(/waypoint\.ide\.root/);
+    expect(renderer).toMatch(/rememberWorkspaceRoot/);
+  });
+
+  it('reloads rather than reusing models when switching folders', () => {
+    // Models from the old workspace must not survive the switch.
+    expect(renderer).toMatch(/waypoint\.ide\.pendingRoot/);
+    expect(renderer).toMatch(/window\.location\.reload\(\)/);
+  });
+});
+
+describe('the hidden attribute actually hides', () => {
+  it('overrides the flex display on both views', () => {
+    // .app sets display:flex, which beats [hidden]. Without this rule the IDE
+    // and the chat render on top of each other and both accept input.
+    const css = read(REPO, 'apps', 'desktop', 'renderer', 'styles.css');
+    expect(css).toMatch(/\.app\[hidden\]/);
+    expect(css).toMatch(/#ide-root\[hidden\]/);
   });
 });

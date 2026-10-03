@@ -446,15 +446,10 @@ async function main(): Promise<void> {
     });
   }
 
-  // The IDE needs a workspace and a terminal bridge, so it only mounts in the
-  // desktop app with a folder open.
+  // The chat view's IDE button. It stays visible wherever the bridges exist
+  // and opens the full-window IDE; where they do not (Android) it is hidden
+  // by the mount block below.
   const ideToggle = document.getElementById('ide-toggle');
-  const ideDialog = document.getElementById('ide-dialog');
-  if (ideToggle && ideDialog) {
-    ideToggle.addEventListener('click', () => {
-      if (ideDialog instanceof HTMLDialogElement) ideDialog.showModal();
-    });
-  }
 
   els.clear.addEventListener('click', () => {
     controller?.cancelAll();
@@ -507,27 +502,40 @@ async function main(): Promise<void> {
     }
   }
 
-  // The IDE needs a workspace, a terminal bridge, a filesystem bridge, and an
-  // agent bridge, so it only mounts where all four exist. Monaco is loaded on
-  // demand, because it is several megabytes and the chat view must not pay
-  // for it.
+  // The IDE is the desktop app's main UI. It needs a terminal bridge, a
+  // filesystem bridge, and an agent bridge, so it only mounts where all three
+  // exist — the Android webview has none of them and keeps the chat UI.
+  // Monaco is loaded on demand, because it is several megabytes and the chat
+  // view must not pay for it.
+  //
+  // On launch the IDE opens straight into the last workspace. With no stored
+  // workspace the app opens on chat instead of popping a native folder dialog
+  // uninvited; the IDE button takes it from there.
   const ideHost = document.getElementById('ide');
-  if (
-    (!bridge.terminal || !bridge.ideFs || !bridge.agent) &&
-    ideToggle instanceof HTMLButtonElement
-  ) {
+  const ideRoot = document.getElementById('ide-root');
+  const appRoot = document.querySelector('.app');
+  const ideCapable = Boolean(
+    ideHost && ideRoot && bridge.terminal && bridge.ideFs && bridge.agent,
+  );
+
+  if (!ideCapable && ideToggle instanceof HTMLButtonElement) {
     ideToggle.hidden = true;
   }
-  if (ideHost && bridge.terminal && bridge.ideFs && bridge.agent) {
-    try {
-      const { IdeView } = await import('./ide/ide-view.js');
-      const root = bridge.workspaceRoot ? await bridge.workspaceRoot() : null;
-      if (root) {
-        const ideFs = bridge.ideFs;
-        const agent = bridge.agent;
+
+  if (
+    ideCapable && ideHost && ideRoot && appRoot &&
+    bridge.terminal && bridge.ideFs && bridge.agent
+  ) {
+    const terminal = bridge.terminal;
+    const ideFs = bridge.ideFs;
+    const agent = bridge.agent;
+
+    const mountIde = async (root: string): Promise<boolean> => {
+      try {
+        const { IdeView } = await import('./ide/ide-view.js');
         const view = new IdeView({
           workspaceRoot: root,
-          terminal: bridge.terminal,
+          terminal,
           fs: {
             list: () => ideFs.list(root),
             read: (path) => ideFs.read(root, path),
@@ -539,13 +547,109 @@ async function main(): Promise<void> {
             onStep: (handler) => agent.onStep(handler),
           },
         });
+        ideHost.textContent = '';
         view.mount(ideHost);
-      } else {
-        ideHost.textContent = 'Choose a folder to use the IDE.';
+        rememberWorkspaceRoot(root);
+        showIdeFolder(root);
+        appRoot.setAttribute('hidden', '');
+        ideRoot.removeAttribute('hidden');
+        return true;
+      } catch (error) {
+        ideHost.textContent = `IDE unavailable: ${(error as Error).message}`;
+        return false;
       }
-    } catch (error) {
-      ideHost.textContent = `IDE unavailable: ${(error as Error).message}`;
+    };
+
+    // Leaving the IDE must dispose its view: Monaco models and the terminal
+    // hold real resources, and a hidden view that keeps them looks like a
+    // memory leak with a UI attached.
+    let mounted = false;
+    const showChat = (): void => {
+      ideRoot.setAttribute('hidden', '');
+      appRoot.removeAttribute('hidden');
+    };
+
+    if (ideToggle) {
+      ideToggle.addEventListener('click', () => {
+        void (async () => {
+          if (mounted) {
+            appRoot.setAttribute('hidden', '');
+            ideRoot.removeAttribute('hidden');
+            return;
+          }
+          const root = bridge.workspaceRoot
+            ? await bridge.workspaceRoot()
+            : null;
+          if (root) mounted = await mountIde(root);
+        })();
+      });
     }
+
+    const chatToggle = document.getElementById('ide-chat-toggle');
+    chatToggle?.addEventListener('click', showChat);
+
+    const folderButton = document.getElementById('ide-folder-button');
+    folderButton?.addEventListener('click', () => {
+      void (async () => {
+        const root = bridge.workspaceRoot ? await bridge.workspaceRoot() : null;
+        if (root) {
+          // A fresh view for a fresh folder: models from the old workspace
+          // must not survive the switch. The pending root rides through the
+          // reload in session storage, which dies with the tab.
+          sessionStorage.setItem('waypoint.ide.pendingRoot', root);
+          window.location.reload();
+        }
+      })();
+    });
+
+    wireIdeDialogButtons();
+
+    const pending = sessionStorage.getItem('waypoint.ide.pendingRoot');
+    if (pending) {
+      sessionStorage.removeItem('waypoint.ide.pendingRoot');
+      mounted = await mountIde(pending);
+    } else {
+      const stored = storedWorkspaceRoot();
+      if (stored) mounted = await mountIde(stored);
+    }
+  }
+
+  /** Buttons that live in the IDE top bar but open shared dialogs. */
+  function wireIdeDialogButtons(): void {
+    const builderToggle = document.getElementById('ide-builder-toggle');
+    const builderDialog = document.getElementById('builder-dialog');
+    builderToggle?.addEventListener('click', () => {
+      if (builderDialog instanceof HTMLDialogElement) builderDialog.showModal();
+    });
+
+    const healthToggle = document.getElementById('ide-health-toggle');
+    healthToggle?.addEventListener('click', () => void showHealth());
+  }
+
+  /** Last workspace, so the IDE opens where the user left it. */
+  function storedWorkspaceRoot(): string | null {
+    try {
+      return localStorage.getItem('waypoint.ide.root');
+    } catch {
+      return null;
+    }
+  }
+
+  function rememberWorkspaceRoot(root: string): void {
+    try {
+      localStorage.setItem('waypoint.ide.root', root);
+    } catch {
+      // Private-mode storage failure must not break the mount.
+    }
+  }
+
+  /** Folder name in the IDE top bar. The full path stays a tooltip. */
+  function showIdeFolder(root: string): void {
+    const label = document.getElementById('ide-folder');
+    if (!label) return;
+    const name = root.split(/[\\/]/).filter(Boolean).pop() ?? root;
+    label.textContent = name;
+    label.title = root;
   }
 
   window.addEventListener('beforeunload', () => controller?.cancelAll());

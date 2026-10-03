@@ -50,6 +50,46 @@ body {
     env(safe-area-inset-bottom) env(safe-area-inset-left);
 }
 
+/* The display:flex above beats the hidden attribute, so hiding a view needs
+   an explicit rule. Without it the IDE and the chat render on top of each
+   other and both accept input. */
+.app[hidden],
+#ide-root[hidden] {
+  display: none;
+}
+
+/* --- IDE window ---------------------------------------------------------- */
+
+.ide-root {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  padding: 0.75rem 1rem 1rem;
+  gap: 0.75rem;
+}
+
+.ide-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.ide-topbar .brand {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.ide-folder {
+  color: var(--text-dim);
+  font-size: 0.85rem;
+  max-width: 24rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* --- top bar ------------------------------------------------------------- */
 
 .topbar {

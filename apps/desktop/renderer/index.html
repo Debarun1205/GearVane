@@ -11,6 +11,25 @@
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
+    <div id="ide-root" class="ide-root" hidden>
+      <header class="ide-topbar">
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <span class="brand-name">Waypoint</span>
+          <span id="ide-folder" class="ide-folder" title="Open workspace folder"></span>
+        </div>
+
+        <div class="topbar-meta">
+          <button id="ide-folder-button" class="ghost-button" type="button">Folder</button>
+          <button id="ide-chat-toggle" class="ghost-button" type="button">Chat</button>
+          <button id="ide-builder-toggle" class="ghost-button" type="button">Builder</button>
+          <button id="ide-health-toggle" class="ghost-button" type="button">Health</button>
+        </div>
+      </header>
+
+      <div id="ide" class="ide"></div>
+    </div>
+
     <div class="app">
       <header class="topbar">
         <div class="brand">
@@ -62,13 +81,6 @@
         </p>
       </footer>
     </div>
-
-    <dialog id="ide-dialog" class="dialog dialog-ide" aria-label="Waypoint IDE">
-      <div id="ide" class="ide"></div>
-      <form method="dialog">
-        <button class="ghost-button" type="submit">Close</button>
-      </form>
-    </dialog>
 
     <dialog id="builder-dialog" class="dialog dialog-wide" aria-label="Site builder">
       <div id="builder" class="builder"></div>
