@@ -61,7 +61,7 @@ interface AgentBridge {
   run(
     prompt: string,
     root: string,
-    maxIterations?: number,
+    options?: { maxIterations?: number; mode?: 'ask' | 'build' },
   ): Promise<{
     ok: boolean;
     result?: AgentResult;

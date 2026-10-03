@@ -65,7 +65,10 @@ interface OpenFile {
  * renderer sees. Prompts go one way, steps and the final result come back.
  */
 export interface AgentBridge {
-  run(prompt: string): Promise<{
+  run(
+    prompt: string,
+    options?: { mode?: 'ask' | 'build' },
+  ): Promise<{
     ok: boolean;
     result?: AgentResult;
     error?: string;
@@ -306,12 +309,38 @@ export class IdeView {
 
     const tabs = document.createElement('div');
     tabs.className = 'ide-tabs';
-    tabs.append(this.tab('Terminal', true), this.tab('Problems', false));
+    tabs.setAttribute('role', 'tablist');
+    tabs.setAttribute('aria-label', 'Bottom panel');
     pane.append(tabs);
 
     const terminalHost = document.createElement('div');
     terminalHost.className = 'ide-terminal-host';
     pane.append(terminalHost);
+
+    const problemsHost = document.createElement('div');
+    problemsHost.className = 'ide-problems-host';
+    problemsHost.setAttribute('hidden', '');
+    pane.append(problemsHost);
+    this.problemsHost = problemsHost;
+    this.renderProblems();
+
+    const showTerminal = (): void => {
+      terminalHost.removeAttribute('hidden');
+      problemsHost.setAttribute('hidden', '');
+      terminalTab.classList.add('ide-tab-active');
+      problemsTab.classList.remove('ide-tab-active');
+    };
+    const showProblems = (): void => {
+      problemsHost.removeAttribute('hidden');
+      terminalHost.setAttribute('hidden', '');
+      problemsTab.classList.add('ide-tab-active');
+      terminalTab.classList.remove('ide-tab-active');
+    };
+
+    const terminalTab = this.tab('Terminal', true, showTerminal);
+    const problemsTab = this.tab('Problems', false, showProblems);
+    tabs.append(terminalTab, problemsTab);
+    this.problemsTab = problemsTab;
 
     this.terminal = createTerminal(terminalHost, this.options.terminal, this.options.workspaceRoot);
 
@@ -319,6 +348,9 @@ export class IdeView {
   }
 
   private terminal: ReturnType<typeof createTerminal> | undefined;
+  private problemsHost: HTMLElement | undefined;
+  private problemsTab: HTMLElement | undefined;
+  private problemCount = 0;
 
   private header(text: string): HTMLElement {
     const node = document.createElement('div');
@@ -327,11 +359,57 @@ export class IdeView {
     return node;
   }
 
-  private tab(text: string, active: boolean): HTMLElement {
-    const node = document.createElement('span');
+  private tab(text: string, active: boolean, onSelect: () => void): HTMLElement {
+    const node = document.createElement('button');
+    node.type = 'button';
     node.className = `ide-tab${active ? ' ide-tab-active' : ''}`;
     node.textContent = text;
+    node.setAttribute('role', 'tab');
+    node.setAttribute('aria-selected', String(active));
+    node.addEventListener('click', () => {
+      onSelect();
+      node.setAttribute('aria-selected', 'true');
+    });
     return node;
+  }
+
+  /**
+   * Failed tool calls from the last agent run.
+   *
+   * Not a linter and not pretending to be one: these are the calls that
+   * actually failed, with the model's own error text. An empty list means no
+   * run has failed yet, which the pane says rather than implying clean code.
+   */
+  private renderProblems(failures: Array<{ name: string; error: string }> = []): void {
+    this.problemCount = failures.length;
+    if (this.problemsTab) {
+      this.problemsTab.textContent =
+        failures.length > 0 ? `Problems (${failures.length})` : 'Problems';
+    }
+    if (!this.problemsHost) return;
+    this.problemsHost.textContent = '';
+
+    if (failures.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'ide-problems-empty';
+      empty.textContent = 'No failed tool calls from the last run.';
+      this.problemsHost.append(empty);
+      return;
+    }
+
+    for (const failure of failures) {
+      const row = document.createElement('div');
+      row.className = 'ide-problem-row';
+
+      const name = document.createElement('span');
+      name.className = 'ide-problem-name';
+      name.textContent = failure.name;
+      const message = document.createElement('span');
+      message.className = 'ide-problem-message';
+      message.textContent = failure.error;
+      row.append(name, message);
+      this.problemsHost.append(row);
+    }
   }
 
   /* ---------------------------------------------------------------- */
@@ -516,6 +594,25 @@ export class IdeView {
     pane.append(input);
     this.agentInput = input;
 
+    const modeLabel = document.createElement('label');
+    modeLabel.className = 'ide-agent-mode-label';
+    modeLabel.textContent = 'Mode ';
+    const mode = document.createElement('select');
+    mode.className = 'ide-agent-mode';
+    mode.setAttribute('aria-label', 'Agent mode');
+    for (const [value, label] of [
+      ['build', 'Build — create and change files'],
+      ['ask', 'Ask — read-only, answers only'],
+    ] as const) {
+      const option = document.createElement('option');
+      option.value = value;
+      option.textContent = label;
+      mode.append(option);
+    }
+    modeLabel.append(mode);
+    pane.append(modeLabel);
+    this.agentMode = mode;
+
     const row = document.createElement('div');
     row.className = 'ide-agent-row';
 
@@ -548,6 +645,7 @@ export class IdeView {
   }
 
   private agentInput: HTMLTextAreaElement | undefined;
+  private agentMode: HTMLSelectElement | undefined;
   private agentBuildButton: HTMLButtonElement | undefined;
   private agentStopButton: HTMLButtonElement | undefined;
   private agentLog: HTMLElement | undefined;
@@ -588,7 +686,8 @@ export class IdeView {
     });
 
     try {
-      const response = await this.options.agent.run(prompt);
+      const mode = this.agentMode?.value === 'ask' ? 'ask' : 'build';
+      const response = await this.options.agent.run(prompt, { mode });
 
       if (!response.ok || !response.result) {
         this.agentLogLine(`Failed: ${response.error ?? 'unknown problem'}`, 'ide-agent-failed');
@@ -601,6 +700,8 @@ export class IdeView {
         `${result.iterations} iteration(s), stopped: ${result.stopReason}`,
         'ide-agent-meta',
       );
+
+      this.renderProblems(result.failedToolCalls);
 
       await this.refreshTree();
 

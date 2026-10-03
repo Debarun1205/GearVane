@@ -83,8 +83,8 @@ const api = {
    * result; it never sees a tool or a provider client.
    */
   agent: {
-    run: (prompt, root, maxIterations) =>
-      ipcRenderer.invoke('agent:run', { prompt, root, maxIterations }),
+    run: (prompt, root, options) =>
+      ipcRenderer.invoke('agent:run', { prompt, root, ...(options ?? {}) }),
     cancel: () => ipcRenderer.send('agent:cancel'),
     onStep: (handler) => {
       const listener = (_event, step) => handler(step);

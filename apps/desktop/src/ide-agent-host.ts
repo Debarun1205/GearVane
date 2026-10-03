@@ -22,11 +22,14 @@ import {
   builderTools,
   fileTools,
   installNodeFileSystem,
+  listDirTool,
+  readFileTool,
   runAgent,
   searchFilesTool,
   type AgentModel,
   type AgentResult,
   type AgentStep,
+  type Tool,
 } from '@waypoint/harness';
 
 import { listFiles, readTextFile } from './ide/fs-store.js';
@@ -48,10 +51,41 @@ export const VIBE_SYSTEM_PROMPT = [
   'Do not run commands; there is no shell. Describe follow-up steps as text.',
 ].join(' ');
 
+/**
+ * What the agent is allowed to do.
+ *
+ * Ask mode is read-only: list, read, search, and template listing. It cannot
+ * create, modify, or scaffold anything, so it is safe to run against a
+ * workspace while thinking. Build mode is the full toolkit minus the shell,
+ * which stays in the visible terminal by design.
+ */
+export type AgentMode = 'ask' | 'build';
+
+export const ASK_SYSTEM_PROMPT = [
+  'Answer questions about the workspace.',
+  'Read files and report what you find.',
+  'Do not create, modify, or scaffold anything.',
+].join(' ');
+
 export interface AgentRunRequest {
   prompt: unknown;
   root: unknown;
   maxIterations?: unknown;
+  mode?: unknown;
+}
+
+/**
+ * Tools for a mode.
+ *
+ * Kept as a pure function of nothing but the mode so it can be asserted
+ * directly: the dangerous failure is a write tool leaking into ask mode,
+ * which would make "read-only" a lie.
+ */
+export function toolsForMode(mode: AgentMode): Tool[] {
+  if (mode === 'ask') {
+    return [readFileTool, listDirTool, searchFilesTool];
+  }
+  return [...fileTools(), ...builderTools(), searchFilesTool];
 }
 
 export interface AgentRunResponse {
@@ -199,6 +233,20 @@ export async function runIdeAgent(
     return { ok: false, error: 'workspace root must be a non-empty string' };
   }
 
+  // Validated before anything expensive: a bad mode must not stat the disk,
+  // resolve a model, or snapshot a workspace first.
+  const rawMode = request.mode;
+  const mode: AgentMode | undefined =
+    rawMode === undefined || rawMode === null
+      ? 'build'
+      : rawMode === 'ask' || rawMode === 'build'
+        ? rawMode
+        : undefined;
+
+  if (mode === undefined) {
+    return { ok: false, error: 'mode must be "ask" or "build"' };
+  }
+
   try {
     const info = await stat(request.root);
     if (!info.isDirectory()) {
@@ -216,7 +264,7 @@ export async function runIdeAgent(
   installNodeFileSystem();
 
   const workspace = new Workspace(request.root);
-  const registry = new ToolRegistry([...fileTools(), ...builderTools(), searchFilesTool]);
+  const registry = new ToolRegistry(toolsForMode(mode));
 
   const maxIterations =
     typeof request.maxIterations === 'number' &&
@@ -231,7 +279,7 @@ export async function runIdeAgent(
     model: model.client,
     registry,
     context: { workspace, maxReadBytes: 256 * 1024 },
-    system: VIBE_SYSTEM_PROMPT,
+    system: mode === 'ask' ? ASK_SYSTEM_PROMPT : VIBE_SYSTEM_PROMPT,
     maxIterations,
     signal,
     onStep,

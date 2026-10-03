@@ -6,12 +6,14 @@ import { join } from 'node:path';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import {
+  ASK_SYSTEM_PROMPT,
   MAX_SNAPSHOT_BYTES,
   VIBE_SYSTEM_PROMPT,
   diffSnapshot,
   resolveIdeModel,
   runIdeAgent,
   snapshotWorkspace,
+  toolsForMode,
 } from '../src/ide-agent-host.js';
 
 /**
@@ -376,6 +378,58 @@ describe('snapshot and diff', () => {
   });
 });
 
+describe('toolsForMode', () => {
+  it('gives ask mode only read-only tools', () => {
+    const names = toolsForMode('ask').map((tool) => tool.schema.name);
+    expect(names).toEqual(
+      expect.arrayContaining(['read_file', 'list_dir', 'search_files']),
+    );
+    expect(names).not.toContain('write_file');
+    expect(names).not.toContain('edit_file');
+    expect(names).not.toContain('scaffold_project');
+    expect(names).not.toContain('run_command');
+  });
+
+  it('gives build mode the full toolkit without a shell', () => {
+    const names = toolsForMode('build').map((tool) => tool.schema.name);
+    expect(names).toEqual(
+      expect.arrayContaining([
+        'read_file',
+        'write_file',
+        'edit_file',
+        'scaffold_project',
+        'search_files',
+      ]),
+    );
+    expect(names).not.toContain('run_command');
+  });
+
+  it('keeps the ask prompt short and read-only', () => {
+    expect(ASK_SYSTEM_PROMPT).toMatch(/do not create/i);
+    expect(ASK_SYSTEM_PROMPT.length).toBeLessThan(300);
+  });
+});
+
+describe('runIdeAgent mode validation', () => {
+  const config = {
+    tiers: {},
+    providers: { timeoutSeconds: 60 },
+  } as never;
+
+  it('rejects an unknown mode without touching a model', async () => {
+    const response = await runIdeAgent(
+      { prompt: 'x', root: '/tmp', mode: 'destroy' },
+      config,
+      {},
+      noop,
+      new AbortController().signal,
+    );
+
+    expect(response.ok).toBe(false);
+    expect(response.error).toMatch(/mode must be/);
+  });
+});
+
 describe('change review in the view', () => {
   it('lists changed files with diff and revert actions', () => {
     expect(view).toMatch(/ide-changes/);
@@ -407,6 +461,82 @@ describe('change review in the view', () => {
 
   it('exposes file removal over the preload bridge', () => {
     expect(preload).toMatch(/ipcRenderer\.invoke\('ide:remove'/);
+  });
+});
+
+describe('agent modes', () => {
+  it('offers ask and build', () => {
+    expect(host).toMatch(/export type AgentMode = 'ask' \| 'build'/);
+    expect(view).toMatch(/Build — create and change files/);
+    expect(view).toMatch(/Ask — read-only, answers only/);
+  });
+
+  it('rejects an unknown mode without running', () => {
+    expect(host).toMatch(/mode must be "ask" or "build"/);
+  });
+
+  it('defaults to build when the mode is absent', () => {
+    expect(host).toMatch(/rawMode === undefined \|\| rawMode === null[\s\S]*\? 'build'/);
+  });
+
+  it('validates the mode before touching disk or models', () => {
+    // Cheap checks first: a bad mode must not stat the workspace, resolve a
+    // provider, or snapshot files before failing.
+    const body = host.slice(host.indexOf('export async function runIdeAgent'));
+    const modeCheck = body.indexOf('mode must be');
+    expect(modeCheck).toBeGreaterThan(-1);
+    expect(body.indexOf('await stat(request.root)')).toBeGreaterThan(modeCheck);
+    expect(body.indexOf('resolveIdeModel')).toBeGreaterThan(modeCheck);
+    expect(body.indexOf('snapshotWorkspace')).toBeGreaterThan(modeCheck);
+  });
+
+  it('restricts ask mode to read-only tools', () => {
+    // The dangerous failure is a write tool leaking into ask mode, which
+    // would make "read-only" a lie. Asserted on the tool list itself.
+    expect(host).toMatch(/toolsForMode/);
+    const askBlock = host.slice(host.indexOf("if (mode === 'ask')"));
+    expect(askBlock).toContain('readFileTool');
+    expect(askBlock).toContain('listDirTool');
+    expect(askBlock).toContain('searchFilesTool');
+    expect(askBlock).not.toContain('writeFileTool');
+    expect(askBlock).not.toContain('scaffoldProjectTool');
+    expect(askBlock).not.toContain('editFileTool');
+  });
+
+  it('uses a different system prompt per mode', () => {
+    expect(host).toMatch(/ASK_SYSTEM_PROMPT/);
+    expect(host).toMatch(/mode === 'ask' \? ASK_SYSTEM_PROMPT : VIBE_SYSTEM_PROMPT/);
+  });
+
+  it('passes the selected mode from the prompt box to the bridge', () => {
+    expect(view).toMatch(/this\.agentMode\?\.value === 'ask' \? 'ask' : 'build'/);
+    expect(view).toMatch(/this\.options\.agent\.run\(prompt, \{ mode \}\)/);
+  });
+});
+
+describe('the Problems tab shows failed tool calls', () => {
+  it('renders failures with names and messages as text', () => {
+    expect(view).toMatch(/renderProblems/);
+    expect(view).toMatch(/ide-problem-name/);
+    expect(view).toMatch(/ide-problem-message/);
+  });
+
+  it('says empty means no failures yet, not clean code', () => {
+    expect(view).toMatch(/No failed tool calls from the last run/);
+  });
+
+  it('counts failures on the tab', () => {
+    expect(view).toMatch(/Problems \(\$\{failures\.length\}\)/);
+  });
+
+  it('updates after every run', () => {
+    expect(view).toMatch(/this\.renderProblems\(result\.failedToolCalls\)/);
+  });
+
+  it('switches panes without unmounting the terminal', () => {
+    // Unmounting would kill the shell session; hidden panes keep theirs.
+    expect(view).toMatch(/removeAttribute\('hidden'\)/);
+    expect(view).toMatch(/setAttribute\('hidden', ''\)/);
   });
 });
 
