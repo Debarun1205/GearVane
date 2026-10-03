@@ -571,10 +571,13 @@ code --install-extension waypoint-0.2.0.vsix</code></pre>
           <details class="faq-item">
             <summary>Which providers are supported?</summary>
             <p>
-              Anything speaking the OpenAI chat completions API, which covers
-              OpenRouter, Groq, Together, vLLM, LM Studio, and llama.cpp's
-              server. Ollama has dedicated support, and the Anthropic Messages
-              API is supported directly.
+              Anything speaking the OpenAI chat completions API: OpenRouter,
+              Groq, Together, DeepSeek, Mistral, xAI, Meta, LongCat, Gemini,
+              vLLM, LM Studio, llama.cpp's server, LocalAI, GPT4All, and
+              oobabooga's text-generation-webui, plus hosted OpenAI itself.
+              Ollama has dedicated support, and the Anthropic Messages API is
+              supported directly. Local servers need no key; hosted ones read
+              theirs from the environment, never from the config file.
             </p>
           </details>
 
