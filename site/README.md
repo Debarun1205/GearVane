@@ -96,11 +96,11 @@ version section together.
 
 ## Version history
 
-The version history lists **only versions that were actually tagged**. v0.2.0 is
-the first and only release; work before it was developed without tags, so the
-page says so rather than inventing earlier versions. A test asserts that no
-version number appears on the page which is not a real release, so the section
-cannot quietly become fiction.
+The version history lists **only versions that were actually tagged**. v0.2.0
+and v0.3.0 are tagged releases; work before v0.2.0 was developed without tags,
+so the page says so rather than inventing earlier versions. A test asserts that
+no version number appears on the page which is not a real release, so the
+section cannot quietly become fiction.
 
 Each entry pairs what shipped with the known limitations of that version,
 including the unsigned binaries and the unevaluated learned classifier. A

@@ -43,7 +43,7 @@ describe('gitignore', () => {
 
   it('ignores packaged installers', () => {
     expect(isIgnored('apps/desktop/release/')).toBe(true);
-    expect(isIgnored('apps/vscode-extension/waypoint-0.2.0.vsix')).toBe(true);
+    expect(isIgnored('apps/vscode-extension/waypoint-0.3.0.vsix')).toBe(true);
   });
 
   it('ignores the generated Android project', () => {

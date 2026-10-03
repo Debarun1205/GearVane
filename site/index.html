@@ -188,7 +188,7 @@
               <p>NSIS installer and a portable executable, x64.</p>
               <a
                 class="button button-small"
-                href="https://github.com/Debarun1205/Waypoint/releases/download/v0.2.0/Waypoint.Setup.0.2.0.exe"
+                href="https://github.com/Debarun1205/Waypoint/releases/download/v0.3.0/Waypoint.Setup.0.3.0.exe"
                 rel="noopener"
                 >Download .exe</a
               >
@@ -199,7 +199,7 @@
               <p>AppImage (x64) and .deb (x64 and arm64).</p>
               <a
                 class="button button-small"
-                href="https://github.com/Debarun1205/Waypoint/releases/download/v0.2.0/Waypoint-0.2.0.AppImage"
+                href="https://github.com/Debarun1205/Waypoint/releases/download/v0.3.0/Waypoint-0.3.0.AppImage"
                 rel="noopener"
                 >Download AppImage</a
               >
@@ -210,7 +210,7 @@
               <p>Separate .dmg for Intel and Apple Silicon.</p>
               <a
                 class="button button-small"
-                href="https://github.com/Debarun1205/Waypoint/releases/download/v0.2.0/Waypoint-0.2.0-arm64.dmg"
+                href="https://github.com/Debarun1205/Waypoint/releases/download/v0.3.0/Waypoint-0.3.0-arm64.dmg"
                 rel="noopener"
                 >Download .dmg</a
               >
@@ -221,7 +221,7 @@
               <p>Debug APK, built from the same renderer bundle.</p>
               <a
                 class="button button-small"
-                href="https://github.com/Debarun1205/Waypoint/releases/download/v0.2.0/app-debug.apk"
+                href="https://github.com/Debarun1205/Waypoint/releases/download/v0.3.0/app-debug.apk"
                 rel="noopener"
                 >Download APK</a
               >
@@ -292,7 +292,7 @@ waypoint route --task "fix a typo"</code></pre>
 npm install
 npm run build
 npx @vscode/vsce package
-code --install-extension waypoint-0.2.0.vsix</code></pre>
+code --install-extension waypoint-0.3.0.vsix</code></pre>
             </div>
           </div>
 
@@ -322,13 +322,75 @@ code --install-extension waypoint-0.2.0.vsix</code></pre>
               <div class="release-head">
                 <h3>
                   <a
+                    href="https://github.com/Debarun1205/Waypoint/releases/tag/v0.3.0"
+                    rel="noopener">v0.3.0</a
+                  >
+                </h3>
+                <p class="release-meta">
+                  <time datetime="2026-10-03">3 October 2026</time>
+                  <span class="tag tag-current">current</span>
+                </p>
+              </div>
+
+              <p class="release-summary">
+                The agent release. The harness grew a tool-using loop with
+                file, shell, search, and scaffold tools, sessions, and context
+                budgets, and the desktop app grew around it: a full-window
+                IDE with tabs, terminal, prompt-driven building with diff
+                review, ghost-text completions, and a model picker covering
+                every configured provider.
+              </p>
+
+              <div class="release-cols">
+                <div>
+                  <h4>In this release</h4>
+                  <ul>
+                    <li>Agent loop with escalation, repeat detection, and cancellation</li>
+                    <li>Desktop IDE: tabs, terminal, search, diff review, agent modes</li>
+                    <li>Prompt-driven building in the CLI, VS Code, and IDE</li>
+                    <li>Ghost-text completions from a local model</li>
+                    <li>Providers: Meta, LongCat, DeepSeek, Gemini, Mistral, xAI, more local servers</li>
+                    <li>Models: GPT-6 family, Muse Spark, Claude Opus/Sonnet 5, Haiku 4.5</li>
+                  </ul>
+                </div>
+                <div>
+                  <h4>Known limitations</h4>
+                  <ul class="limitation-list">
+                    <li>Artifacts are <strong>unsigned</strong></li>
+                    <li>APK is debug-signed, not Play-Store ready</li>
+                    <li>AppImage is x64 only; <code>.deb</code> covers both architectures</li>
+                    <li>New providers need your keys and are unverified live</li>
+                    <li>GPT-6 Astra needs the Responses API for tool calling</li>
+                    <li>Learned classifier is unevaluated against production traffic</li>
+                    <li>No sandboxing, despite the safety gates</li>
+                  </ul>
+                </div>
+              </div>
+
+              <p class="release-links">
+                <a
+                  class="button button-small"
+                  href="https://github.com/Debarun1205/Waypoint/releases/tag/v0.3.0"
+                  rel="noopener"
+                  >Release notes and all 9 downloads</a
+                >
+                <a
+                  href="https://github.com/Debarun1205/Waypoint/compare/v0.3.0...HEAD"
+                  rel="noopener"
+                  >Commits since this release</a
+                >
+              </p>
+            </li>
+            <li class="release">
+              <div class="release-head">
+                <h3>
+                  <a
                     href="https://github.com/Debarun1205/Waypoint/releases/tag/v0.2.0"
                     rel="noopener">v0.2.0</a
                   >
                 </h3>
                 <p class="release-meta">
                   <time datetime="2026-10-02">2 October 2026</time>
-                  <span class="tag tag-current">current</span>
                 </p>
               </div>
 
@@ -380,9 +442,8 @@ code --install-extension waypoint-0.2.0.vsix</code></pre>
           </ol>
 
           <p class="note">
-            v0.2.0 is the only tagged release so far. Work before it was
-            developed on the default branch without tags, so there is no
-            earlier version to install. The
+            Work before v0.2.0 was developed on the default branch without
+            tags, so there is no earlier version to install. The
             <a
               href="https://github.com/Debarun1205/Waypoint/releases"
               rel="noopener"

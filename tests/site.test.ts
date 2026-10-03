@@ -102,13 +102,14 @@ describe('version history', () => {
       [...html.matchAll(/\bv(\d+\.\d+\.\d+)\b/g)].map((match) => match[1] ?? ''),
     );
 
-    // v0.2.0 is the only tagged release; see tests/site.test.ts notes.
-    expect([...mentioned].sort()).toEqual(['0.2.0']);
+    // Every version named on the page must have a matching GitHub release.
+    // v0.2.0 and v0.3.0 are both tagged; nothing else may appear.
+    expect([...mentioned].sort()).toEqual(['0.2.0', '0.3.0']);
   });
 
-  it('states plainly that this is the first release', () => {
-    // Without this a single-entry history reads as if entries were lost.
-    expect(prose).toMatch(/only tagged release so far/i);
+  it('explains why there is no entry before v0.2.0', () => {
+    // Without this a short history reads as if entries were lost.
+    expect(prose).toMatch(/no earlier version to install/i);
   });
 
   it('pairs each version with what shipped and what was broken', () => {
@@ -123,10 +124,12 @@ describe('version history', () => {
     expect(prose).toMatch(/unevaluated against production traffic/i);
   });
 
-  it('links the release notes for the version it lists', () => {
-    expect(html).toContain(
-      'https://github.com/Debarun1205/Waypoint/releases/tag/v0.2.0',
-    );
+  it('links the release notes for every version it lists', () => {
+    for (const version of ['0.2.0', '0.3.0']) {
+      expect(html).toContain(
+        `https://github.com/Debarun1205/Waypoint/releases/tag/v${version}`,
+      );
+    }
   });
 
   it('uses a machine-readable date', () => {
@@ -180,16 +183,16 @@ describe('downloads', () => {
   });
 
   it('covers every platform the release publishes', () => {
-    // The exact asset names from the v0.2.0 release. If a future release
+    // The exact asset names from the v0.3.0 release. If a future release
     // renames one of these, this test is what should notice.
     const published = [
-      'Waypoint.Setup.0.2.0.exe',
-      'Waypoint.0.2.0.exe',
-      'Waypoint-0.2.0.dmg',
-      'Waypoint-0.2.0-arm64.dmg',
-      'Waypoint-0.2.0.AppImage',
-      'waypoint-app_0.2.0_amd64.deb',
-      'waypoint-app_0.2.0_arm64.deb',
+      'Waypoint.Setup.0.3.0.exe',
+      'Waypoint.0.3.0.exe',
+      'Waypoint-0.3.0.dmg',
+      'Waypoint-0.3.0-arm64.dmg',
+      'Waypoint-0.3.0.AppImage',
+      'waypoint-app_0.3.0_amd64.deb',
+      'waypoint-app_0.3.0_arm64.deb',
       'app-debug.apk',
     ];
 

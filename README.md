@@ -77,19 +77,19 @@ waypoint run --task "Investigate a race condition in the cache writer under load
 ### The app
 
 Download a build for your platform from the
-[v0.2.0 release](https://github.com/Debarun1205/Waypoint/releases/tag/v0.2.0):
+[v0.3.0 release](https://github.com/Debarun1205/Waypoint/releases/tag/v0.3.0):
 
 | Platform | File | Size |
 |----------|------|------|
-| Windows x64 (installer) | `Waypoint.Setup.0.2.0.exe` | 78 MB |
-| Windows x64 (portable) | `Waypoint.0.2.0.exe` | 78 MB |
-| macOS Intel | `Waypoint-0.2.0.dmg` | 98 MB |
-| macOS Apple Silicon | `Waypoint-0.2.0-arm64.dmg` | 94 MB |
-| Linux x64 (AppImage) | `Waypoint-0.2.0.AppImage` | 103 MB |
-| Linux x64 (deb) | `waypoint-app_0.2.0_amd64.deb` | 71 MB |
-| Linux arm64 (deb) | `waypoint-app_0.2.0_arm64.deb` | 67 MB |
-| Android (debug APK) | `app-debug.apk` | 3.6 MB |
-| VS Code | `waypoint-0.3.0.vsix` | 10 KB |
+| Windows x64 (installer) | `Waypoint.Setup.0.3.0.exe` | 93 MB |
+| Windows x64 (portable) | `Waypoint.0.3.0.exe` | 93 MB |
+| macOS Intel | `Waypoint-0.3.0.dmg` | 118 MB |
+| macOS Apple Silicon | `Waypoint-0.3.0-arm64.dmg` | 113 MB |
+| Linux x64 (AppImage) | `Waypoint-0.3.0.AppImage` | 123 MB |
+| Linux x64 (deb) | `waypoint-app_0.3.0_amd64.deb` | 83 MB |
+| Linux arm64 (deb) | `waypoint-app_0.3.0_arm64.deb` | 78 MB |
+| Android (debug APK) | `app-debug.apk` | 5.1 MB |
+| VS Code | `waypoint-0.3.0.vsix` | 16 KB |
 
 Linux notes: the AppImage is x64 only, because arm64 AppImages cannot be
 cross-built reliably on an x64 runner. The `.deb` covers both architectures.

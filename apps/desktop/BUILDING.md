@@ -93,8 +93,8 @@ Never commit a keystore or a signing password.
 own runners and assembles the APK on Linux. It triggers on a `v*.*.*` tag:
 
 ```bash
-git tag v0.2.0
-git push origin v0.2.0
+git tag v0.3.0        # the version being released, X.Y.Z bumped everywhere
+git push origin v0.3.0
 ```
 
 ## Verifying a build without running it
