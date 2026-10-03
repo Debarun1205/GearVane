@@ -92,3 +92,30 @@ describe('desktop job', () => {
     expect(RELEASE).toContain('ubuntu-latest');
   });
 });
+
+const DEPENDABOT = readFileSync(
+  join(REPO, '.github', 'dependabot.yml'),
+  'utf8',
+);
+const CODEQL = readFileSync(
+  join(REPO, '.github', 'workflows', 'codeql.yml'),
+  'utf8',
+);
+
+describe('dependency automation', () => {
+  it('watches every ecosystem the repo actually ships', () => {
+    // npm for the workspaces, pip for the Python port, and the Actions the
+    // workflows themselves pin - a stale action is a dependency too.
+    expect(DEPENDABOT).toContain('package-ecosystem: npm');
+    expect(DEPENDABOT).toContain('package-ecosystem: pip');
+    expect(DEPENDABOT).toContain('package-ecosystem: github-actions');
+  });
+
+  it('scans both languages the repo ships', () => {
+    // The desktop renderer and the Python port are different attack
+    // surfaces; missing either would silently unscan half the repo.
+    expect(CODEQL).toContain('javascript-typescript');
+    expect(CODEQL).toContain('python');
+    expect(CODEQL).toContain('security-events: write');
+  });
+});
