@@ -18,4 +18,4 @@ mypy>=1.5
 
 # Build
 build>=1.0
-twine>=4.0
+twine>=7.0.0
