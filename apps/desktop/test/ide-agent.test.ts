@@ -251,6 +251,40 @@ describe('the renderer gates the IDE on all three bridges', () => {
   });
 });
 
+describe('the editor has working tabs', () => {
+  it('renders a tab bar with roles for assistive tech', () => {
+    expect(view).toMatch(/ide-tabbar/);
+    expect(view).toMatch(/role.*tablist/);
+    expect(view).toMatch(/aria-selected/);
+  });
+
+  it('tracks dirtiness against the saved content, not keystrokes', () => {
+    // An edit that is undone returns the file to clean without a save.
+    expect(view).toMatch(/onDidChangeContent/);
+    expect(view).toMatch(/model\.getValue\(\) !== file\.savedValue/);
+  });
+
+  it('clears the dirty flag on save', () => {
+    expect(view).toMatch(/file\.savedValue = value/);
+    expect(view).toMatch(/file\.dirty = false/);
+  });
+
+  it('asks before discarding a dirty tab', () => {
+    // A blocking confirm is the ugliest honest option: silently dropping
+    // edits would be worse, and autosaving writes unasked-for files.
+    expect(view).toMatch(/window\.confirm\(/);
+    expect(view).toMatch(/Discard unsaved changes/);
+  });
+
+  it('stops the close click from switching to the closing tab', () => {
+    expect(view).toMatch(/event\.stopPropagation\(\)/);
+  });
+
+  it('falls back to another tab when the active one closes', () => {
+    expect(view).toMatch(/remaining\[remaining\.length - 1\]/);
+  });
+});
+
 describe('the hidden attribute actually hides', () => {
   it('overrides the flex display on both views', () => {
     // .app sets display:flex, which beats [hidden]. Without this rule the IDE

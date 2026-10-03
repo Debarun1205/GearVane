@@ -466,6 +466,47 @@ body {
 .ide-tab { color: var(--text-dim); font-size: 0.8rem; }
 .ide-tab-active { color: var(--text); }
 
+/* --- editor tabs --------------------------------------------------------- */
+
+.ide-tabbar {
+  display: flex;
+  gap: 0.15rem;
+  overflow-x: auto;
+  padding: 0.35rem 0.5rem 0;
+}
+
+.ide-tabbar .ide-tab {
+  align-items: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-bottom: 0;
+  border-radius: 6px 6px 0 0;
+  color: var(--text-dim);
+  cursor: pointer;
+  display: flex;
+  font-size: 0.82rem;
+  gap: 0.4rem;
+  padding: 0.3rem 0.4rem 0.3rem 0.6rem;
+  white-space: nowrap;
+}
+
+.ide-tabbar .ide-tab-active {
+  background: var(--bg-soft);
+  border-color: var(--border);
+  color: var(--text);
+}
+
+.ide-tab-close {
+  border-radius: 4px;
+  color: var(--text-dim);
+  padding: 0 0.25rem;
+}
+
+.ide-tab-close:hover {
+  background: var(--border);
+  color: var(--text);
+}
+
 .ide-status {
   color: var(--text-dim);
   font-size: 0.8rem;

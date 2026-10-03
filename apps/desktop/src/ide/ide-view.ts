@@ -33,10 +33,19 @@ export interface FsBridge {
   write(path: string, content: string): Promise<{ ok: boolean; error?: string }>;
 }
 
-/** A file open in the editor. */
+/**
+ * A file open in the editor.
+ *
+ * `savedValue` is what the file looked like the last time it was read or
+ * written. Comparing against it is what makes the dirty dot honest: a file
+ * whose content matches the disk is clean even if it was edited and undone.
+ */
 interface OpenFile {
   path: string;
+  name: string;
   model: monaco.editor.ITextModel;
+  savedValue: string;
+  dirty: boolean;
 }
 
 /**
@@ -126,6 +135,13 @@ export class IdeView {
     pane.className = 'ide-pane ide-editor-pane';
     pane.append(this.header('Editor'));
 
+    const tabBar = document.createElement('div');
+    tabBar.className = 'ide-tabbar';
+    tabBar.setAttribute('role', 'tablist');
+    tabBar.setAttribute('aria-label', 'Open files');
+    pane.append(tabBar);
+    this.tabBar = tabBar;
+
     const host = document.createElement('div');
     host.className = 'ide-editor-host';
     pane.append(host);
@@ -146,7 +162,45 @@ export class IdeView {
       () => void this.saveActive(),
     );
 
+    this.renderTabs();
     return pane;
+  }
+
+  private tabBar: HTMLElement | undefined;
+
+  /** A file open in the editor, with what was last saved. */
+  private renderTabs(): void {
+    if (!this.tabBar) return;
+    this.tabBar.textContent = '';
+
+    for (const [path, file] of this.openFiles) {
+      const tab = document.createElement('button');
+      tab.type = 'button';
+      tab.className = 'ide-tab' + (path === this.activePath ? ' ide-tab-active' : '');
+      tab.setAttribute('role', 'tab');
+      tab.setAttribute('aria-selected', String(path === this.activePath));
+      tab.title = path;
+
+      const label = document.createElement('span');
+      label.className = 'ide-tab-label';
+      label.textContent = file.dirty ? `● ${file.name}` : file.name;
+      tab.append(label);
+
+      const close = document.createElement('span');
+      close.className = 'ide-tab-close';
+      close.textContent = '×';
+      close.setAttribute('aria-label', `Close ${file.name}`);
+      close.addEventListener('click', (event) => {
+        // The tab click underneath must not also fire and switch to a file
+        // that is about to close.
+        event.stopPropagation();
+        this.closeFile(path);
+      });
+      tab.append(close);
+
+      tab.addEventListener('click', () => void this.openFile(path));
+      this.tabBar.append(tab);
+    }
   }
 
   private buildBottomPane(): HTMLElement {
@@ -226,6 +280,7 @@ export class IdeView {
     if (existing) {
       this.editor.setModel(existing.model);
       this.activePath = path;
+      this.renderTabs();
       return;
     }
 
@@ -242,9 +297,25 @@ export class IdeView {
       monaco.Uri.file(`${this.options.workspaceRoot}/${path}`),
     );
 
-    this.openFiles.set(path, { path, model });
+    const file: OpenFile = {
+      path,
+      name: path.split('/').pop() ?? path,
+      model,
+      savedValue: result.content,
+      dirty: false,
+    };
+    this.openFiles.set(path, file);
     this.editor.setModel(model);
     this.activePath = path;
+
+    // Dirty state follows the content, not the keystrokes: an edit that is
+    // undone returns the file to clean without a save.
+    model.onDidChangeContent(() => {
+      file.dirty = model.getValue() !== file.savedValue;
+      this.renderTabs();
+    });
+
+    this.renderTabs();
   }
 
   /** Save the active file. Bound to Ctrl+S in the editor pane. */
@@ -257,11 +328,51 @@ export class IdeView {
       return;
     }
 
-    const result = await this.options.fs.write(path, file.model.getValue());
+    const value = file.model.getValue();
+    const result = await this.options.fs.write(path, value);
+
+    if (result.ok) {
+      file.savedValue = value;
+      file.dirty = false;
+      this.renderTabs();
+    }
 
     this.setStatus(
       result.ok ? `Saved ${path}.` : (result.error ?? `Could not save ${path}.`),
     );
+  }
+
+  /**
+   * Close a tab.
+   *
+   * A dirty tab asks before discarding, through a blocking confirm. It is the
+   * ugliest dialog in the app and the only honest one available without a
+   * custom modal: silently dropping edits would be worse, and autosaving
+   * would write files the user never asked to write.
+   */
+  closeFile(path: string): void {
+    const file = this.openFiles.get(path);
+    if (!file) return;
+
+    if (file.dirty && !window.confirm(`Discard unsaved changes to ${file.name}?`)) {
+      return;
+    }
+
+    file.model.dispose();
+    this.openFiles.delete(path);
+
+    if (this.activePath === path) {
+      const remaining = [...this.openFiles.keys()];
+      const next = remaining[remaining.length - 1];
+      if (next && this.editor) {
+        this.editor.setModel(this.openFiles.get(next)?.model ?? null);
+        this.activePath = next;
+      } else {
+        this.activePath = undefined;
+      }
+    }
+
+    this.renderTabs();
   }
 
   /** Reveal a file the agent touched. */
