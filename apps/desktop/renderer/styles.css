@@ -523,6 +523,58 @@ body {
   text-align: left;
 }
 
+/* --- sidebar search -------------------------------------------------------- */
+
+.ide-search-input {
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.82rem;
+  margin: 0 0.5rem 0.4rem;
+  padding: 0.35rem 0.5rem;
+  width: calc(100% - 1rem);
+}
+
+.ide-search-results {
+  max-height: 14rem;
+  overflow-y: auto;
+  padding: 0 0.5rem 0.4rem;
+}
+
+.ide-search-row {
+  background: none;
+  border: 0;
+  border-radius: 4px;
+  color: var(--text);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  font-size: 0.78rem;
+  gap: 0.1rem;
+  padding: 0.25rem 0.35rem;
+  text-align: left;
+  width: 100%;
+}
+
+.ide-search-row:hover { background: var(--bg-raised); }
+
+.ide-search-location { color: var(--accent); }
+
+.ide-search-snippet {
+  color: var(--text-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ide-search-note {
+  color: var(--text-dim);
+  font-size: 0.78rem;
+  padding: 0.25rem 0.35rem;
+}
+
 /* --- IDE agent ----------------------------------------------------------- */
 
 .ide-agent-hint {

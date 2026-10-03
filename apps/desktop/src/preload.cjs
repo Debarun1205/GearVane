@@ -70,6 +70,8 @@ const api = {
     list: (root) => ipcRenderer.invoke('ide:list', root),
     read: (root, path) => ipcRenderer.invoke('ide:read', root, path),
     write: (root, path, content) => ipcRenderer.invoke('ide:write', root, path, content),
+    search: (root, query, directory) =>
+      ipcRenderer.invoke('ide:search', root, query, directory),
   },
 
   /**

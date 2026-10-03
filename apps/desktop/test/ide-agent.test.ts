@@ -285,6 +285,50 @@ describe('the editor has working tabs', () => {
   });
 });
 
+describe('the agent can search the workspace', () => {
+  it('offers the search tool to the model', () => {
+    expect(host).toMatch(/searchFilesTool/);
+  });
+
+  it('tells the model to locate code before editing it', () => {
+    expect(host).toMatch(/search_files/);
+  });
+
+  it('serves sidebar search through the same tool', () => {
+    // The UI and the agent must agree on what a search finds. A second
+    // implementation would eventually disagree about an edge case.
+    const fsHost = read(REPO, 'apps', 'desktop', 'src', 'ide-fs-host.ts');
+    expect(fsHost).toMatch(/ide:search/);
+    expect(fsHost).toMatch(/searchFilesTool\.execute/);
+  });
+
+  it('validates the query before searching', () => {
+    const fsHost = read(REPO, 'apps', 'desktop', 'src', 'ide-fs-host.ts');
+    expect(fsHost).toMatch(/query must be a non-empty string/);
+  });
+
+  it('forwards search over the preload bridge', () => {
+    expect(preload).toMatch(/ipcRenderer\.invoke\('ide:search'/);
+  });
+});
+
+describe('the sidebar searches file contents', () => {
+  it('has a search box with an accessible label', () => {
+    expect(view).toMatch(/ide-search-input/);
+    expect(view).toMatch(/Search file contents/);
+  });
+
+  it('opens results at the matched line', () => {
+    expect(view).toMatch(/openFile\(path, lineNumber\)/);
+    expect(view).toMatch(/revealLineInCenter/);
+  });
+
+  it('renders result rows as text, never markup', () => {
+    expect(view).toMatch(/ide-search-row/);
+    expect(view).not.toMatch(/searchResults.*innerHTML/);
+  });
+});
+
 describe('the hidden attribute actually hides', () => {
   it('overrides the flex display on both views', () => {
     // .app sets display:flex, which beats [hidden]. Without this rule the IDE

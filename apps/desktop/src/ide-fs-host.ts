@@ -13,6 +13,8 @@
 
 import { dialog, ipcMain } from 'electron';
 
+import { Workspace, searchFilesTool } from '@waypoint/harness';
+
 import { listFiles, readTextFile, writeTextFile } from './ide/fs-store.js';
 
 export function registerIdeFsHandlers(): void {
@@ -64,6 +66,33 @@ export function registerIdeFsHandlers(): void {
       }
 
       return writeTextFile(root, relPath, content);
+    },
+  );
+
+  ipcMain.handle(
+    'ide:search',
+    async (_event, root: unknown, query: unknown, directory: unknown) => {
+      if (typeof root !== 'string' || root.trim() === '') {
+        return { ok: false, error: 'workspace root must be a non-empty string' };
+      }
+      if (typeof query !== 'string' || query.trim() === '') {
+        return { ok: false, error: 'query must be a non-empty string' };
+      }
+
+      // The harness tool owns the walk, caps, and skip rules, so the sidebar
+      // and the agent search identically. A second implementation would
+      // eventually disagree about an edge case.
+      const result = await searchFilesTool.execute(
+        {
+          query,
+          ...(typeof directory === 'string' && directory.trim() !== ''
+            ? { directory }
+            : {}),
+        },
+        { workspace: new Workspace(root), maxReadBytes: 256 * 1024 },
+      );
+
+      return { ok: result.ok, content: result.content, error: result.error };
     },
   );
 }

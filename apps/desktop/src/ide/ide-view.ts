@@ -31,6 +31,7 @@ export interface FsBridge {
   list(): Promise<{ ok: boolean; entries?: FsEntry[]; error?: string }>;
   read(path: string): Promise<{ ok: boolean; content?: string; error?: string }>;
   write(path: string, content: string): Promise<{ ok: boolean; error?: string }>;
+  search(query: string): Promise<{ ok: boolean; content?: string; error?: string }>;
 }
 
 /**
@@ -109,6 +110,21 @@ export class IdeView {
     pane.innerHTML = '';
     pane.append(this.header('Explorer'));
 
+    const search = document.createElement('input');
+    search.className = 'ide-search-input';
+    search.type = 'search';
+    search.placeholder = 'Search files… (Enter)';
+    search.setAttribute('aria-label', 'Search file contents');
+    search.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') void this.runSearch(search.value);
+    });
+    pane.append(search);
+
+    const results = document.createElement('div');
+    results.className = 'ide-search-results';
+    pane.append(results);
+    this.searchResults = results;
+
     const body = document.createElement('div');
     body.className = 'ide-tree-body';
     pane.append(body);
@@ -129,6 +145,73 @@ export class IdeView {
   }
 
   private treeBody: HTMLElement | undefined;
+  private searchResults: HTMLElement | undefined;
+
+  /**
+   * Run a content search and render path:line hits.
+   *
+   * The search itself runs in the main process through the same tool the
+   * agent uses, so what the user sees is what the agent would find.
+   */
+  private async runSearch(query: string): Promise<void> {
+    if (!this.searchResults) return;
+    const trimmed = query.trim();
+    if (!trimmed) {
+      this.searchResults.textContent = '';
+      return;
+    }
+
+    this.searchResults.textContent = 'Searching…';
+    const result = await this.options.fs.search(trimmed);
+
+    this.searchResults.textContent = '';
+    if (!result.ok) {
+      this.searchResults.textContent = result.error ?? 'Search failed.';
+      return;
+    }
+
+    const lines = (result.content ?? '').split('\n').filter(Boolean);
+    if (lines.length === 0 || (lines.length === 1 && lines[0]?.startsWith('No matches'))) {
+      this.searchResults.textContent = `No matches for "${trimmed}".`;
+      return;
+    }
+
+    for (const line of lines) {
+      // path:line: text — but informational footers start with … or (.
+      if (line.startsWith('…') || line.startsWith('(')) {
+        const note = document.createElement('div');
+        note.className = 'ide-search-note';
+        note.textContent = line;
+        this.searchResults.append(note);
+        continue;
+      }
+
+      const separator = line.indexOf(':');
+      const second = separator === -1 ? -1 : line.indexOf(':', separator + 1);
+      if (separator === -1 || second === -1) continue;
+
+      const path = line.slice(0, separator);
+      const lineNumber = Number(line.slice(separator + 1, second));
+      const text = line.slice(second + 1).trim();
+      if (!path || !Number.isInteger(lineNumber)) continue;
+
+      const row = document.createElement('button');
+      row.type = 'button';
+      row.className = 'ide-search-row';
+      row.title = `${path}:${lineNumber}`;
+
+      const location = document.createElement('span');
+      location.className = 'ide-search-location';
+      location.textContent = `${path}:${lineNumber}`;
+      const snippet = document.createElement('span');
+      snippet.className = 'ide-search-snippet';
+      snippet.textContent = text;
+      row.append(location, snippet);
+
+      row.addEventListener('click', () => void this.openFile(path, lineNumber));
+      this.searchResults.append(row);
+    }
+  }
 
   private buildEditorPane(): HTMLElement {
     const pane = document.createElement('div');
@@ -273,7 +356,7 @@ export class IdeView {
   }
 
   /** Open a file in the editor, creating a model if needed. */
-  async openFile(path: string): Promise<void> {
+  async openFile(path: string, line?: number): Promise<void> {
     if (!this.editor) return;
 
     const existing = this.openFiles.get(path);
@@ -281,6 +364,7 @@ export class IdeView {
       this.editor.setModel(existing.model);
       this.activePath = path;
       this.renderTabs();
+      if (line !== undefined) this.revealLine(line);
       return;
     }
 
@@ -307,6 +391,7 @@ export class IdeView {
     this.openFiles.set(path, file);
     this.editor.setModel(model);
     this.activePath = path;
+    if (line !== undefined) this.revealLine(line);
 
     // Dirty state follows the content, not the keystrokes: an edit that is
     // undone returns the file to clean without a save.
@@ -378,6 +463,13 @@ export class IdeView {
   /** Reveal a file the agent touched. */
   revealFile(path: string): void {
     void this.openFile(path);
+  }
+
+  /** Center the editor on a 1-based line number. */
+  private revealLine(line: number): void {
+    if (!this.editor || line < 1) return;
+    this.editor.revealLineInCenter(line);
+    this.editor.setPosition({ lineNumber: line, column: 1 });
   }
 
   /* ---------------------------------------------------------------- */

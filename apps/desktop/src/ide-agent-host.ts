@@ -23,6 +23,7 @@ import {
   fileTools,
   installNodeFileSystem,
   runAgent,
+  searchFilesTool,
   type AgentModel,
   type AgentResult,
   type AgentStep,
@@ -41,6 +42,7 @@ export const VIBE_SYSTEM_PROMPT = [
   'When the user asks for a new project, call list_templates first, then',
   'scaffold_project with the chosen template, then refine the generated files',
   'with read_file, edit_file, and write_file.',
+  'Use search_files to locate code before editing it.',
   'Do not run commands; there is no shell. Describe follow-up steps as text.',
 ].join(' ');
 
@@ -124,7 +126,7 @@ export async function runIdeAgent(
   installNodeFileSystem();
 
   const workspace = new Workspace(request.root);
-  const registry = new ToolRegistry([...fileTools(), ...builderTools()]);
+  const registry = new ToolRegistry([...fileTools(), ...builderTools(), searchFilesTool]);
 
   const maxIterations =
     typeof request.maxIterations === 'number' &&

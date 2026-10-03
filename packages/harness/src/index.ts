@@ -410,6 +410,8 @@ export {
   writeFileTool,
 } from './tools/fs.js';
 
+export { searchFilesTool, type SearchMatch } from './tools/search.js';
+
 export {
   DEFAULT_COMMAND_TIMEOUT_MS,
   DEFAULT_MAX_OUTPUT_BYTES,
