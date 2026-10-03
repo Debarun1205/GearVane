@@ -81,6 +81,10 @@ apps when it cannot.
 - Every demo prompt is routed through the real classifier and must produce
   the tier the page claims. If routing changes, the page fails to build
   rather than quietly making a false claim.
+- Every capability advertised in the "Inside the harness" feature grid is
+  cross-checked against the code that implements it (tool names, agent
+  modes, ghost text, spend limits, health command, theme presets). A card
+  may not describe a feature that does not exist.
 - External links must carry `rel="noopener"`, and no third-party resources
   or analytics may be added.
 - There must be no inline scripts, and the demo DOM must not use string
@@ -102,6 +106,7 @@ apps when it cannot.
 | `#how` | How it works: classify, run, escalate |
 | `#tiers` | The three tiers and their relative cost |
 | `#demos` | Worked routing decisions |
+| `#harness` | Inside the harness: the agent loop, the IDE, and the surfaces |
 | `#download` | Per-platform downloads, plus install-from-source tabs |
 | `#versions` | Version history: what shipped and what was still broken |
 | `#about` | What the project is, why, how it is built, what it is not |

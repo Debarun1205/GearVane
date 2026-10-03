@@ -3,10 +3,10 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Waypoint - route each prompt to the cheapest model that can do the job</title>
+    <title>Waypoint - the AI harness that routes each prompt to the cheapest model</title>
     <meta
       name="description"
-      content="Waypoint classifies each request and picks the cheapest model tier that can do the job. Local models for simple edits, frontier models for hard problems, and nothing in between you did not ask for."
+      content="Waypoint is an AI harness: it classifies each request, runs it through a tool-using agent loop with budgets and approvals, and picks the cheapest model tier that can do the job. CLI, VS Code, desktop IDE, and Android."
     />
     <link
       rel="canonical"
@@ -28,6 +28,7 @@
           <a href="#how">How it works</a>
           <a href="#tiers">Tiers</a>
           <a href="#demos">Demos</a>
+          <a href="#harness">Harness</a>
           <a href="#download">Download</a>
           <a href="#versions">Versions</a>
           <a href="#about">About</a>
@@ -46,20 +47,22 @@
       <!-- hero ------------------------------------------------------------ -->
       <section class="hero" id="top">
         <div class="wrap">
-          <p class="eyebrow">Open source, MIT licensed</p>
+          <p class="eyebrow">Open source AI harness, MIT licensed</p>
           <h1>Stop paying frontier prices for a typo fix.</h1>
           <p class="lede">
-            Waypoint reads what you asked for, decides which model tier can
-            actually do the job, and escalates only when a cheaper model
-            fails. Simple edits run on a local model for free.
+            Waypoint is an AI harness: it classifies what you asked for, runs
+            the task through a tool-using agent loop with budgets and
+            approvals, and picks the cheapest model tier that can do the job,
+            escalating only when a cheaper model fails.
           </p>
           <div class="hero-actions">
             <a class="button" href="#download">Download</a>
             <a class="button button-ghost" href="#demos">See it decide</a>
           </div>
           <p class="hero-note">
-            Works on Windows, Linux, macOS, and Android. Bring your own keys,
-            or run entirely on your own machine.
+            Works on Windows, Linux, macOS, and Android - as a CLI, a VS Code
+            extension, and a full IDE. Bring your own keys, or run entirely on
+            your own machine.
           </p>
         </div>
       </section>
@@ -175,8 +178,111 @@
         </div>
       </section>
 
+      <!-- inside the harness ---------------------------------------------- -->
+      <section class="section section-alt" id="harness">
+        <div class="wrap">
+          <h2>Inside the harness</h2>
+          <p class="section-lede">
+            Routing is the engine; this is the machine around it. A
+            tool-using agent loop, review gates, and four surfaces running
+            the same code - a chat box with a model behind it is not a
+            harness.
+          </p>
+
+          <div class="feature-grid">
+            <article class="feature">
+              <h3>Routing engine</h3>
+              <p>
+                Classify, run, escalate only on real failure. Every decision
+                shows its reasons, and the budget is checked before a single
+                token is spent.
+              </p>
+            </article>
+
+            <article class="feature">
+              <h3>Agent loop with tools</h3>
+              <p>
+                Read, write, edit, search, and run commands through a
+                tool-calling loop with sessions, context budgets, repeat
+                detection, and cancellation.
+              </p>
+            </article>
+
+            <article class="feature">
+              <h3>Desktop IDE</h3>
+              <p>
+                File tree, tabs, an integrated terminal, workspace search, a
+                Problems tab, and a model picker covering every configured
+                provider.
+              </p>
+            </article>
+
+            <article class="feature">
+              <h3>Ask and Build modes</h3>
+              <p>
+                Ask answers questions without touching files. Build runs the
+                loop with write tools, and every file the run created or
+                changed lands in a Review list where it opens as a
+                side-by-side diff.
+              </p>
+            </article>
+
+            <article class="feature">
+              <h3>Prompt-driven building</h3>
+              <p>
+                Describe an app and get a scaffold from real templates,
+                preview the files, and write them to disk - from the CLI,
+                VS Code, or the IDE.
+              </p>
+            </article>
+
+            <article class="feature">
+              <h3>Ghost text</h3>
+              <p>
+                Inline completions from a local model through Ollama, local
+                only by design: completions never go to a hosted provider.
+              </p>
+            </article>
+
+            <article class="feature">
+              <h3>Budgets and approvals</h3>
+              <p>
+                Per-task, per-session, and per-day spend ceilings, gated
+                operations that require an explicit approval, and a set of
+                commands that never run at all.
+              </p>
+            </article>
+
+            <article class="feature">
+              <h3>Learns from outcomes</h3>
+              <p>
+                Recorded feedback retrains the learned classifier, which
+                refines the heuristic choice and always defers to it when
+                the two disagree.
+              </p>
+            </article>
+
+            <article class="feature">
+              <h3>Themes and onboarding</h3>
+              <p>
+                First-run onboarding, five dark themes, background ambience,
+                accent colours, and a calm-motion mode. The look is stored
+                per device, never in your config.
+              </p>
+            </article>
+          </div>
+
+          <p class="note">
+            One engine, four surfaces: the <strong>CLI</strong>, the
+            <strong>VS Code extension</strong>, the desktop app, and the
+            Android build. Health checks probe your configured models from
+            any of them.
+          </p>
+        </div>
+      </section>
+
       <!-- download -------------------------------------------------------- -->
-      <section class="section section-alt" id="download">
+      <section class="section" id="download">
         <div class="wrap">
           <h2>Download</h2>
           <p class="section-lede">
@@ -311,7 +417,7 @@ code --install-extension waypoint-0.3.0.vsix</code></pre>
       </section>
 
       <!-- version history --------------------------------------------------- -->
-      <section class="section" id="versions">
+      <section class="section section-alt" id="versions">
         <div class="wrap">
           <h2>Version history</h2>
           <p class="section-lede">
@@ -456,7 +562,7 @@ code --install-extension waypoint-0.3.0.vsix</code></pre>
       </section>
 
       <!-- about -------------------------------------------------------------- -->
-      <section class="section section-alt" id="about">
+      <section class="section" id="about">
         <div class="wrap">
           <h2>About Waypoint</h2>
           <p class="section-lede">
@@ -467,12 +573,14 @@ code --install-extension waypoint-0.3.0.vsix</code></pre>
             <article>
               <h3>What it is</h3>
               <p>
-                A routing layer that sits between you and your model providers.
-                It reads a request, classifies which tier can plausibly handle
-                it, runs the cheapest one first, and escalates only when a
-                cheaper tier actually fails. The point is not to be clever
-                about which model to use; it is to stop paying frontier prices
-                for work a free local model does perfectly well.
+                An AI harness built around a routing layer. It reads a
+                request, classifies which tier can plausibly handle it, runs
+                the cheapest one first, and escalates only when a cheaper
+                tier actually fails - then hands the work to a tool-using
+                agent loop whose changes you review as a diff. The point is
+                not to be clever about which model to use; it is to stop
+                paying frontier prices for work a free local model does
+                perfectly well.
               </p>
             </article>
 
@@ -554,9 +662,21 @@ code --install-extension waypoint-0.3.0.vsix</code></pre>
       </section>
 
       <!-- faq ------------------------------------------------------------- -->
-      <section class="section" id="faq">
+      <section class="section section-alt" id="faq">
         <div class="wrap">
           <h2>FAQ</h2>
+
+          <details class="faq-item">
+            <summary>What makes it a harness and not a chat app?</summary>
+            <p>
+              A chat app hands your text to one model. Waypoint classifies
+              the task, routes it to a tier, runs it through a tool loop
+              that can read, write, search, and run commands, gates
+              destructive operations behind approvals, checks the budget
+              before any token is spent, and shows the result as a diff you
+              review. The chat box is one surface of that, not the product.
+            </p>
+          </details>
 
           <details class="faq-item">
             <summary>Do I need an API key?</summary>

@@ -1124,6 +1124,57 @@ pre {
   margin: 0;
 }
 
+/* --- harness feature grid --------------------------------------------------- */
+
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
+  gap: 1rem;
+}
+
+.feature {
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  padding: 1.35rem;
+  box-shadow: var(--card-shadow);
+  transition: transform 0.3s var(--ease), border-color 0.3s var(--ease),
+    box-shadow 0.3s var(--ease);
+}
+
+.feature:hover {
+  transform: var(--hover-lift);
+  border-color: rgb(56 189 248 / 0.3);
+  box-shadow: var(--card-shadow), 0 24px 48px -28px rgb(56 189 248 / 0.4);
+}
+
+.feature h3 {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-size: 1.05rem;
+  margin-bottom: 0.5rem;
+}
+
+/* A small gradient chip instead of an icon: no assets, no font icons. */
+.feature h3::before {
+  content: '';
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 3px;
+  background: linear-gradient(135deg, var(--accent), var(--frontier));
+  box-shadow: 0 0 10px rgb(56 189 248 / 0.45);
+  flex-shrink: 0;
+}
+
+.feature p {
+  color: var(--text-dim);
+  font-size: 0.94rem;
+  margin: 0;
+}
+
 /* --- faq ----------------------------------------------------------------- */
 
 .faq-item {
@@ -1373,6 +1424,7 @@ pre {
     .steps li,
     .tier,
     .demo,
+    .feature,
     .download-card,
     .alt-install,
     .release,

@@ -63,6 +63,7 @@ describe('sections', () => {
     ['how', 'How it works'],
     ['tiers', 'Tiers'],
     ['demos', 'See it decide'],
+    ['harness', 'Inside the harness'],
     ['download', 'Download'],
     ['versions', 'Version history'],
     ['about', 'About Waypoint'],
@@ -77,6 +78,7 @@ describe('sections', () => {
       '#how',
       '#tiers',
       '#demos',
+      '#harness',
       '#download',
       '#versions',
       '#about',
@@ -345,6 +347,58 @@ describe('demo prompts', () => {
     // Text from the demo file must never be interpolated into markup.
     expect(demos).not.toMatch(/innerHTML/);
     expect(demos).toMatch(/textContent/);
+  });
+});
+
+describe('harness feature claims', () => {
+  // The "Inside the harness" grid advertises capabilities in marketing
+  // language. Each card is pinned here to the identifier that implements
+  // it, the same way the demo tiers are pinned to the real classifier:
+  // a claim the code cannot back is a failing test, not a review comment.
+  const source = (...parts: string[]): string => read(join(REPO, ...parts));
+
+  const claims: Array<[claim: string, file: string, pattern: RegExp]> = [
+    ['escalation is bounded by configuration', 'packages/core/src/config.ts', /max_escalations/],
+    ['spend limits exist before tokens are spent', 'packages/core/src/config.ts', /spend_limits/],
+    ['the agent reads and writes files', 'packages/harness/src/tools/fs.ts', /name: 'write_file'/],
+    ['the agent runs commands', 'packages/harness/src/tools/shell.ts', /name: 'run_command'/],
+    ['the agent searches the workspace', 'packages/harness/src/tools/search.ts', /name: 'search_files'/],
+    ['building scaffolds from templates', 'packages/harness/src/builder/agent-tools.ts', /scaffold_project|list_templates/],
+    ['context budgets are real', 'packages/harness/src/index.ts', /Token budget for the conversation/],
+    ['the IDE shows a Problems tab', 'apps/desktop/src/ide/ide-view.ts', /ide-problem-name/],
+    ['the IDE has Ask and Build modes', 'apps/desktop/src/ide/ide-view.ts', /=== 'ask' \? 'ask' : 'build'/],
+    ['the IDE reviews changes as a side-by-side diff', 'apps/desktop/src/ide/ide-view.ts', /side-by-side diff/],
+    ['ghost text is registered', 'apps/desktop/src/ide/ide-view.ts', /registerGhostText/],
+    ['the CLI can scaffold a project', 'packages/cli/src/harness-commands.ts', /waypoint build/],
+    ['the CLI gates operations behind approval', 'packages/cli/src/bin.ts', /case 'approve'/],
+    ['the CLI probes model health', 'packages/cli/src/bin.ts', /case 'health'/],
+    ['the app surfaces health too', 'apps/desktop/src/renderer.ts', /showHealth/],
+    ['feedback retrains the learned classifier', 'packages/core/src/defaults.ts', /learned_model\.json/],
+    ['training runs from recorded feedback', 'waypoint/learned_classifier.py', /train_from_feedback/],
+    ['the app wires first-run onboarding', 'apps/desktop/src/renderer.ts', /openAppearance\('onboarding'\)/],
+    ['the look is stored on the device', 'apps/desktop/src/renderer.ts', /appearanceStorage/],
+  ];
+
+  it.each(claims)('%s', (_claim, file, pattern) => {
+    expect(source(...file.split('/'))).toMatch(pattern);
+  });
+
+  it('ships the five themes the page advertises', () => {
+    const theme = source('apps', 'desktop', 'src', 'theme.ts');
+    for (const id of ['midnight', 'aurora', 'nebula', 'ember', 'verdant']) {
+      expect(theme).toContain(`id: '${id}'`);
+    }
+    const swatches = theme.match(/swatch: \[/g) ?? [];
+    expect(swatches.length).toBeGreaterThanOrEqual(5);
+  });
+
+  it('runs the same renderer on Android', () => {
+    // The page claims four surfaces running the same code. The Android
+    // build is proof: Capacitor wraps this renderer directory verbatim.
+    const capacitor = source('apps', 'desktop', 'capacitor.config.ts');
+    expect(capacitor).toMatch(/webDir:\s*'renderer'/);
+    expect(existsSync(join(REPO, 'apps', 'vscode-extension', 'package.json'))).toBe(true);
+    expect(existsSync(join(REPO, 'packages', 'cli', 'src', 'bin.ts'))).toBe(true);
   });
 });
 
