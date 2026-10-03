@@ -90,6 +90,18 @@ describe('the panel confines writes to the workspace', () => {
   it('passes the workspace to the agent context', () => {
     expect(panel).toMatch(/context:\s*\{\s*workspace/);
   });
+
+  it('offers the scaffold tools so prompts can start projects', () => {
+    // Without these a "build me a site" prompt has file tools but no way to
+    // begin, and the run wanders.
+    expect(panel).toMatch(/builderTools\(\)/);
+  });
+
+  it('installs the real filesystem for scaffold writes', () => {
+    // The extension host is Node, but the scaffold tools write through an
+    // injected bridge that starts out empty. Without this every write fails.
+    expect(panel).toMatch(/installNodeFileSystem\(\)/);
+  });
 });
 
 describe('the panel is honest about containment', () => {

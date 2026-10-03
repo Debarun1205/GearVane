@@ -32,6 +32,7 @@ import {
   TEMPLATES,
   ToolRegistry,
   Workspace,
+  builderTools,
   createShellTool,
   fileTools,
   getTemplate,
@@ -96,6 +97,11 @@ export async function cmdAgent(args: ParsedArgs, json: boolean, useColor: boolea
   const maxIterations = flagNumber(args, 'max-iterations') ?? 25;
   const budget = flagNumber(args, 'budget');
 
+  // The scaffold tools write through an injected filesystem. Without this the
+  // agent can plan a project but every write fails, which reads as a broken
+  // tool rather than a missing setup step.
+  installNodeFileSystem();
+
   const { config } = loadConfig(flagString(args, 'config'));
   const tools = buildToolkit(config, allowShell, autoApprove);
 
@@ -148,7 +154,10 @@ function buildToolkit(
   allowShell: boolean,
   autoApprove: boolean,
 ): Tool[] {
-  const tools: Tool[] = [...fileTools()];
+  // Scaffold tools ride along unconditionally: they write through the same
+  // containment as the file tools, and without them a "build me a site"
+  // prompt has no way to start.
+  const tools: Tool[] = [...fileTools(), ...builderTools()];
 
   if (allowShell) {
     tools.push(

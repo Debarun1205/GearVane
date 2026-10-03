@@ -73,6 +73,24 @@ const api = {
   },
 
   /**
+   * IDE agent bridge.
+   *
+   * The loop runs in the main process, where the harness tool layer can use
+   * Node. The renderer sends a prompt and receives step events plus a final
+   * result; it never sees a tool or a provider client.
+   */
+  agent: {
+    run: (prompt, root, maxIterations) =>
+      ipcRenderer.invoke('agent:run', { prompt, root, maxIterations }),
+    cancel: () => ipcRenderer.send('agent:cancel'),
+    onStep: (handler) => {
+      const listener = (_event, step) => handler(step);
+      ipcRenderer.on('agent:step', listener);
+      return () => ipcRenderer.removeListener('agent:step', listener);
+    },
+  },
+
+  /**
    * Subscribe to a main-process message.
    *
    * Returns an unsubscribe function so the renderer cannot leak listeners

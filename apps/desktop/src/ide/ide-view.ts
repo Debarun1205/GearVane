@@ -13,7 +13,7 @@
  * the wiring in one place means the individual panes stay simple.
  */
 
-import type { AgentStep } from '@waypoint/harness';
+import type { AgentResult, AgentStep } from '@waypoint/harness';
 
 import { installMonacoEnvironment, languageForPath, monaco } from './monaco.js';
 import { buildTree, renderTree, type TreeNode } from './file-tree.js';
@@ -39,10 +39,23 @@ interface OpenFile {
   model: monaco.editor.ITextModel;
 }
 
+/**
+ * Agent access for the IDE.
+ *
+ * The loop itself runs in the main process; this is the narrow surface the
+ * renderer sees. Prompts go one way, steps and the final result come back.
+ */
+export interface AgentBridge {
+  run(prompt: string): Promise<{ ok: boolean; result?: AgentResult; error?: string }>;
+  cancel(): void;
+  onStep(handler: (step: AgentStep) => void): () => void;
+}
+
 export interface IdeViewOptions {
   workspaceRoot: string;
   terminal: TerminalBridge;
   fs: FsBridge;
+  agent: AgentBridge;
   /** Called when the agent touches a file, so the editor can reveal it. */
   onAgentFile?: (path: string) => void;
 }
@@ -55,6 +68,8 @@ export class IdeView {
   private openFiles = new Map<string, OpenFile>();
   private activePath: string | undefined;
   private treeRoot: TreeNode[] = [];
+  private agentRunning = false;
+  private agentUnsubscribe: (() => void) | undefined;
 
   constructor(options: IdeViewOptions) {
     this.options = options;
@@ -65,7 +80,12 @@ export class IdeView {
     this.container = container;
     installMonacoEnvironment();
 
-    container.append(this.buildTreePane(), this.buildEditorPane(), this.buildBottomPane());
+    container.append(
+      this.buildTreePane(),
+      this.buildEditorPane(),
+      this.buildAgentPane(),
+      this.buildBottomPane(),
+    );
 
     void this.refreshTree();
   }
@@ -249,6 +269,142 @@ export class IdeView {
     void this.openFile(path);
   }
 
+  /* ---------------------------------------------------------------- */
+  /* Agent prompt                                                       */
+  /* ---------------------------------------------------------------- */
+
+  /**
+   * The prompt box.
+   *
+   * Describe the site and the agent builds it: it lists the templates, picks
+   * one, scaffolds it, and refines the files. There is no shell here on
+   * purpose — commands run in the terminal below, where the user can see
+   * them, rather than invisibly inside a run.
+   */
+  private buildAgentPane(): HTMLElement {
+    const pane = document.createElement('div');
+    pane.className = 'ide-pane ide-agent-pane';
+    pane.append(this.header('Agent'));
+
+    const hint = document.createElement('p');
+    hint.className = 'ide-agent-hint';
+    hint.textContent =
+      'Describe the site to build. No shell access: run commands in the terminal.';
+    pane.append(hint);
+
+    const input = document.createElement('textarea');
+    input.className = 'ide-agent-input';
+    input.placeholder = 'A landing page for a coffee shop with a menu and contact form…';
+    input.setAttribute('aria-label', 'Describe the site to build');
+    pane.append(input);
+    this.agentInput = input;
+
+    const row = document.createElement('div');
+    row.className = 'ide-agent-row';
+
+    const build = document.createElement('button');
+    build.className = 'ide-agent-button';
+    build.type = 'button';
+    build.textContent = 'Build';
+    build.addEventListener('click', () => void this.runAgentPrompt());
+    pane.append(build);
+    this.agentBuildButton = build;
+
+    const stop = document.createElement('button');
+    stop.className = 'ide-agent-button ide-agent-stop';
+    stop.type = 'button';
+    stop.textContent = 'Stop';
+    stop.disabled = true;
+    stop.addEventListener('click', () => this.stopAgentPrompt());
+    pane.append(stop);
+    this.agentStopButton = stop;
+
+    row.append(build, stop);
+    pane.append(row);
+
+    const log = document.createElement('div');
+    log.className = 'ide-agent-log';
+    pane.append(log);
+    this.agentLog = log;
+
+    return pane;
+  }
+
+  private agentInput: HTMLTextAreaElement | undefined;
+  private agentBuildButton: HTMLButtonElement | undefined;
+  private agentStopButton: HTMLButtonElement | undefined;
+  private agentLog: HTMLElement | undefined;
+
+  private setAgentRunning(running: boolean): void {
+    this.agentRunning = running;
+    if (this.agentBuildButton) this.agentBuildButton.disabled = running;
+    if (this.agentStopButton) this.agentStopButton.disabled = !running;
+  }
+
+  private agentLogLine(text: string, className?: string): void {
+    if (!this.agentLog) return;
+    const line = document.createElement('div');
+    if (className) line.className = className;
+    // textContent, never innerHTML: tool names and model output come from
+    // outside this page.
+    line.textContent = text;
+    this.agentLog.append(line);
+    this.agentLog.scrollTop = this.agentLog.scrollHeight;
+  }
+
+  private async runAgentPrompt(): Promise<void> {
+    const prompt = this.agentInput?.value.trim() ?? '';
+    if (!prompt || this.agentRunning) return;
+
+    this.setAgentRunning(true);
+    if (this.agentLog) this.agentLog.textContent = '';
+
+    this.agentUnsubscribe = this.options.agent.onStep((step) => {
+      for (const call of step.toolCalls) {
+        const result = step.results.find((entry) => entry.name === call.name);
+        this.agentLogLine(
+          `${call.name} (${result?.ok ? 'ok' : 'failed'})`,
+          result?.ok ? 'ide-agent-ok' : 'ide-agent-failed',
+        );
+      }
+      if (step.content.trim()) this.agentLogLine(step.content.trim());
+    });
+
+    try {
+      const response = await this.options.agent.run(prompt);
+
+      if (!response.ok || !response.result) {
+        this.agentLogLine(`Failed: ${response.error ?? 'unknown problem'}`, 'ide-agent-failed');
+        return;
+      }
+
+      const result = response.result;
+      this.agentLogLine(result.content);
+      this.agentLogLine(
+        `${result.iterations} iteration(s), stopped: ${result.stopReason}`,
+        'ide-agent-meta',
+      );
+
+      await this.refreshTree();
+
+      const touched = this.touchedFiles(result.steps);
+      const last = touched[touched.length - 1];
+      if (last) {
+        await this.openFile(last);
+        this.options.onAgentFile?.(last);
+      }
+    } finally {
+      this.agentUnsubscribe?.();
+      this.agentUnsubscribe = undefined;
+      this.setAgentRunning(false);
+    }
+  }
+
+  private stopAgentPrompt(): void {
+    this.options.agent.cancel();
+    this.agentLogLine('Stopping…', 'ide-agent-meta');
+  }
+
   private status: HTMLElement | undefined;
 
   private setStatus(message: string): void {
@@ -280,6 +436,9 @@ export class IdeView {
   }
 
   dispose(): void {
+    // A run that outlives its view has no visible output and looks hung.
+    if (this.agentRunning) this.options.agent.cancel();
+    this.agentUnsubscribe?.();
     this.terminal?.dispose();
     this.editor?.dispose();
     for (const file of this.openFiles.values()) file.model.dispose();

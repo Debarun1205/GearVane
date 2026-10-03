@@ -31,8 +31,10 @@ import * as vscode from 'vscode';
 import {
   ToolRegistry,
   Workspace,
+  builderTools,
   createShellTool,
   fileTools,
+  installNodeFileSystem,
   runAgent,
   type AgentResult,
   type AgentStep,
@@ -223,7 +225,11 @@ export class AgentPanel {
   }
 
   private toolkit(): Tool[] {
-    const tools: Tool[] = [...fileTools()];
+    // The extension host is Node, so the real filesystem is available. Without
+    // this the scaffold tools plan projects whose writes all fail.
+    installNodeFileSystem();
+
+    const tools: Tool[] = [...fileTools(), ...builderTools()];
 
     if (this.state.shellEnabled) {
       tools.push(

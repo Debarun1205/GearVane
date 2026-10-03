@@ -16,6 +16,7 @@ import { fileURLToPath } from 'node:url';
 import { parseConfig, defaultConfig, type WaypointConfig } from '@waypoint/core';
 
 import { registerBuilderHandlers } from './builder-host.js';
+import { registerIdeAgentHandlers } from './ide-agent-host.js';
 import { registerIdeFsHandlers } from './ide-fs-host.js';
 import { registerTerminalHandlers } from './terminal-host.js';
 
@@ -198,5 +199,9 @@ registerTerminalHandlers();
 // The IDE needs a filesystem, which the renderer does not have. See
 // ide-fs-host.ts for why the split matters.
 registerIdeFsHandlers();
+
+// The IDE agent loop needs the harness tool layer, which the renderer cannot
+// load. See ide-agent-host.ts for why the split matters.
+registerIdeAgentHandlers(() => loadConfigFile().config);
 
 export { mainWindow, createWindow };

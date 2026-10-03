@@ -274,6 +274,15 @@ describe('agent dry run', () => {
     expect(result.stdout).toContain('edit_file');
   });
 
+  it('offers the scaffold tools without being asked', async () => {
+    // A "build me a site" prompt has no way to start without them, and unlike
+    // the shell they write through the same containment as the file tools, so
+    // there is nothing opt-in about them.
+    const result = await run('agent', '--task', 'x', '--dry-run');
+    expect(result.stdout).toContain('list_templates');
+    expect(result.stdout).toContain('scaffold_project');
+  });
+
   it('does not offer the shell by default', async () => {
     // Command execution is opt-in. It is gated, not contained, so it should
     // never appear without being asked for.

@@ -28,6 +28,7 @@ import {
 // entry point. It is loaded on demand below, and only where the bridge exists.
 import type { BuilderBridge } from './builder-view.js';
 import type { TerminalBridge } from './ide/terminal.js';
+import type { AgentResult, AgentStep } from '@waypoint/harness';
 
 /** Capabilities the host may provide. Every one is optional. */
 interface HostBridge {
@@ -51,6 +52,23 @@ interface HostBridge {
 
   /** IDE filesystem bridge. Absent where there is no filesystem to use. */
   ideFs?: IdeFsBridge;
+
+  /** IDE agent bridge. Absent where the harness tool layer cannot load. */
+  agent?: AgentBridge;
+}
+
+interface AgentBridge {
+  run(
+    prompt: string,
+    root: string,
+    maxIterations?: number,
+  ): Promise<{
+    ok: boolean;
+    result?: AgentResult;
+    error?: string;
+  }>;
+  cancel(): void;
+  onStep(handler: (step: AgentStep) => void): () => void;
 }
 
 interface IdeFsBridge {
@@ -489,19 +507,24 @@ async function main(): Promise<void> {
     }
   }
 
-  // The IDE needs a workspace, a terminal bridge, and a filesystem bridge, so
-  // it only mounts where all three exist. Monaco is loaded on demand, because
-  // it is several megabytes and the chat view must not pay for it.
+  // The IDE needs a workspace, a terminal bridge, a filesystem bridge, and an
+  // agent bridge, so it only mounts where all four exist. Monaco is loaded on
+  // demand, because it is several megabytes and the chat view must not pay
+  // for it.
   const ideHost = document.getElementById('ide');
-  if ((!bridge.terminal || !bridge.ideFs) && ideToggle instanceof HTMLButtonElement) {
+  if (
+    (!bridge.terminal || !bridge.ideFs || !bridge.agent) &&
+    ideToggle instanceof HTMLButtonElement
+  ) {
     ideToggle.hidden = true;
   }
-  if (ideHost && bridge.terminal && bridge.ideFs) {
+  if (ideHost && bridge.terminal && bridge.ideFs && bridge.agent) {
     try {
       const { IdeView } = await import('./ide/ide-view.js');
       const root = bridge.workspaceRoot ? await bridge.workspaceRoot() : null;
       if (root) {
         const ideFs = bridge.ideFs;
+        const agent = bridge.agent;
         const view = new IdeView({
           workspaceRoot: root,
           terminal: bridge.terminal,
@@ -509,6 +532,11 @@ async function main(): Promise<void> {
             list: () => ideFs.list(root),
             read: (path) => ideFs.read(root, path),
             write: (path, content) => ideFs.write(root, path, content),
+          },
+          agent: {
+            run: (prompt) => agent.run(prompt, root),
+            cancel: () => agent.cancel(),
+            onStep: (handler) => agent.onStep(handler),
           },
         });
         view.mount(ideHost);

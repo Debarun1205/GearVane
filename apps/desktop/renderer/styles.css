@@ -359,6 +359,145 @@ body {
   overflow-y: auto;
 }
 
+/* The IDE needs nearly the whole window: tree, editor, and agent side by
+   side, with the terminal along the bottom. */
+.dialog-ide {
+  min-width: min(72rem, 96vw);
+  min-height: min(46rem, 92vh);
+  max-height: 92vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.ide {
+  display: grid;
+  grid-template-columns: 13rem 1fr 17rem;
+  grid-template-rows: 1fr 12rem;
+  gap: 0.75rem;
+  flex: 1;
+  min-height: 0;
+}
+
+.ide-pane {
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.ide-tree-pane { grid-row: 1 / 3; }
+.ide-editor-pane { grid-column: 2; }
+.ide-agent-pane { grid-column: 3; grid-row: 1 / 3; overflow-y: auto; }
+.ide-bottom-pane { grid-column: 2; }
+
+.ide-pane-header {
+  color: var(--text-dim);
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  padding: 0.5rem 0.75rem;
+  text-transform: uppercase;
+}
+
+.ide-tree-body {
+  flex: 1;
+  overflow-y: auto;
+  padding-bottom: 0.5rem;
+}
+
+.ide-tree-row {
+  cursor: pointer;
+  font-size: 0.85rem;
+  padding: 0.15rem 0.5rem;
+  white-space: nowrap;
+}
+
+.ide-tree-row:hover { background: var(--bg-raised); }
+
+.ide-editor-host { flex: 1; min-height: 0; }
+
+.ide-terminal-host { flex: 1; min-height: 0; }
+
+.ide-tabs { display: flex; gap: 1rem; padding: 0 0.75rem; }
+.ide-tab { color: var(--text-dim); font-size: 0.8rem; }
+.ide-tab-active { color: var(--text); }
+
+.ide-status {
+  color: var(--text-dim);
+  font-size: 0.8rem;
+  padding: 0.4rem 0.75rem;
+}
+
+.ide-refresh {
+  background: none;
+  border: 0;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 0.25rem 0.75rem;
+  text-align: left;
+}
+
+/* --- IDE agent ----------------------------------------------------------- */
+
+.ide-agent-hint {
+  color: var(--text-dim);
+  font-size: 0.8rem;
+  margin: 0;
+  padding: 0 0.75rem 0.5rem;
+}
+
+.ide-agent-input {
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.85rem;
+  margin: 0 0.75rem;
+  min-height: 5rem;
+  padding: 0.5rem 0.65rem;
+  resize: vertical;
+}
+
+.ide-agent-row {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+}
+
+.ide-agent-button {
+  background: var(--accent);
+  border: 0;
+  border-radius: 8px;
+  color: #0b1120;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 0.45rem 0.9rem;
+}
+
+.ide-agent-button:disabled { opacity: 0.5; cursor: default; }
+
+.ide-agent-stop { background: var(--bg-soft); border: 1px solid var(--border-strong); color: var(--text); }
+
+.ide-agent-log {
+  flex: 1;
+  font-size: 0.82rem;
+  overflow-y: auto;
+  padding: 0 0.75rem 0.75rem;
+}
+
+.ide-agent-log > div { margin-bottom: 0.4rem; }
+.ide-agent-ok { color: var(--text-dim); }
+.ide-agent-failed { color: var(--danger, #f87171); }
+.ide-agent-meta { color: var(--text-dim); font-size: 0.78rem; }
+
 /* --- builder ------------------------------------------------------------- */
 
 .builder-templates {
