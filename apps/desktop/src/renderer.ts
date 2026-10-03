@@ -57,15 +57,24 @@ interface HostBridge {
   agent?: AgentBridge;
 }
 
+export interface IdeAgentModel {
+  provider: string;
+  model: string;
+  tier: string;
+}
+
 interface AgentBridge {
+  models(): Promise<IdeAgentModel[]>;
   run(
     prompt: string,
     root: string,
-    options?: { maxIterations?: number; mode?: 'ask' | 'build' },
+    options?: { maxIterations?: number; mode?: 'ask' | 'build'; model?: string },
   ): Promise<{
     ok: boolean;
     result?: AgentResult;
     error?: string;
+    provider?: string;
+    model?: string;
     changed?: Array<{ path: string; original: string | null; current: string }>;
   }>;
   cancel(): void;
@@ -549,7 +558,8 @@ async function main(): Promise<void> {
             search: (query) => ideFs.search(root, query),
           },
           agent: {
-            run: (prompt) => agent.run(prompt, root),
+            models: () => agent.models(),
+            run: (prompt, options) => agent.run(prompt, root, options),
             cancel: () => agent.cancel(),
             onStep: (handler) => agent.onStep(handler),
           },

@@ -72,14 +72,23 @@ interface OpenFile {
  * The loop itself runs in the main process; this is the narrow surface the
  * renderer sees. Prompts go one way, steps and the final result come back.
  */
+export interface IdeAgentModel {
+  provider: string;
+  model: string;
+  tier: string;
+}
+
 export interface AgentBridge {
+  models(): Promise<IdeAgentModel[]>;
   run(
     prompt: string,
-    options?: { mode?: 'ask' | 'build' },
+    options?: { mode?: 'ask' | 'build'; model?: string },
   ): Promise<{
     ok: boolean;
     result?: AgentResult;
     error?: string;
+    provider?: string;
+    model?: string;
     changed?: FileChange[];
   }>;
   cancel(): void;
@@ -705,6 +714,17 @@ export class IdeView {
     pane.append(modeLabel);
     this.agentMode = mode;
 
+    const modelLabel = document.createElement('label');
+    modelLabel.className = 'ide-agent-mode-label';
+    modelLabel.textContent = 'Model ';
+    const modelSelect = document.createElement('select');
+    modelSelect.className = 'ide-agent-mode';
+    modelSelect.setAttribute('aria-label', 'Agent model');
+    modelLabel.append(modelSelect);
+    pane.append(modelLabel);
+    this.agentModelSelect = modelSelect;
+    void this.fillModelOptions();
+
     const row = document.createElement('div');
     row.className = 'ide-agent-row';
 
@@ -738,6 +758,7 @@ export class IdeView {
 
   private agentInput: HTMLTextAreaElement | undefined;
   private agentMode: HTMLSelectElement | undefined;
+  private agentModelSelect: HTMLSelectElement | undefined;
   private agentBuildButton: HTMLButtonElement | undefined;
   private agentStopButton: HTMLButtonElement | undefined;
   private agentLog: HTMLElement | undefined;
@@ -757,6 +778,41 @@ export class IdeView {
     line.textContent = text;
     this.agentLog.append(line);
     this.agentLog.scrollTop = this.agentLog.scrollHeight;
+  }
+
+  /**
+   * Fill the model dropdown from the configured providers.
+   *
+   * Absent or empty means the loop falls back to the first configured
+   * provider, so a failure here degrades to old behavior rather than
+   * blocking the pane.
+   */
+  private async fillModelOptions(): Promise<void> {
+    const select = this.agentModelSelect;
+    if (!select) return;
+
+    let models: IdeAgentModel[] = [];
+    try {
+      models = await this.options.agent.models();
+    } catch {
+      models = [];
+    }
+
+    select.textContent = '';
+    if (models.length === 0) {
+      const option = document.createElement('option');
+      option.value = '';
+      option.textContent = 'Default model';
+      select.append(option);
+      return;
+    }
+
+    for (const entry of models) {
+      const option = document.createElement('option');
+      option.value = `${entry.provider}/${entry.model}`;
+      option.textContent = `${entry.provider}/${entry.model} (${entry.tier})`;
+      select.append(option);
+    }
   }
 
   private async runAgentPrompt(): Promise<void> {
@@ -779,7 +835,8 @@ export class IdeView {
 
     try {
       const mode = this.agentMode?.value === 'ask' ? 'ask' : 'build';
-      const response = await this.options.agent.run(prompt, { mode });
+      const selectedModel = this.agentModelSelect?.value.trim() || undefined;
+      const response = await this.options.agent.run(prompt, { mode, model: selectedModel });
 
       if (!response.ok || !response.result) {
         this.agentLogLine(`Failed: ${response.error ?? 'unknown problem'}`, 'ide-agent-failed');
@@ -788,8 +845,11 @@ export class IdeView {
 
       const result = response.result;
       this.agentLogLine(result.content);
+      const driver = response.provider && response.model
+        ? `driven by ${response.provider}/${response.model}, `
+        : '';
       this.agentLogLine(
-        `${result.iterations} iteration(s), stopped: ${result.stopReason}`,
+        `${driver}${result.iterations} iteration(s), stopped: ${result.stopReason}`,
         'ide-agent-meta',
       );
 

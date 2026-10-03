@@ -83,6 +83,7 @@ const api = {
    * result; it never sees a tool or a provider client.
    */
   agent: {
+    models: () => ipcRenderer.invoke('agent:models'),
     run: (prompt, root, options) =>
       ipcRenderer.invoke('agent:run', { prompt, root, ...(options ?? {}) }),
     cancel: () => ipcRenderer.send('agent:cancel'),

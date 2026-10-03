@@ -72,6 +72,30 @@ export interface AgentRunRequest {
   root: unknown;
   maxIterations?: unknown;
   mode?: unknown;
+  /**
+   * Which model drives the run: `"provider/model"` or a bare model name.
+   * Absent means the first configured provider, same as before.
+   */
+  model?: unknown;
+}
+
+/** One selectable model: every configured provider/model pair, in tier order. */
+export interface IdeModel {
+  provider: string;
+  model: string;
+  tier: string;
+}
+
+export function listIdeModels(tiers: WaypointConfig['tiers']): IdeModel[] {
+  const out: IdeModel[] = [];
+  for (const [tierName, tier] of Object.entries(tiers)) {
+    for (const provider of tier.providers) {
+      for (const model of provider.models) {
+        out.push({ provider: provider.name, model, tier: tierName });
+      }
+    }
+  }
+  return out;
 }
 
 /**
@@ -92,6 +116,9 @@ export interface AgentRunResponse {
   ok: boolean;
   result?: AgentResult;
   error?: string;
+  /** Which model drove a successful run, so the UI can say so. */
+  provider?: string;
+  model?: string;
   /**
    * Files the run created or changed, with what they looked like before.
    *
@@ -194,26 +221,71 @@ let active: AbortController | undefined;
 export function resolveIdeModel(
   env: Record<string, string | undefined>,
   tiers: WaypointConfig['tiers'],
-): { client?: AgentModel; provider?: string; reason?: string } {
+  wanted?: unknown,
+): { client?: AgentModel; provider?: string; model?: string; reason?: string } {
+  if (wanted !== undefined && wanted !== null && typeof wanted !== 'string') {
+    return { reason: 'model must be a string like "provider/model" or a bare model name' };
+  }
+  const selection = typeof wanted === 'string' ? wanted : undefined;
+
   const factory = new ProviderFactory({ env });
 
+  // A provider-qualified name wins when it names something configured;
+  // otherwise a bare model name takes the first match in tier order.
+  // Matching is exact: guessing across near-misses would run spend on the
+  // wrong model.
+  const candidates: Array<{ provider: WaypointConfig['tiers']['local']['providers'][number]; model: string }> = [];
   for (const tier of Object.values(tiers)) {
     for (const provider of tier.providers) {
-      let client;
-      try {
-        client = factory.create(provider);
-      } catch {
-        // No base URL configured for this provider. Try the next one.
-        continue;
+      for (const model of provider.models) {
+        candidates.push({ provider, model });
       }
-
-      return {
-        provider: provider.name,
-        client: {
-          complete: (prompt, options) => client.complete(prompt, options),
-        },
-      };
     }
+  }
+
+  if (selection !== undefined) {
+    const picked =
+      candidates.find((c) => `${c.provider.name}/${c.model}` === selection) ??
+      candidates.find((c) => c.model === selection);
+
+    if (picked === undefined) {
+      return { reason: `unknown model "${selection}"` };
+    }
+
+    let selected;
+    try {
+      selected = factory.create(picked.provider, picked.model);
+    } catch {
+      // No base URL for this provider. Report it rather than silently
+      // substituting a different model: the user asked for this one.
+      return { reason: `provider "${picked.provider.name}" has no base URL configured` };
+    }
+
+    return {
+      provider: picked.provider.name,
+      model: picked.model,
+      client: {
+        complete: (prompt, options) => selected.complete(prompt, options),
+      },
+    };
+  }
+
+  for (const { provider, model } of candidates) {
+    let client;
+    try {
+      client = factory.create(provider, model);
+    } catch {
+      // No base URL configured for this provider. Try the next one.
+      continue;
+    }
+
+    return {
+      provider: provider.name,
+      model,
+      client: {
+        complete: (prompt, options) => client.complete(prompt, options),
+      },
+    };
   }
 
   return { reason: 'no usable provider is configured' };
@@ -256,7 +328,14 @@ export async function runIdeAgent(
     return { ok: false, error: 'workspace root does not exist' };
   }
 
-  const model = resolveIdeModel(env, config.tiers);
+  // A malformed selection is rejected before model resolution or snapshots;
+  // an unknown-but-well-formed one is rejected by resolveIdeModel below.
+  const wanted = request.model;
+  if (wanted !== undefined && wanted !== null && typeof wanted !== 'string') {
+    return { ok: false, error: 'model must be a string like "provider/model" or a bare model name' };
+  }
+
+  const model = resolveIdeModel(env, config.tiers, wanted ?? undefined);
   if (!model.client) {
     return { ok: false, error: `Cannot reach a model: ${model.reason}` };
   }
@@ -289,10 +368,12 @@ export async function runIdeAgent(
   // changed on disk, not what the transcript claims changed.
   const changed = await diffSnapshot(request.root, before);
 
-  return { ok: true, result, changed };
+  return { ok: true, result, changed, provider: model.provider, model: model.model };
 }
 
 export function registerIdeAgentHandlers(loadConfig: () => WaypointConfig): void {
+  ipcMain.handle('agent:models', () => listIdeModels(loadConfig().tiers));
+
   ipcMain.handle('agent:run', async (event, request: AgentRunRequest) => {
     if (active) {
       // The UI disables the button while running; a second call means a bug

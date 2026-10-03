@@ -10,6 +10,7 @@ import {
   MAX_SNAPSHOT_BYTES,
   VIBE_SYSTEM_PROMPT,
   diffSnapshot,
+  listIdeModels,
   resolveIdeModel,
   runIdeAgent,
   snapshotWorkspace,
@@ -144,6 +145,64 @@ describe('resolveIdeModel', () => {
     expect(resolved.client).toBeDefined();
     expect(resolved.provider).toBe('ollama');
   });
+
+  it('matches a provider-qualified selection exactly', () => {
+    const tiers = {
+      local: { providers: [{ name: 'ollama', models: ['qwen', 'llama'] }] },
+      frontier: { providers: [{ name: 'openai', models: ['qwen'] }] },
+    };
+    const resolved = resolveIdeModel({}, tiers, 'openai/qwen');
+    expect(resolved.client).toBeDefined();
+    expect(resolved.provider).toBe('openai');
+    expect(resolved.model).toBe('qwen');
+  });
+
+  it('matches a bare model name in tier order', () => {
+    const ordered = {
+      frontier: { providers: [{ name: 'openai', models: ['shared'] }] },
+      local: { providers: [{ name: 'ollama', models: ['shared'] }] },
+    };
+    const resolved = resolveIdeModel({}, ordered, 'shared');
+    // Object key order is tier order here: frontier first.
+    expect(resolved.provider).toBe('openai');
+    expect(resolved.model).toBe('shared');
+  });
+
+  it('reports an unknown selection instead of substituting', () => {
+    const tiers = {
+      local: { providers: [{ name: 'ollama', models: ['qwen'] }] },
+    };
+    const resolved = resolveIdeModel({}, tiers, 'openai/gpt-6-astra');
+    expect(resolved.client).toBeUndefined();
+    expect(resolved.reason).toMatch(/unknown model/);
+  });
+
+  it('rejects a non-string selection', () => {
+    const tiers = {
+      local: { providers: [{ name: 'ollama', models: ['qwen'] }] },
+    };
+    const resolved = resolveIdeModel({}, tiers, { model: 'qwen' });
+    expect(resolved.client).toBeUndefined();
+    expect(resolved.reason).toMatch(/must be a string/);
+  });
+});
+
+describe('listIdeModels', () => {
+  it('lists every configured pair in tier order with tier labels', () => {
+    const tiers = {
+      local: { providers: [{ name: 'ollama', models: ['a', 'b'] }] },
+      frontier: { providers: [{ name: 'openai', models: ['c'] }] },
+    };
+    expect(listIdeModels(tiers)).toEqual([
+      { provider: 'ollama', model: 'a', tier: 'local' },
+      { provider: 'ollama', model: 'b', tier: 'local' },
+      { provider: 'openai', model: 'c', tier: 'frontier' },
+    ]);
+  });
+
+  it('returns an empty list when nothing is configured', () => {
+    expect(listIdeModels({})).toEqual([]);
+  });
 });
 
 describe('the main process wires the handler', () => {
@@ -164,6 +223,10 @@ describe('the main process wires the handler', () => {
   it('is registered from main', () => {
     expect(main).toMatch(/registerIdeAgentHandlers/);
   });
+
+  it('serves the configured model list', () => {
+    expect(host).toMatch(/ipcMain\.handle\('agent:models'/);
+  });
 });
 
 describe('the preload bridge exposes the agent', () => {
@@ -177,6 +240,10 @@ describe('the preload bridge exposes the agent', () => {
   it('returns an unsubscribe function for step events', () => {
     // Otherwise every mount leaks a listener into the next one.
     expect(preload).toMatch(/removeListener\('agent:step'/);
+  });
+
+  it('forwards the model list', () => {
+    expect(preload).toMatch(/ipcRenderer\.invoke\('agent:models'\)/);
   });
 });
 
@@ -214,6 +281,24 @@ describe('the IDE view runs prompts', () => {
   it('cancels the run when the view is disposed', () => {
     expect(view).toMatch(/if \(this\.agentRunning\) this\.options\.agent\.cancel\(\)/);
   });
+
+  it('offers every configured model with a tier label', () => {
+    expect(view).toMatch(/fillModelOptions/);
+    expect(view).toMatch(/Agent model/);
+  });
+
+  it('falls back to the default when the list is unavailable', () => {
+    // A failed models() call must degrade to old behavior, not block the pane.
+    expect(view).toMatch(/Default model/);
+  });
+
+  it('sends the selected model with the prompt', () => {
+    expect(view).toMatch(/this\.options\.agent\.run\(prompt, \{ mode, model: selectedModel \}\)/);
+  });
+
+  it('names the driving model when the run finishes', () => {
+    expect(view).toMatch(/driven by/);
+  });
 });
 
 describe('the renderer gates the IDE on all three bridges', () => {
@@ -227,6 +312,11 @@ describe('the renderer gates the IDE on all three bridges', () => {
 
   it('passes the agent bridge into the view', () => {
     expect(renderer).toMatch(/agent:\s*\{/);
+  });
+
+  it('forwards the model list and selection through the adapter', () => {
+    expect(renderer).toMatch(/models: \(\) => agent\.models\(\)/);
+    expect(renderer).toMatch(/run: \(prompt, options\) => agent\.run\(prompt, root, options\)/);
   });
 
   it('opens the IDE full-window instead of a dialog', () => {
@@ -378,6 +468,47 @@ describe('snapshot and diff', () => {
   });
 });
 
+describe('runIdeAgent model selection', () => {
+  let root: string;
+
+  beforeEach(async () => {
+    root = await mkdtemp(join(tmpdir(), 'waypoint-ide-model-'));
+  });
+
+  const config = {
+    tiers: {
+      local: { providers: [{ name: 'ollama', models: ['qwen'] }] },
+    },
+    providers: { timeoutSeconds: 60 },
+  } as never;
+
+  it('rejects an unknown model without touching disk or network', async () => {
+    const response = await runIdeAgent(
+      { prompt: 'build something', root, model: 'openai/gpt-6-astra' },
+      config,
+      {},
+      noop,
+      new AbortController().signal,
+    );
+
+    expect(response.ok).toBe(false);
+    expect(response.error).toMatch(/unknown model/);
+  });
+
+  it('rejects a non-string model', async () => {
+    const response = await runIdeAgent(
+      { prompt: 'build something', root, model: 42 },
+      config,
+      {},
+      noop,
+      new AbortController().signal,
+    );
+
+    expect(response.ok).toBe(false);
+    expect(response.error).toMatch(/must be a string/);
+  });
+});
+
 describe('toolsForMode', () => {
   it('gives ask mode only read-only tools', () => {
     const names = toolsForMode('ask').map((tool) => tool.schema.name);
@@ -508,9 +639,9 @@ describe('agent modes', () => {
     expect(host).toMatch(/mode === 'ask' \? ASK_SYSTEM_PROMPT : VIBE_SYSTEM_PROMPT/);
   });
 
-  it('passes the selected mode from the prompt box to the bridge', () => {
+  it('passes the selected mode and model from the prompt box to the bridge', () => {
     expect(view).toMatch(/this\.agentMode\?\.value === 'ask' \? 'ask' : 'build'/);
-    expect(view).toMatch(/this\.options\.agent\.run\(prompt, \{ mode \}\)/);
+    expect(view).toMatch(/this\.options\.agent\.run\(prompt, \{ mode, model: selectedModel \}\)/);
   });
 });
 
