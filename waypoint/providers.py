@@ -527,16 +527,18 @@ KEY_ENV_OVERRIDES = {
     "muse": "MODEL_API_KEY",
 }
 
-LOCAL_PROVIDER_NAMES = frozenset({
-    "ollama",
-    "lm_studio",
-    "llama_cpp",
-    "llamacpp",
-    "vllm",
-    "localai",
-    "gpt4all",
-    "textgen",
-})
+LOCAL_PROVIDER_NAMES = frozenset(
+    {
+        "ollama",
+        "lm_studio",
+        "llama_cpp",
+        "llamacpp",
+        "vllm",
+        "localai",
+        "gpt4all",
+        "textgen",
+    }
+)
 
 
 class ProviderFactory:
@@ -598,9 +600,7 @@ class ProviderFactory:
                 or "/v1/chat/completions"
             )
             models_path = (
-                getattr(provider, "models_path", None)
-                or api_paths.get("models")
-                or "/v1/models"
+                getattr(provider, "models_path", None) or api_paths.get("models") or "/v1/models"
             )
             return client_class(
                 base_url=base_url,
