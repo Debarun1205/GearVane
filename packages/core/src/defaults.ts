@@ -14,6 +14,7 @@ import type { WaypointConfig } from './types.js';
 export function defaultConfig(env: Record<string, string | undefined> = {}): WaypointConfig {
   const hasAnthropic = Boolean(env['ANTHROPIC_API_KEY']);
   const hasOpenRouter = Boolean(env['OPENROUTER_API_KEY']);
+  const hasMeta = Boolean(env['MODEL_API_KEY']);
 
   return {
     tiers: {
@@ -24,7 +25,16 @@ export function defaultConfig(env: Record<string, string | undefined> = {}): Way
           {
             name: 'ollama',
             baseUrl: 'http://localhost:11434',
-            models: ['qwen2.5-coder', 'llama3.2', 'deepseek-coder-v2'],
+            models: [
+              'qwen2.5-coder',
+              'qwen3',
+              'codellama',
+              'deepseek-coder-v2',
+              'starcoder2',
+              'codestral',
+              'llama3.3',
+              'gemma3',
+            ],
           },
         ],
         maxRetries: 2,
@@ -33,15 +43,26 @@ export function defaultConfig(env: Record<string, string | undefined> = {}): Way
       mid: {
         name: 'mid',
         description: 'Mid-tier models for medium complexity',
-        providers: hasOpenRouter
-          ? [
-              {
-                name: 'openrouter',
-                apiKeyEnv: 'OPENROUTER_API_KEY',
-                models: ['anthropic/claude-3-haiku', 'google/gemini-flash'],
-              },
-            ]
-          : [],
+        providers: [
+          ...(hasOpenRouter
+            ? [
+                {
+                  name: 'openrouter',
+                  apiKeyEnv: 'OPENROUTER_API_KEY',
+                  models: ['anthropic/claude-haiku-4-5', 'google/gemini-2.5-flash'],
+                },
+              ]
+            : []),
+          ...(hasMeta
+            ? [
+                {
+                  name: 'meta',
+                  apiKeyEnv: 'MODEL_API_KEY',
+                  models: ['muse-spark-1.3'],
+                },
+              ]
+            : []),
+        ],
         maxRetries: 2,
         costPerToken: 0.0001,
       },
@@ -53,7 +74,7 @@ export function defaultConfig(env: Record<string, string | undefined> = {}): Way
               {
                 name: 'anthropic',
                 apiKeyEnv: 'ANTHROPIC_API_KEY',
-                models: ['claude-sonnet-4-20250514', 'claude-opus-4-20250514'],
+                models: ['claude-opus-5', 'claude-sonnet-5', 'claude-haiku-4-5'],
               },
             ]
           : [],

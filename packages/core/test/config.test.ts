@@ -156,6 +156,33 @@ describe('parseConfig', () => {
     expect(provider['apiKey']).toBeUndefined();
   });
 
+  it('reads endpoint path overrides', () => {
+    const config = parseConfig(
+      [
+        'tiers:',
+        '  frontier:',
+        '    cost_per_token: 0.005',
+        '    providers:',
+        '      - name: gemini',
+        '        api_key_env: GEMINI_API_KEY',
+        '        completions_path: /chat/completions',
+        '        models_path: /models',
+        '        models:',
+        '          - gemini-2.5-flash',
+      ].join('\n'),
+    );
+    const provider = config.tiers.frontier?.providers[0];
+    expect(provider?.completionsPath).toBe('/chat/completions');
+    expect(provider?.modelsPath).toBe('/models');
+  });
+
+  it('leaves endpoint paths unset when absent', () => {
+    const config = parseConfig(sample);
+    const provider = config.tiers.local?.providers[0];
+    expect(provider?.completionsPath).toBeUndefined();
+    expect(provider?.modelsPath).toBeUndefined();
+  });
+
   it('reads router settings', () => {
     const config = parseConfig(sample);
     expect(config.router.defaultTier).toBe('frontier');

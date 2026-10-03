@@ -268,6 +268,135 @@ describe('ProviderFactory', () => {
     const provider = { name: 'anthropic', models: ['m'] } as Record<string, unknown>;
     expect(provider['apiKey']).toBeUndefined();
   });
+
+  it('resolves Meta to its documented endpoint and key variable', () => {
+    const factory = new ProviderFactory({ env: { MODEL_API_KEY: 'mk-meta' } });
+    const client = factory.create({ name: 'meta', models: ['muse-spark-1.3'] });
+
+    expect(client).toBeInstanceOf(OpenAICompatClient);
+    expect(client.baseUrl).toBe('https://api.meta.ai/v1');
+    expect((client as unknown as { apiKey: string }).apiKey).toBe('mk-meta');
+  });
+
+  it('resolves the muse alias identically to meta', () => {
+    const factory = new ProviderFactory({ env: { MODEL_API_KEY: 'mk-meta' } });
+    const client = factory.create({ name: 'muse', models: ['muse-spark-1.3'] });
+
+    expect(client.baseUrl).toBe('https://api.meta.ai/v1');
+  });
+
+  it('resolves LongCat to its OpenAI-format endpoint', () => {
+    const factory = new ProviderFactory({ env: { LONGCAT_API_KEY: 'lk-longcat' } });
+    const client = factory.create({ name: 'longcat', models: ['LongCat-2.5-Preview'] });
+
+    expect(client).toBeInstanceOf(OpenAICompatClient);
+    expect(client.baseUrl).toBe('https://api.longcat.chat/openai');
+    expect((client as unknown as { apiKey: string }).apiKey).toBe('lk-longcat');
+  });
+
+  it('resolves DeepSeek, Mistral, xAI, and Gemini to their documented endpoints', () => {
+    const factory = new ProviderFactory();
+    const cases: Array<[string, string]> = [
+      ['deepseek', 'https://api.deepseek.com'],
+      ['mistral', 'https://api.mistral.ai/v1'],
+      ['xai', 'https://api.x.ai/v1'],
+      ['gemini', 'https://generativelanguage.googleapis.com/v1beta/openai'],
+    ];
+
+    for (const [name, baseUrl] of cases) {
+      expect(factory.create({ name, models: ['m'] }).baseUrl).toBe(baseUrl);
+    }
+  });
+
+  it('resolves local servers to their default ports', () => {
+    const factory = new ProviderFactory();
+    const cases: Array<[string, string]> = [
+      ['localai', 'http://localhost:8080'],
+      ['gpt4all', 'http://localhost:4891'],
+      ['textgen', 'http://localhost:5000'],
+    ];
+
+    for (const [name, baseUrl] of cases) {
+      const client = factory.create({ name, models: ['m'] });
+      expect(client).toBeInstanceOf(OpenAICompatClient);
+      expect(client.baseUrl).toBe(baseUrl);
+    }
+  });
+
+  it('never sends a key to the new local servers', () => {
+    const factory = new ProviderFactory({ env: { LOCALAI_API_KEY: 'should-be-ignored' } });
+    const client = factory.create({ name: 'localai', models: ['m'] }) as {
+      apiKey?: string;
+    };
+    expect(client.apiKey).toBeUndefined();
+  });
+
+  it('posts Meta chat to /chat/completions, not /v1/chat/completions', async () => {
+    // Meta's base already ends in /v1, so the default path would double it.
+    const captured: { url?: string } = {};
+    setFetchImpl(
+      stubFetch((url) => {
+        captured.url = url;
+        return { choices: [{ message: { content: 'hi' } }], usage: {} };
+      }),
+    );
+
+    const factory = new ProviderFactory({ env: { MODEL_API_KEY: 'mk' } });
+    const client = factory.create({ name: 'meta', models: ['muse-spark-1.3'] });
+    await client.complete('hi');
+
+    expect(captured.url).toBe('https://api.meta.ai/v1/chat/completions');
+  });
+
+  it('posts Gemini chat and models under /v1beta/openai', async () => {
+    const urls: string[] = [];
+    setFetchImpl(
+      stubFetch((url) => {
+        urls.push(url);
+        return { choices: [{ message: { content: 'hi' } }], usage: {} };
+      }),
+    );
+
+    const factory = new ProviderFactory({ env: { GEMINI_API_KEY: 'gk' } });
+    const client = factory.create({ name: 'gemini', models: ['gemini-2.5-flash'] });
+    await client.complete('hi');
+
+    expect(urls[0]).toBe(
+      'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions',
+    );
+  });
+
+  it('honours an explicit completions path over the provider default', async () => {
+    const captured: { url?: string } = {};
+    setFetchImpl(
+      stubFetch((url) => {
+        captured.url = url;
+        return { choices: [{ message: { content: 'hi' } }], usage: {} };
+      }),
+    );
+
+    const factory = new ProviderFactory();
+    const client = factory.create({
+      name: 'openai',
+      models: ['m'],
+      baseUrl: 'https://proxy.example.com/prefix',
+      completionsPath: '/custom/chat',
+    });
+    await client.complete('hi');
+
+    expect(captured.url).toBe('https://proxy.example.com/prefix/custom/chat');
+  });
+
+  it('keeps the default paths for ordinary providers', () => {
+    const factory = new ProviderFactory();
+    const client = factory.create({ name: 'openrouter', models: ['m'] }) as unknown as {
+      completionsPath: string;
+      modelsPath: string;
+    };
+
+    expect(client.completionsPath).toBe('/v1/chat/completions');
+    expect(client.modelsPath).toBe('/v1/models');
+  });
 });
 
 describe('ProviderError', () => {

@@ -349,17 +349,39 @@ export class OllamaClient extends ProviderClient {
 }
 
 /**
- * Client for any OpenAI-compatible /v1/chat/completions endpoint.
+ * Client for any OpenAI-compatible chat completions endpoint.
  *
- * Covers OpenRouter, Groq, Together, vLLM, LM Studio, llama.cpp server,
- * and hosted OpenAI.
+ * Covers OpenRouter, Groq, Together, DeepSeek, Mistral, xAI, Meta, LongCat,
+ * Gemini, vLLM, LM Studio, llama.cpp server, LocalAI, GPT4All, oobabooga's
+ * text-generation-webui, and hosted OpenAI.
+ *
+ * The completions and models paths default to the OpenAI layout but can be
+ * overridden per instance, because providers disagree on where the version
+ * segment lives: Meta serves chat at `/chat/completions` under a `/v1` base,
+ * and Gemini at `/chat/completions` under `/v1beta/openai`.
  */
 export class OpenAICompatClient extends ProviderClient {
   readonly providerName = 'openai-compatible';
 
+  protected readonly completionsPath: string;
+  protected readonly modelsPath: string;
+
+  constructor(
+    baseUrl: string,
+    model: string,
+    apiKey: string | undefined,
+    timeoutMs: number,
+    completionsPath = '/v1/chat/completions',
+    modelsPath = '/v1/models',
+  ) {
+    super(baseUrl, model, apiKey, timeoutMs);
+    this.completionsPath = completionsPath;
+    this.modelsPath = modelsPath;
+  }
+
   async complete(prompt: string, options: CompleteOptions = {}): Promise<Completion> {
     const data = await this.post(
-      '/v1/chat/completions',
+      this.completionsPath,
       withTools(
         {
           model: this.model,
@@ -414,7 +436,7 @@ export class OpenAICompatClient extends ProviderClient {
     );
 
     for await (const chunk of this.sse(
-      '/v1/chat/completions',
+      this.completionsPath,
       payload,
       options.signal,
     )) {
@@ -429,7 +451,7 @@ export class OpenAICompatClient extends ProviderClient {
 
   async healthCheck(signal?: AbortSignal): Promise<boolean> {
     try {
-      const data = await this.get('/v1/models', undefined, signal);
+      const data = await this.get(this.modelsPath, undefined, signal);
       return 'data' in data;
     } catch {
       return false;
@@ -438,7 +460,7 @@ export class OpenAICompatClient extends ProviderClient {
 
   async listModels(signal?: AbortSignal): Promise<string[]> {
     try {
-      const data = await this.get('/v1/models', undefined, signal);
+      const data = await this.get(this.modelsPath, undefined, signal);
       const models = data['data'];
       if (!Array.isArray(models)) return [];
       return models.map((m) => String((m as Record<string, unknown>)['id'] ?? ''));
@@ -795,12 +817,50 @@ export const DEFAULT_BASE_URLS: Record<string, string> = {
   llama_cpp: 'http://localhost:8080',
   llamacpp: 'http://localhost:8080',
   vllm: 'http://localhost:8000',
+  localai: 'http://localhost:8080',
+  gpt4all: 'http://localhost:4891',
+  // oobabooga's text-generation-webui serves its OpenAI extension on 5000;
+  // newer versions default to 5001, so override baseUrl if that is yours.
+  textgen: 'http://localhost:5000',
   openai: 'https://api.openai.com',
   openrouter: 'https://openrouter.ai/api',
   together: 'https://api.together.xyz',
   groq: 'https://api.groq.com/openai',
+  deepseek: 'https://api.deepseek.com',
+  mistral: 'https://api.mistral.ai/v1',
+  xai: 'https://api.x.ai/v1',
+  gemini: 'https://generativelanguage.googleapis.com/v1beta/openai',
+  meta: 'https://api.meta.ai/v1',
+  muse: 'https://api.meta.ai/v1',
+  longcat: 'https://api.longcat.chat/openai',
   anthropic: 'https://api.anthropic.com',
   claude: 'https://api.anthropic.com',
+};
+
+/**
+ * Providers whose endpoints do not live at the default OpenAI paths.
+ *
+ * Each entry was checked against that provider's docs: Meta serves chat at
+ * `/chat/completions` under a `/v1` base, and Gemini serves chat and models at
+ * `/chat/completions` and `/models` under `/v1beta/openai`. Anything not
+ * listed here uses the OpenAI layout. An explicit `completionsPath` or
+ * `modelsPath` in the config always wins over these defaults.
+ */
+export const DEFAULT_API_PATHS: Record<string, { completions: string; models: string }> = {
+  meta: { completions: '/chat/completions', models: '/v1/models' },
+  muse: { completions: '/chat/completions', models: '/v1/models' },
+  gemini: { completions: '/chat/completions', models: '/models' },
+};
+
+/**
+ * Providers whose documented key variable does not follow NAME_API_KEY.
+ *
+ * Meta's docs use MODEL_API_KEY, so `meta` would otherwise look for
+ * META_API_KEY and never find it.
+ */
+const KEY_ENV_OVERRIDES: Record<string, string> = {
+  meta: 'MODEL_API_KEY',
+  muse: 'MODEL_API_KEY',
 };
 
 /** Local servers do not authenticate, so keys are never sent to them. */
@@ -810,6 +870,9 @@ const LOCAL_PROVIDERS = new Set([
   'llama_cpp',
   'llamacpp',
   'vllm',
+  'localai',
+  'gpt4all',
+  'textgen',
 ]);
 
 export interface ClientFactoryOptions {
@@ -843,6 +906,9 @@ export class ProviderFactory {
 
     let apiKey: string | undefined;
     if (provider.apiKeyEnv) apiKey = this.env[provider.apiKeyEnv];
+    if (!apiKey && KEY_ENV_OVERRIDES[name]) {
+      apiKey = this.env[KEY_ENV_OVERRIDES[name]];
+    }
     if (!apiKey) {
       for (const candidate of [
         `${name.toUpperCase().replace(/-/g, '_')}_API_KEY`,
@@ -861,6 +927,21 @@ export class ProviderFactory {
 
     const target = model ?? provider.models[0] ?? '';
     const ClientClass = REGISTRY[name] ?? OpenAICompatClient;
+
+    // Only the OpenAI-compatible client takes endpoint paths; the others fix
+    // theirs. Passing extra arguments to those constructors would not type
+    // check, so the branch is explicit rather than spread.
+    if (ClientClass === OpenAICompatClient) {
+      const apiPaths = DEFAULT_API_PATHS[name];
+      return new ClientClass(
+        baseUrl,
+        target,
+        apiKey,
+        this.timeoutMs,
+        provider.completionsPath ?? apiPaths?.completions ?? '/v1/chat/completions',
+        provider.modelsPath ?? apiPaths?.models ?? '/v1/models',
+      );
+    }
 
     return new ClientClass(baseUrl, target, apiKey, this.timeoutMs);
   }

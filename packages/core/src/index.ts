@@ -39,6 +39,7 @@ export {
 export { TierRouter, type RouterOptions } from './router.js';
 export {
   AnthropicClient,
+  DEFAULT_API_PATHS,
   DEFAULT_BASE_URLS,
   OllamaClient,
   OpenAICompatClient,

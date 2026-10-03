@@ -184,6 +184,12 @@ function normaliseProviders(value: unknown): WaypointConfig['tiers']['local']['p
     const apiKeyEnv = nullableStr(record['api_key_env'] ?? record['apiKeyEnv']);
     if (apiKeyEnv) provider.apiKeyEnv = apiKeyEnv;
 
+    const completionsPath = nullableStr(record['completions_path'] ?? record['completionsPath']);
+    if (completionsPath) provider.completionsPath = completionsPath;
+
+    const modelsPath = nullableStr(record['models_path'] ?? record['modelsPath']);
+    if (modelsPath) provider.modelsPath = modelsPath;
+
     providers.push(provider);
   }
 

@@ -18,7 +18,9 @@
 import { createInterface } from 'node:readline/promises';
 
 import {
+  AnthropicClient,
   HealthChecker,
+  OpenAICompatClient,
   ProviderFactory,
   SafetyManager,
   VERSION,
@@ -50,13 +52,17 @@ import { flagBool, flagNumber, flagString, type ParsedArgs } from './args.js';
 import { loadConfig } from './config-loader.js';
 
 /**
- * Providers that can be asked to call tools.
+ * Whether a client speaks a dialect with tool calling.
  *
- * A provider outside this set will return prose whatever the loop asks for, so
- * the run ends after one turn looking like it succeeded. Warning about that is
- * the difference between a confusing failure and an obvious one.
+ * Decided from the client class rather than the provider name, because names
+ * are user-chosen and every new provider would otherwise need to be added to
+ * a list. A provider outside these dialects returns prose whatever the loop
+ * asks for, so the run ends after one turn looking like it succeeded; warning
+ * about that is the difference between a confusing failure and an obvious one.
  */
-const TOOL_CAPABLE = new Set(['openai-compatible', 'anthropic', 'openrouter', 'groq']);
+function speaksTools(client: object): boolean {
+  return client instanceof OpenAICompatClient || client instanceof AnthropicClient;
+}
 
 /* ------------------------------------------------------------------ */
 /* agent                                                                */
@@ -230,11 +236,9 @@ function resolveModel(config: WaypointConfig): ModelChoice {
         continue;
       }
 
-      const name = provider.name.toLowerCase();
-
       return {
         provider: provider.name,
-        supportsTools: TOOL_CAPABLE.has(name) || Boolean(provider.baseUrl?.includes('/v1')),
+        supportsTools: speaksTools(client),
         client: {
           complete: async (prompt: string, options?: CompleteOptions): Promise<Completion> =>
             client.complete(prompt, options),

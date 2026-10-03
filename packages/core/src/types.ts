@@ -22,6 +22,20 @@ export interface ProviderConfig {
   baseUrl?: string;
   /** Name of the env var holding the API key. Never the key itself. */
   apiKeyEnv?: string;
+  /**
+   * Path of the chat completions endpoint, relative to the base URL.
+   *
+   * Needed because not every OpenAI-compatible API puts it at
+   * `/v1/chat/completions`: Meta serves it at `/chat/completions` under a
+   * `/v1` base, and Gemini at `/chat/completions` under `/v1beta/openai`.
+   */
+  completionsPath?: string;
+  /**
+   * Path of the model listing endpoint, relative to the base URL.
+   *
+   * Same reason as above, for health checks and `models` commands.
+   */
+  modelsPath?: string;
 }
 
 export interface TierConfig {
