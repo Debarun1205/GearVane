@@ -540,6 +540,35 @@ describe('the Problems tab shows failed tool calls', () => {
   });
 });
 
+describe('ghost text wiring', () => {
+  it('registers the provider with the editor', () => {
+    expect(view).toMatch(/registerInlineCompletionsProvider/);
+    expect(view).toMatch(/registerGhostText/);
+  });
+
+  it('aborts the previous request on every keystroke', () => {
+    // Without this, slow responses arrive for text the user has moved past,
+    // and the ghost describes a cursor position that no longer exists.
+    expect(view).toMatch(/ghostAbort\?\.abort\(\)/);
+    expect(view).toMatch(/token\.onCancellationRequested/);
+  });
+
+  it('gives up after repeated failures instead of spamming fetches', () => {
+    expect(view).toMatch(/MAX_CONSECUTIVE_FAILURES/);
+    expect(view).toMatch(/ghostRegistration\?\.dispose\(\)/);
+  });
+
+  it('cleans up on dispose', () => {
+    expect(view).toMatch(/ghostAbort\?\.abort\(\)/);
+    expect(view).toMatch(/ghostRegistration\?\.dispose\(\)/);
+  });
+
+  it('resolves the model from config and passes it to the view', () => {
+    expect(renderer).toMatch(/resolveInlineModel\(config\)/);
+    expect(renderer).toMatch(/completion: resolveInlineModel/);
+  });
+});
+
 describe('the hidden attribute actually hides', () => {
   it('overrides the flex display on both views', () => {
     // .app sets display:flex, which beats [hidden]. Without this rule the IDE

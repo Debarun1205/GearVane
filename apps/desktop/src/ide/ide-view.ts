@@ -18,6 +18,14 @@ import type { AgentResult, AgentStep } from '@waypoint/harness';
 import { installMonacoEnvironment, languageForPath, monaco } from './monaco.js';
 import { buildTree, renderTree, type TreeNode } from './file-tree.js';
 import { createTerminal, type TerminalBridge } from './terminal.js';
+import {
+  CompletionCache,
+  MAX_CONSECUTIVE_FAILURES,
+  buildFimRequest,
+  fetchCompletion,
+  shouldComplete,
+  type InlineModel,
+} from './inline-complete.js';
 import type { FsEntry } from './fs-store.js';
 
 /**
@@ -83,6 +91,11 @@ export interface IdeViewOptions {
   terminal: TerminalBridge;
   fs: FsBridge;
   agent: AgentBridge;
+  /**
+   * Local model for ghost-text completions. Absent when no local server is
+   * configured, and ghost text stays off rather than failing per keystroke.
+   */
+  completion?: InlineModel;
   /** Called when the agent touches a file, so the editor can reveal it. */
   onAgentFile?: (path: string) => void;
 }
@@ -262,8 +275,87 @@ export class IdeView {
       () => void this.saveActive(),
     );
 
+    this.registerGhostText();
+
     this.renderTabs();
     return pane;
+  }
+
+  private ghostAbort: AbortController | undefined;
+  private ghostFailures = 0;
+  private ghostCache = new CompletionCache();
+  private ghostRegistration: monaco.IDisposable | undefined;
+
+  /**
+   * Ghost-text completions from the local model.
+   *
+   * Each keystroke aborts the previous request: without that, slow responses
+   * arrive for text the user has already moved past, and the ghost describes
+   * a cursor position that no longer exists. After repeated failures (Ollama
+   * down, model not pulled) the provider unregisters until remount, because
+   * a failing fetch per keystroke is pure console noise.
+   */
+  private registerGhostText(): void {
+    const inline = this.options.completion;
+    if (!inline) return;
+
+    this.ghostRegistration = monaco.languages.registerInlineCompletionsProvider(
+      { scheme: 'file' },
+      {
+        provideInlineCompletions: async (model, position, _context, token) => {
+          const line = model.getLineContent(position.lineNumber);
+          const linePrefix = line.slice(0, position.column - 1);
+          if (!shouldComplete(linePrefix)) return { items: [] };
+
+          const prefix = model.getValueInRange({
+            startLineNumber: 1,
+            startColumn: 1,
+            endLineNumber: position.lineNumber,
+            endColumn: position.column,
+          });
+          const suffix = model.getValueInRange({
+            startLineNumber: position.lineNumber,
+            startColumn: position.column,
+            endLineNumber: model.getLineCount() + 1,
+            endColumn: 1,
+          });
+
+          const cached = this.ghostCache.get(prefix, suffix);
+          if (cached !== undefined) {
+            return { items: [{ insertText: cached }] };
+          }
+
+          this.ghostAbort?.abort();
+          const request = new AbortController();
+          this.ghostAbort = request;
+          token.onCancellationRequested(() => request.abort());
+
+          const fim = buildFimRequest(inline, prefix, suffix);
+          let ghost: string | undefined;
+          try {
+            ghost = await fetchCompletion(fim, request.signal);
+          } catch {
+            this.ghostFailures += 1;
+            if (this.ghostFailures >= MAX_CONSECUTIVE_FAILURES) {
+              this.ghostRegistration?.dispose();
+              this.ghostRegistration = undefined;
+              this.setStatus(
+                'Ghost text off: the local model is unreachable. Start Ollama and reopen the folder to retry.',
+              );
+            }
+            return { items: [] };
+          }
+
+          if (ghost === undefined) return { items: [] };
+          this.ghostFailures = 0;
+          this.ghostCache.set(prefix, suffix, ghost);
+          return { items: [{ insertText: ghost }] };
+        },
+        freeInlineCompletions: () => {
+          this.ghostAbort?.abort();
+        },
+      },
+    );
   }
 
   private tabBar: HTMLElement | undefined;
@@ -953,6 +1045,8 @@ export class IdeView {
     // A run that outlives its view has no visible output and looks hung.
     if (this.agentRunning) this.options.agent.cancel();
     this.agentUnsubscribe?.();
+    this.ghostAbort?.abort();
+    this.ghostRegistration?.dispose();
     this.terminal?.dispose();
     this.editor?.dispose();
     for (const file of this.openFiles.values()) file.model.dispose();

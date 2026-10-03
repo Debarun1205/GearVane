@@ -536,8 +536,10 @@ async function main(): Promise<void> {
     const mountIde = async (root: string): Promise<boolean> => {
       try {
         const { IdeView } = await import('./ide/ide-view.js');
+        const { resolveInlineModel } = await import('./ide/inline-complete.js');
         const view = new IdeView({
           workspaceRoot: root,
+          completion: resolveInlineModel(config),
           terminal,
           fs: {
             list: () => ideFs.list(root),
