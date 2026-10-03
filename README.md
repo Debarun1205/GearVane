@@ -89,7 +89,7 @@ Download a build for your platform from the
 | Linux x64 (deb) | `waypoint-app_0.2.0_amd64.deb` | 71 MB |
 | Linux arm64 (deb) | `waypoint-app_0.2.0_arm64.deb` | 67 MB |
 | Android (debug APK) | `app-debug.apk` | 3.6 MB |
-| VS Code | `waypoint-0.2.0.vsix` | 10 KB |
+| VS Code | `waypoint-0.3.0.vsix` | 10 KB |
 
 Linux notes: the AppImage is x64 only, because arm64 AppImages cannot be
 cross-built reliably on an x64 runner. The `.deb` covers both architectures.
@@ -109,7 +109,7 @@ SmartScreen will warn on first launch. See
 cd apps/vscode-extension
 npm install && npm run build
 npx @vscode/vsce package
-code --install-extension waypoint-0.2.0.vsix
+code --install-extension waypoint-0.3.0.vsix
 ```
 
 ### The CLI

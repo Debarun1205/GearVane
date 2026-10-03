@@ -1,7 +1,7 @@
 {
   "name": "waypoint-app",
   "productName": "Waypoint",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Route each prompt to the cheapest model tier that can do the job",
   "author": {
     "name": "Debarun1205",
@@ -33,9 +33,9 @@
     "clean": "rm -rf dist release out android/app/build"
   },
   "dependencies": {
-    "@waypoint/app-core": "0.2.0",
-    "@waypoint/core": "0.2.0",
-    "@waypoint/harness": "0.2.0",
+    "@waypoint/app-core": "0.3.0",
+    "@waypoint/core": "0.3.0",
+    "@waypoint/harness": "0.3.0",
     "@xterm/addon-fit": "^0.10.0",
     "@xterm/xterm": "^5.5.0",
     "monaco-editor": "^0.52.2"

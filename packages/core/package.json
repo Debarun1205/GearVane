@@ -1,6 +1,6 @@
 {
   "name": "@waypoint/core",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Tier routing, escalation, provider clients, and cost control",
   "license": "MIT",
   "type": "module",

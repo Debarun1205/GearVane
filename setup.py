@@ -7,7 +7,7 @@ README = (ROOT / "README.md").read_text(encoding="utf-8")
 
 setup(
     name="waypoint",
-    version="0.2.0",
+    version="0.3.0",
     description="Open-source AI harness with intelligent task routing",
     long_description=README,
     long_description_content_type="text/markdown",

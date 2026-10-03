@@ -1,6 +1,6 @@
 {
   "name": "waypoint-monorepo",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "description": "Waypoint: route each task to the cheapest model tier that can do the job",
   "license": "MIT",

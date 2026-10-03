@@ -2,7 +2,7 @@
   "name": "waypoint",
   "displayName": "Waypoint",
   "description": "Route each task to the cheapest model tier that can do the job",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "publisher": "waypoint",
   "license": "MIT",
   "engines": {
@@ -129,8 +129,8 @@
     "clean": "rm -rf dist out"
   },
   "dependencies": {
-    "@waypoint/core": "0.2.0",
-    "@waypoint/harness": "0.2.0"
+    "@waypoint/core": "0.3.0",
+    "@waypoint/harness": "0.3.0"
   },
   "devDependencies": {
     "@types/vscode": "^1.85.0",

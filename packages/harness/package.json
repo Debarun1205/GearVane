@@ -1,6 +1,6 @@
 {
   "name": "@waypoint/harness",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Agent loop, tool execution, and workspace containment",
   "license": "MIT",
   "type": "module",
@@ -29,6 +29,6 @@
     "clean": "tsc --build tsconfig.json --clean && rm -rf dist"
   },
   "dependencies": {
-    "@waypoint/core": "0.2.0"
+    "@waypoint/core": "0.3.0"
   }
 }
