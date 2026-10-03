@@ -3,15 +3,7 @@ name: Deploy site
 on:
   push:
     branches: [master, main]
-    paths:
-      # The builder bundles code from packages/harness, so a change there has
-      # to redeploy the site as well. Leaving this as site/** alone means the
-      # deployed builder silently drifts from the templates it ships.
-      - 'site/**'
-      - 'packages/harness/**'
-      - 'package.json'
-      - 'package-lock.json'
-      - '.github/workflows/deploy-site.yml'
+    paths: ['site/**', '.github/workflows/deploy-site.yml']
   workflow_dispatch:
 
 permissions:
@@ -35,20 +27,7 @@ jobs:
 
       - uses: actions/configure-pages@v5
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-
-      # The builder page imports the template engine from packages/harness, so
-      # unlike the rest of the site it is bundled rather than copied. The
-      # marketing page is still plain static files with no build step.
-      - name: Bundle the builder page
-        run: |
-          npm ci --no-audit --no-fund
-          npm run build:site
-
-      # Everything under site/ is uploaded, including the generated bundle.
+      # The site has no build step, so this uploads site/ as-is.
       - name: Upload the static site
         uses: actions/upload-pages-artifact@v3
         with:

@@ -33,32 +33,21 @@ cp -r site/* /path/to/public/
 | File | Purpose |
 |------|---------|
 | `index.html` | The whole page |
-| `builder.html` | The app builder page |
 | `assets/styles.css` | Styles |
 | `assets/demos.js` | Demo prompts plus tab behaviour |
-| `assets/builder.js` | Builder page logic, bundled from the harness source |
 
-## The builder page
+## No builder on this site
 
-`builder.html` scaffolds a site from a template and hands it over as a zip. It
-makes no network calls at all, which is the design rather than a limitation
-worked around:
+Prompt-driven building needs a model call, and a static page has no backend
+to make one from and no safe place to keep a credential. A token in browser
+JavaScript is a token shipped to every visitor, so this site does not ask for
+one and cannot hold one. Building lives in the desktop app and IDE, where a
+key stays in the environment and files land on disk.
 
-- Publishing needs a credential
-- A credential in browser JavaScript is a credential shipped to every visitor
-- GitHub Pages has no backend to keep a token out of the browser
-
-So the page downloads a zip, and the desktop app writes to a folder. Both share
-the same engine from `packages/harness`, bundled from source, so the output is
-byte-identical.
-
-There is deliberately **no publish button on this page**. Adding one would mean
-either shipping a token to every visitor or pretending a deploy happened. The
-page says so in plain words rather than leaving the absence to be noticed.
-
-The template engine is a template engine with parameters, not a code generator.
-The same answers always produce the same files, which is what makes the output
-testable; a model-driven generator could not be verified this way.
+An earlier version of this page had a template form that downloaded a zip. It
+was removed because forms are not vibe-coding: without a model behind them
+they cannot respond to a prompt, and keeping them would imply the site builds
+apps when it cannot.
 
 ## Keeping it honest
 
