@@ -18,8 +18,8 @@
   "main": "dist/main.js",
   "scripts": {
     "build:main": "tsc -p tsconfig.json && node scripts/copy-preload.mjs",
-    "build:worker": "esbuild ../../node_modules/monaco-editor/esm/vs/editor/editor.worker.js --bundle --format=iife --platform=browser --target=es2022 --outfile=src/ide/editor.worker.txt",
-    "build:renderer": "npm run build:worker && esbuild src/renderer.ts --bundle --format=esm --target=es2022 --platform=browser --external:node:* --loader:.txt=text --loader:.ttf=dataurl --outfile=renderer/renderer.js",
+    "build:worker": "esbuild ../../node_modules/monaco-editor/esm/vs/editor/editor.worker.js --bundle --format=iife --platform=browser --target=es2022 --minify --outfile=src/ide/editor.worker.txt",
+    "build:renderer": "npm run build:worker && esbuild src/renderer.ts --bundle --format=esm --target=es2022 --platform=browser --external:node:* --loader:.txt=text --loader:.ttf=dataurl --minify --outfile=renderer/renderer.js",
     "build": "npm run build:main && npm run build:renderer",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.e2e.json",
     "test": "vitest run",
