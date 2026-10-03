@@ -36,6 +36,31 @@ cp -r site/* /path/to/public/
 | `assets/styles.css` | Styles |
 | `assets/demos.js` | Demo prompts plus tab behaviour |
 
+## Visual design
+
+Dark, ambient, and self-contained. The sheet works in four layers:
+
+1. **Ambient layer.** A fixed `.aurora` element holds two blurred gradient
+   orbs behind the page (z-index -1, aria-hidden). The canvas gradient lives
+   on `html` so the body can stay transparent and let the orbs show through.
+2. **Glass panels.** Cards share one recipe via custom properties:
+   `--glass-bg`, `--glass-border`, `--glass-blur`, `--card-shadow`.
+   `backdrop-filter` does the frosting; the `-webkit-` copy keeps Safari
+   honest.
+3. **Motion.** Hover lifts, button sheen, growing nav underlines, and
+   per-tier coloured glows, all on a single curve (`--ease`). Scroll reveals
+   use scroll-driven animations behind `@supports (animation-timeline)`, so
+   browsers without them just show content.
+4. **Reduced motion.** Every keyframe use sits inside
+   `prefers-reduced-motion: no-preference`, and the reduce block neutralises
+   animations and transitions outright. With motion reduced the page is
+   fully static and nothing is hidden waiting for an animation that never
+   runs.
+
+The constraints are enforced, not aspirational: no webfonts or imported
+stylesheets (the FAQ promises offline), ASCII only, and a visible
+`:focus-visible` style survive `tests/site.test.ts`.
+
 ## No builder on this site
 
 Prompt-driven building needs a model call, and a static page has no backend

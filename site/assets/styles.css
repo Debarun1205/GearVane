@@ -1,3 +1,21 @@
+/* Waypoint site styles.
+ *
+ * Design language: deep-space dark with an ambient aurora layer, frosted
+ * glass panels (backdrop-filter), and small, cheap hover motions. Two rules
+ * govern everything here:
+ *
+ *   1. No third-party resources. No webfonts, no imported stylesheets: the
+ *      FAQ promises the page works offline, so every visual effect must be
+ *      buildable from system fonts and gradients alone.
+ *   2. Motion is decoration, never information. Every animation is gated
+ *      behind prefers-reduced-motion, and scroll reveals only exist inside
+ *      @supports (animation-timeline) so a browser without them simply
+ *      shows content.
+ *
+ * Guarded by tests/site.test.ts (styling, security) and
+ * tests/builder-site.test.ts (no builder styles).
+ */
+
 :root {
   color-scheme: dark;
 
@@ -18,6 +36,22 @@
 
   --radius: 12px;
   --wrap: 66rem;
+
+  /* Glass recipe, shared by every frosted panel. The -webkit copy keeps
+     Safari, which only recently shipped the unprefixed property, honest. */
+  --glass-bg: linear-gradient(
+    165deg,
+    rgb(255 255 255 / 0.07),
+    rgb(255 255 255 / 0.025)
+  );
+  --glass-border: rgb(255 255 255 / 0.09);
+  --glass-blur: blur(14px) saturate(150%);
+  --card-shadow: inset 0 1px 0 rgb(255 255 255 / 0.05),
+    0 20px 40px -24px rgb(0 0 0 / 0.9);
+
+  /* Motion: one curve for everything so the page feels like one system. */
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --hover-lift: translateY(-5px);
 }
 
 * {
@@ -29,10 +63,17 @@
 html {
   scroll-behavior: smooth;
   scroll-padding-top: 4.5rem;
+  /* The canvas color lives on html so body can stay transparent and the
+     fixed aurora layer can sit between the canvas and the content. */
+  background: #070b16
+    radial-gradient(70rem 46rem at 78% -6%, rgb(56 189 248 / 0.12), transparent 62%),
+    radial-gradient(60rem 44rem at 8% 12%, rgb(129 140 248 / 0.10), transparent 60%),
+    linear-gradient(180deg, #070b16 0%, var(--bg) 45%, #0a0f1e 100%);
+  background-attachment: fixed;
 }
 
 body {
-  background: var(--bg);
+  background: transparent;
   color: var(--text);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Ubuntu,
     'Helvetica Neue', sans-serif;
@@ -47,10 +88,84 @@ pre {
   font-size: 0.875em;
 }
 
+::selection {
+  background: rgb(56 189 248 / 0.35);
+  color: #f8fafc;
+}
+
+/* Thin, themed scrollbars. Firefox takes the two-property form. */
+@media (pointer: fine) {
+  html {
+    scrollbar-width: thin;
+    scrollbar-color: #2b3a55 transparent;
+  }
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #2b3a55;
+  border: 2px solid #0a0f1e;
+  border-radius: 8px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #3b4d73;
+}
+
 .wrap {
   max-width: var(--wrap);
   margin: 0 auto;
   padding: 0 1.25rem;
+}
+
+/* --- ambient layer --------------------------------------------------------- */
+
+/* Fixed aurora orbs behind the whole page. z-index -1 keeps them above the
+   canvas background but below every section; overflow hidden keeps the orbs
+   from widening the viewport. Decorative only: aria-hidden in the markup,
+   and every animation on it is motion-gated below. */
+.aurora {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  background: radial-gradient(
+    54rem 38rem at 74% 8%,
+    rgb(244 114 182 / 0.12),
+    transparent 62%
+  );
+}
+
+.aurora::before,
+.aurora::after {
+  content: '';
+  position: absolute;
+  width: 46rem;
+  height: 46rem;
+  border-radius: 50%;
+  filter: blur(84px);
+  opacity: 0.42;
+}
+
+.aurora::before {
+  top: -14rem;
+  left: -10rem;
+  background: radial-gradient(circle, rgb(56 189 248 / 0.55), transparent 65%);
+}
+
+.aurora::after {
+  bottom: -18rem;
+  right: -12rem;
+  background: radial-gradient(circle, rgb(129 140 248 / 0.5), transparent 65%);
 }
 
 .skip-link {
@@ -70,18 +185,21 @@ pre {
 
 :focus-visible {
   outline: 2px solid var(--accent);
-  outline-offset: 2px;
+  outline-offset: 3px;
+  border-radius: 4px;
 }
 
-/* --- header -------------------------------------------------------------- */
+/* --- header ---------------------------------------------------------------- */
 
 .site-header {
   position: sticky;
   top: 0;
   z-index: 20;
-  background: rgb(11 17 32 / 0.9);
-  backdrop-filter: blur(10px);
-  border-bottom: 1px solid var(--border);
+  background: rgb(8 12 24 / 0.72);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  backdrop-filter: blur(16px) saturate(160%);
+  border-bottom: 1px solid rgb(255 255 255 / 0.07);
+  box-shadow: 0 12px 32px -20px rgb(0 0 0 / 0.9);
 }
 
 .header-inner {
@@ -107,6 +225,13 @@ pre {
   height: 15px;
   border-radius: 50%;
   background: linear-gradient(135deg, var(--local), var(--accent), var(--frontier));
+  box-shadow: 0 0 12px rgb(56 189 248 / 0.5);
+  transition: transform 0.4s var(--ease), box-shadow 0.4s var(--ease);
+}
+
+.logo:hover .logo-mark {
+  transform: rotate(180deg) scale(1.15);
+  box-shadow: 0 0 18px rgb(56 189 248 / 0.75);
 }
 
 .site-header nav {
@@ -116,27 +241,95 @@ pre {
 }
 
 .site-header nav a {
+  position: relative;
   color: var(--text-dim);
   text-decoration: none;
   font-size: 0.9rem;
+  transition: color 0.2s var(--ease);
 }
 
-.site-header nav a:hover {
+/* Underline that grows from the left on hover; buttons opt out. */
+.site-header nav a:not(.button)::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: -5px;
+  width: 100%;
+  height: 2px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--accent), var(--frontier));
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.25s var(--ease);
+}
+
+.site-header nav a:not(.button):hover {
   color: var(--text);
 }
 
-/* --- hero ---------------------------------------------------------------- */
+.site-header nav a:not(.button):hover::after {
+  transform: scaleX(1);
+}
+
+/* The header CTA is a button, not a nav link: without this the nav rule
+   above (higher specificity) paints dim text onto the light gradient. */
+.site-header nav a.button {
+  color: #04121d;
+}
+
+.site-header nav a.button:hover {
+  color: #04121d;
+}
+
+/* --- hero ------------------------------------------------------------------ */
 
 .hero {
-  padding: 5rem 0 4rem;
+  position: relative;
+  padding: 6rem 0 5rem;
+  overflow: hidden;
+}
+
+/* Faint grid that fades out radially; sits above the aurora, below the
+   copy (the wrap is lifted with z-index so text never sits under lines). */
+.hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(rgb(255 255 255 / 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(255 255 255 / 0.035) 1px, transparent 1px);
+  background-size: 44px 44px;
+  -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 35%, #000 30%, transparent 75%);
+  mask-image: radial-gradient(ellipse 70% 60% at 50% 35%, #000 30%, transparent 75%);
+  pointer-events: none;
+}
+
+.hero .wrap {
+  position: relative;
+  z-index: 1;
 }
 
 .eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
   font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.1em;
   color: var(--accent);
-  margin-bottom: 1rem;
+  margin-bottom: 1.25rem;
+  padding: 0.35rem 0.85rem;
+  border-radius: 999px;
+  border: 1px solid rgb(56 189 248 / 0.3);
+  background: rgb(56 189 248 / 0.08);
+}
+
+.eyebrow::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent);
 }
 
 .hero h1 {
@@ -145,6 +338,17 @@ pre {
   letter-spacing: -0.03em;
   font-weight: 700;
   max-width: 20ch;
+  color: var(--text);
+}
+
+/* Gradient headline where supported; solid color remains the fallback. */
+@supports ((-webkit-background-clip: text) or (background-clip: text)) {
+  .hero h1 {
+    background: linear-gradient(115deg, #f8fafc 45%, #7dd3fc 72%, #c4b5fd 96%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
 }
 
 .lede {
@@ -167,31 +371,69 @@ pre {
   color: var(--text-dim);
 }
 
+/* --- buttons --------------------------------------------------------------- */
+
 .button {
+  position: relative;
   display: inline-block;
   padding: 0.7rem 1.4rem;
   border-radius: var(--radius);
   border: 1px solid transparent;
-  background: var(--accent);
+  background: linear-gradient(135deg, #38bdf8, #818cf8);
+  background-size: 160% 160%;
+  background-position: 0% 50%;
   color: #04121d;
   font-weight: 650;
   text-decoration: none;
   cursor: pointer;
+  overflow: hidden;
+  transition: background-position 0.35s var(--ease), transform 0.25s var(--ease),
+    box-shadow 0.25s var(--ease), border-color 0.25s var(--ease);
+}
+
+/* Sheen that sweeps across on hover. The pseudo-element is decoration only. */
+.button::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    100deg,
+    transparent 32%,
+    rgb(255 255 255 / 0.45) 50%,
+    transparent 68%
+  );
+  transform: translateX(-120%);
+  transition: transform 0.6s var(--ease);
+  pointer-events: none;
 }
 
 .button:hover {
-  background: #7dd3fc;
+  background-position: 100% 50%;
+  transform: translateY(-2px);
+  box-shadow: 0 14px 30px -12px rgb(56 189 248 / 0.55),
+    0 0 0 1px rgb(56 189 248 / 0.25);
+}
+
+.button:hover::after {
+  transform: translateX(120%);
+}
+
+.button:active {
+  transform: translateY(0);
 }
 
 .button-ghost {
-  background: transparent;
-  border-color: var(--border-strong);
+  background: rgb(255 255 255 / 0.04);
+  border-color: rgb(255 255 255 / 0.14);
   color: var(--text);
 }
 
 .button-ghost:hover {
-  border-color: var(--accent);
-  background: transparent;
+  border-color: rgb(56 189 248 / 0.6);
+  background: rgb(56 189 248 / 0.1);
+  color: var(--text);
+  box-shadow: 0 14px 30px -16px rgb(56 189 248 / 0.4),
+    0 0 0 1px rgb(56 189 248 / 0.2);
 }
 
 .button-small {
@@ -199,21 +441,37 @@ pre {
   font-size: 0.85rem;
 }
 
-/* --- sections ------------------------------------------------------------ */
+/* --- sections -------------------------------------------------------------- */
 
 .section {
-  padding: 4.5rem 0;
+  padding: 5.25rem 0;
+  position: relative;
 }
 
+/* Translucent so the aurora shows through; the blur makes it read as a
+   frosted band rather than a flat stripe. */
 .section-alt {
-  background: var(--bg-soft);
-  border-block: 1px solid var(--border);
+  background: linear-gradient(180deg, rgb(16 24 39 / 0.62), rgb(13 20 35 / 0.62));
+  -webkit-backdrop-filter: blur(12px) saturate(140%);
+  backdrop-filter: blur(12px) saturate(140%);
+  border-block: 1px solid rgb(255 255 255 / 0.06);
 }
 
 .section h2 {
   font-size: clamp(1.5rem, 3.5vw, 2.1rem);
   letter-spacing: -0.02em;
   margin-bottom: 0.6rem;
+}
+
+/* Short gradient rule under every section heading. */
+.section h2::after {
+  content: '';
+  display: block;
+  width: 3.25rem;
+  height: 3px;
+  border-radius: 2px;
+  margin-top: 0.6rem;
+  background: linear-gradient(90deg, var(--accent), var(--frontier));
 }
 
 .section-lede {
@@ -226,14 +484,24 @@ pre {
   margin-top: 1.75rem;
   padding: 0.9rem 1.1rem;
   border-left: 2px solid var(--accent-dim);
-  background: var(--bg-raised);
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
   border-radius: 0 var(--radius) var(--radius) 0;
   color: var(--text-dim);
   font-size: 0.9rem;
   max-width: 62ch;
 }
 
-/* --- steps --------------------------------------------------------------- */
+.note strong {
+  color: var(--text);
+}
+
+.note a {
+  color: var(--accent);
+}
+
+/* --- steps ----------------------------------------------------------------- */
 
 .steps {
   display: grid;
@@ -245,7 +513,21 @@ pre {
 
 .steps li {
   position: relative;
-  padding-top: 0.25rem;
+  padding: 1.35rem 1.35rem 1.45rem;
+  border-radius: 16px;
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--card-shadow);
+  transition: transform 0.3s var(--ease), border-color 0.3s var(--ease),
+    box-shadow 0.3s var(--ease);
+}
+
+.steps li:hover {
+  transform: var(--hover-lift);
+  border-color: rgb(56 189 248 / 0.35);
+  box-shadow: var(--card-shadow), 0 24px 46px -26px rgb(56 189 248 / 0.5);
 }
 
 .step-number {
@@ -255,11 +537,18 @@ pre {
   width: 1.9rem;
   height: 1.9rem;
   border-radius: 50%;
-  border: 1px solid var(--accent-dim);
+  border: 1px solid rgb(56 189 248 / 0.45);
+  background: rgb(56 189 248 / 0.1);
   color: var(--accent);
   font-size: 0.85rem;
   font-weight: 700;
   margin-bottom: 0.75rem;
+  transition: transform 0.3s var(--ease), box-shadow 0.3s var(--ease);
+}
+
+.steps li:hover .step-number {
+  transform: scale(1.12);
+  box-shadow: 0 0 16px rgb(56 189 248 / 0.45);
 }
 
 .steps h3 {
@@ -272,7 +561,7 @@ pre {
   font-size: 0.95rem;
 }
 
-/* --- tiers --------------------------------------------------------------- */
+/* --- tiers ----------------------------------------------------------------- */
 
 .tier-grid {
   display: grid;
@@ -281,11 +570,22 @@ pre {
 }
 
 .tier {
-  background: var(--bg-raised);
-  border: 1px solid var(--border);
+  position: relative;
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
   border-top: 2px solid var(--border-strong);
-  border-radius: var(--radius);
+  border-radius: 16px;
   padding: 1.25rem;
+  box-shadow: var(--card-shadow);
+  transition: transform 0.3s var(--ease), border-color 0.3s var(--ease),
+    box-shadow 0.3s var(--ease);
+}
+
+.tier:hover {
+  transform: var(--hover-lift);
+  box-shadow: var(--card-shadow), 0 26px 50px -28px rgb(0 0 0 / 0.95);
 }
 
 .tier header {
@@ -334,28 +634,49 @@ pre {
   border-radius: 50%;
   background: currentColor;
   opacity: 0.5;
+  transition: opacity 0.25s var(--ease), transform 0.25s var(--ease);
 }
 
+.tier:hover li::before {
+  opacity: 1;
+  transform: scale(1.3);
+}
+
+/* Each tier glows in its own colour on hover. */
 .tier-local {
   border-top-color: var(--local);
 }
 .tier-local h3 {
   color: var(--local);
 }
+.tier-local:hover {
+  border-color: rgb(34 197 94 / 0.45);
+  box-shadow: var(--card-shadow), 0 26px 52px -26px rgb(34 197 94 / 0.4);
+}
+
 .tier-mid {
   border-top-color: var(--mid);
 }
 .tier-mid h3 {
   color: var(--mid);
 }
+.tier-mid:hover {
+  border-color: rgb(245 158 11 / 0.45);
+  box-shadow: var(--card-shadow), 0 26px 52px -26px rgb(245 158 11 / 0.4);
+}
+
 .tier-frontier {
   border-top-color: var(--frontier);
 }
 .tier-frontier h3 {
   color: var(--frontier);
 }
+.tier-frontier:hover {
+  border-color: rgb(244 114 182 / 0.45);
+  box-shadow: var(--card-shadow), 0 26px 52px -26px rgb(244 114 182 / 0.4);
+}
 
-/* --- demos --------------------------------------------------------------- */
+/* --- demos ----------------------------------------------------------------- */
 
 .demo-list {
   display: grid;
@@ -363,16 +684,31 @@ pre {
 }
 
 .demo {
-  background: var(--bg-raised);
-  border: 1px solid var(--border);
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
   border-left: 3px solid var(--border-strong);
   border-radius: var(--radius);
   padding: 1.1rem 1.25rem;
+  box-shadow: var(--card-shadow);
+  transition: transform 0.3s var(--ease), border-color 0.3s var(--ease),
+    box-shadow 0.3s var(--ease), background-position 0.3s var(--ease);
+}
+
+.demo:hover {
+  transform: var(--hover-lift);
+  box-shadow: var(--card-shadow), 0 24px 46px -26px rgb(0 0 0 / 0.95);
 }
 
 .demo-prompt {
   font-size: 0.98rem;
   margin-bottom: 0.7rem;
+  transition: color 0.25s var(--ease);
+}
+
+.demo:hover .demo-prompt {
+  color: #f8fafc;
 }
 
 .demo-meta {
@@ -390,6 +726,7 @@ pre {
   padding: 0.15rem 0.5rem;
   border-radius: 999px;
   border: 1px solid currentColor;
+  background: rgb(255 255 255 / 0.04);
 }
 
 .demo-tier-local {
@@ -423,7 +760,23 @@ pre {
   border-left-color: var(--frontier);
 }
 
-/* --- downloads ----------------------------------------------------------- */
+.demo-local:hover {
+  border-color: rgb(34 197 94 / 0.4);
+  border-left-color: var(--local);
+  box-shadow: var(--card-shadow), 0 24px 46px -26px rgb(34 197 94 / 0.45);
+}
+.demo-mid:hover {
+  border-color: rgb(245 158 11 / 0.4);
+  border-left-color: var(--mid);
+  box-shadow: var(--card-shadow), 0 24px 46px -26px rgb(245 158 11 / 0.45);
+}
+.demo-frontier:hover {
+  border-color: rgb(244 114 182 / 0.4);
+  border-left-color: var(--frontier);
+  box-shadow: var(--card-shadow), 0 24px 46px -26px rgb(244 114 182 / 0.45);
+}
+
+/* --- downloads ------------------------------------------------------------- */
 
 .download-grid {
   display: grid;
@@ -433,28 +786,70 @@ pre {
 }
 
 .download-card {
-  background: var(--bg-raised);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 1.25rem;
+  position: relative;
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  padding: 1.35rem 1.25rem;
+  box-shadow: var(--card-shadow);
+  overflow: hidden;
+  transition: transform 0.3s var(--ease), border-color 0.3s var(--ease),
+    box-shadow 0.3s var(--ease);
+}
+
+/* Soft corner glow that brightens on hover. */
+.download-card::before {
+  content: '';
+  position: absolute;
+  top: -60%;
+  right: -45%;
+  width: 70%;
+  height: 140%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgb(56 189 248 / 0.16), transparent 70%);
+  opacity: 0.6;
+  transition: opacity 0.35s var(--ease), transform 0.35s var(--ease);
+  pointer-events: none;
+}
+
+.download-card:hover {
+  transform: var(--hover-lift);
+  border-color: rgb(56 189 248 / 0.35);
+  box-shadow: var(--card-shadow), 0 26px 52px -28px rgb(56 189 248 / 0.45);
+}
+
+.download-card:hover::before {
+  opacity: 1;
+  transform: scale(1.15) translate(-6%, 4%);
 }
 
 .download-card h3 {
   font-size: 1.05rem;
   margin-bottom: 0.35rem;
+  position: relative;
 }
 
 .download-card p {
   color: var(--text-dim);
   font-size: 0.88rem;
   margin-bottom: 1rem;
+  position: relative;
+}
+
+.download-card .button {
+  position: relative;
 }
 
 .alt-install {
-  background: var(--bg-raised);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
   padding: 1.5rem;
+  box-shadow: var(--card-shadow);
 }
 
 .alt-install h3 {
@@ -462,7 +857,7 @@ pre {
   margin-bottom: 0.3rem;
 }
 
-.alt-install p {
+.alt-install > p {
   color: var(--text-dim);
   font-size: 0.9rem;
   margin-bottom: 1.1rem;
@@ -484,16 +879,24 @@ pre {
   font-size: 0.9rem;
   padding: 0.5rem 0.8rem;
   cursor: pointer;
+  border-radius: 8px 8px 0 0;
+  transition: color 0.2s var(--ease), background 0.2s var(--ease);
+}
+
+.tab:hover {
+  color: var(--text);
+  background: rgb(255 255 255 / 0.05);
 }
 
 .tab.is-active {
   color: var(--accent);
   border-bottom-color: var(--accent);
+  background: rgb(56 189 248 / 0.09);
 }
 
 .install-panel pre {
-  background: var(--bg);
-  border: 1px solid var(--border);
+  background: rgb(5 9 18 / 0.72);
+  border: 1px solid rgb(255 255 255 / 0.07);
   border-radius: var(--radius);
   padding: 1rem 1.1rem;
   overflow-x: auto;
@@ -505,19 +908,33 @@ pre {
   display: none;
 }
 
-/* --- version history ----------------------------------------------------- */
+/* --- version history ------------------------------------------------------- */
 
 .release-list {
   list-style: none;
   margin: 0;
   padding: 0;
+  display: grid;
+  gap: 1.1rem;
 }
 
 .release {
-  background: var(--bg-raised);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 1.5rem;
+  position: relative;
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  padding: 1.6rem;
+  box-shadow: var(--card-shadow);
+  transition: transform 0.3s var(--ease), border-color 0.3s var(--ease),
+    box-shadow 0.3s var(--ease);
+}
+
+.release:hover {
+  transform: var(--hover-lift);
+  border-color: rgb(56 189 248 / 0.3);
+  box-shadow: var(--card-shadow), 0 26px 52px -30px rgb(56 189 248 / 0.4);
 }
 
 .release-head {
@@ -536,6 +953,7 @@ pre {
 .release-head h3 a {
   color: var(--text);
   text-decoration: none;
+  transition: color 0.2s var(--ease);
 }
 
 .release-head h3 a:hover {
@@ -552,6 +970,7 @@ pre {
 }
 
 .tag {
+  position: relative;
   border: 1px solid var(--border-strong);
   border-radius: 999px;
   padding: 0.1rem 0.6rem;
@@ -561,8 +980,24 @@ pre {
 }
 
 .tag-current {
-  border-color: var(--accent-dim);
+  border-color: rgb(56 189 248 / 0.45);
   color: var(--accent);
+  background: rgb(56 189 248 / 0.1);
+  padding-left: 1.45rem;
+}
+
+/* Breathing dot marking the current release (motion-gated below). */
+.tag-current::before {
+  content: '';
+  position: absolute;
+  left: 0.6rem;
+  top: 50%;
+  width: 6px;
+  height: 6px;
+  margin-top: -3px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 0 rgb(56 189 248 / 0.55);
 }
 
 .release-summary {
@@ -606,12 +1041,42 @@ pre {
   margin: 1.5rem 0 0;
 }
 
-/* --- about ---------------------------------------------------------------- */
+.release-links > a:not(.button) {
+  color: var(--text-dim);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: color 0.2s var(--ease), border-color 0.2s var(--ease);
+}
+
+.release-links > a:not(.button):hover {
+  color: var(--accent);
+  border-bottom-color: rgb(56 189 248 / 0.5);
+}
+
+/* --- about ----------------------------------------------------------------- */
 
 .about-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
-  gap: 1.5rem;
+  gap: 1.25rem;
+}
+
+.about-grid article {
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  padding: 1.35rem;
+  box-shadow: var(--card-shadow);
+  transition: transform 0.3s var(--ease), border-color 0.3s var(--ease),
+    box-shadow 0.3s var(--ease);
+}
+
+.about-grid article:hover {
+  transform: var(--hover-lift);
+  border-color: rgb(56 189 248 / 0.3);
+  box-shadow: var(--card-shadow), 0 24px 48px -28px rgb(56 189 248 / 0.4);
 }
 
 .about-grid h3 {
@@ -622,6 +1087,7 @@ pre {
 .about-grid p {
   color: var(--text-dim);
   margin: 0;
+  font-size: 0.94rem;
 }
 
 .about-grid a {
@@ -637,6 +1103,13 @@ pre {
   grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
   gap: 1rem;
   margin: 0;
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  padding: 1.35rem;
+  box-shadow: var(--card-shadow);
 }
 
 .about-facts dt {
@@ -656,17 +1129,28 @@ pre {
 .faq-item {
   border-bottom: 1px solid var(--border);
   padding: 0.35rem 0;
+  border-radius: 10px;
+  transition: background 0.25s var(--ease);
+}
+
+.faq-item:hover {
+  background: rgb(255 255 255 / 0.03);
 }
 
 .faq-item summary {
   cursor: pointer;
-  padding: 0.85rem 0;
+  padding: 0.85rem 0.6rem;
   font-weight: 600;
   list-style: none;
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 1rem;
+  transition: color 0.2s var(--ease);
+}
+
+.faq-item summary:hover {
+  color: var(--accent);
 }
 
 .faq-item summary::-webkit-details-marker {
@@ -679,21 +1163,29 @@ pre {
   font-size: 1.2rem;
   line-height: 1;
   flex-shrink: 0;
+  transition: transform 0.25s var(--ease), color 0.25s var(--ease);
+}
+
+.faq-item summary:hover::after {
+  transform: scale(1.3);
+  color: var(--accent);
 }
 
 .faq-item[open] summary::after {
   content: '\2212';
+  transform: scale(1.3);
+  color: var(--accent);
 }
 
 .faq-item p {
   color: var(--text-dim);
-  padding-bottom: 1rem;
+  padding: 0 0.6rem 1rem;
   max-width: 62ch;
 }
 
 .faq-item code {
-  background: var(--bg-raised);
-  border: 1px solid var(--border);
+  background: rgb(255 255 255 / 0.06);
+  border: 1px solid rgb(255 255 255 / 0.09);
   border-radius: 4px;
   padding: 0.1rem 0.35rem;
 }
@@ -706,6 +1198,38 @@ pre {
 
 .cta {
   max-width: 44rem;
+  position: relative;
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  border-radius: 24px;
+  padding: 3.25rem 2rem;
+  box-shadow: var(--card-shadow), 0 40px 80px -50px rgb(56 189 248 / 0.6);
+  overflow: hidden;
+}
+
+/* Accent bloom behind the closing panel. */
+.cta::before {
+  content: '';
+  position: absolute;
+  top: -55%;
+  left: 50%;
+  width: 80%;
+  height: 120%;
+  transform: translateX(-50%);
+  background: radial-gradient(circle, rgb(56 189 248 / 0.18), transparent 70%);
+  pointer-events: none;
+}
+
+.cta h2,
+.cta p,
+.cta .hero-actions {
+  position: relative;
+}
+
+.cta h2::after {
+  margin-inline: auto;
 }
 
 .cta h2 {
@@ -722,8 +1246,25 @@ pre {
 }
 
 .site-footer {
-  border-top: 1px solid var(--border);
+  position: relative;
   padding: 2rem 0;
+}
+
+/* Gradient hairline instead of a flat border. */
+.site-footer::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(
+    90%,
+    transparent,
+    rgb(56 189 248 / 0.45),
+    rgb(244 114 182 / 0.35),
+    transparent
+  );
 }
 
 .footer-inner {
@@ -746,21 +1287,123 @@ pre {
 .site-footer a {
   color: var(--text-dim);
   text-decoration: none;
+  transition: color 0.2s var(--ease);
 }
 
 .site-footer a:hover {
   color: var(--text);
 }
 
+/* --- ambient motion -------------------------------------------------------- */
+/*
+ * All keyframes live here, and every rule that *uses* them sits inside
+ * prefers-reduced-motion: no-preference. With motion reduced the page is
+ * completely static and nothing is hidden by an animation that never runs.
+ */
+
+.aurora::before,
+.aurora::after,
+.eyebrow::before,
+.tag-current::before {
+  will-change: transform;
+}
+
+@keyframes aurora-drift-a {
+  from {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  to {
+    transform: translate3d(9rem, 7rem, 0) scale(1.18);
+  }
+}
+
+@keyframes aurora-drift-b {
+  from {
+    transform: translate3d(0, 0, 0) scale(1.1);
+  }
+  to {
+    transform: translate3d(-8rem, -6rem, 0) scale(0.95);
+  }
+}
+
+@keyframes soft-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgb(56 189 248 / 0.55);
+  }
+  70% {
+    box-shadow: 0 0 0 9px rgb(56 189 248 / 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgb(56 189 248 / 0);
+  }
+}
+
+@keyframes reveal-up {
+  from {
+    opacity: 0;
+    /* The independent `translate` property, not `transform`, so hover
+       lifts (which use transform) keep working after the reveal. */
+    translate: 0 22px;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .aurora::before {
+    animation: aurora-drift-a 30s ease-in-out infinite alternate;
+  }
+
+  .aurora::after {
+    animation: aurora-drift-b 38s ease-in-out infinite alternate;
+  }
+
+  .eyebrow::before,
+  .tag-current::before {
+    animation: soft-pulse 2.6s ease-out infinite;
+  }
+
+  /* Scroll reveals where the browser supports scroll-driven animations.
+     Content outside the range is either fully visible (past it) or fades
+     in as it enters; a browser without the feature never matches the
+     @supports block and shows everything immediately. */
+  @supports (animation-timeline: view()) {
+    .steps li,
+    .tier,
+    .demo,
+    .download-card,
+    .alt-install,
+    .release,
+    .about-grid > article {
+      animation: reveal-up linear both;
+      animation-timeline: view();
+      animation-range: entry 0% cover 26%;
+    }
+  }
+}
+
+/* --- responsive ------------------------------------------------------------ */
+
 @media (max-width: 720px) {
   .site-header nav a:not(.button) {
     display: none;
   }
   .hero {
-    padding: 3rem 0 2.5rem;
+    padding: 3.5rem 0 3rem;
   }
   .section {
-    padding: 3rem 0;
+    padding: 3.25rem 0;
+  }
+  .cta {
+    padding: 2.25rem 1.25rem;
+  }
+  .aurora::before,
+  .aurora::after {
+    width: 26rem;
+    height: 26rem;
+    opacity: 0.35;
   }
 }
 
@@ -768,7 +1411,11 @@ pre {
   html {
     scroll-behavior: auto;
   }
-  * {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
 }
