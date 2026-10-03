@@ -56,6 +56,12 @@ export {
 } from './bundle.js';
 
 export {
+  builderTools,
+  listTemplatesTool,
+  scaffoldProjectTool,
+} from './agent-tools.js';
+
+export {
   FakeDeployer,
   LocalDeployer,
   UnconfiguredDeployer,
