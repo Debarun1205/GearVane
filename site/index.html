@@ -61,7 +61,8 @@
           </div>
           <p class="hero-note">
             Works on Windows, Linux, macOS, and Android - as a CLI, a VS Code
-            extension, and a full IDE. Bring your own keys, or run entirely on
+            extension, and a full IDE on the desktop. Android runs the app
+            itself in a webview. Bring your own keys, or run entirely on
             your own machine.
           </p>
         </div>
@@ -276,7 +277,7 @@
             One engine, four surfaces: the <strong>CLI</strong>, the
             <strong>VS Code extension</strong>, the desktop app, and the
             Android build. Health checks probe your configured models from
-            any of them.
+            every surface that has a config.
           </p>
         </div>
       </section>
@@ -325,7 +326,11 @@
 
             <article class="download-card">
               <h3>Android</h3>
-              <p>Debug APK, built from the same renderer bundle.</p>
+              <p>
+                Debug APK, built from the same renderer bundle and run in a
+                webview: onboarding, settings, and the chat UI, with the IDE,
+                files, and terminal desktop-only for now.
+              </p>
               <a
                 class="button button-small"
                 href="https://github.com/Debarun1205/Waypoint/releases/download/v0.3.0/app-debug.apk"
@@ -465,6 +470,7 @@ code --install-extension waypoint-0.3.0.vsix</code></pre>
                   <ul class="limitation-list">
                     <li>Artifacts are <strong>unsigned</strong></li>
                     <li>APK is debug-signed, not Play-Store ready</li>
+                    <li>Android build is webview-only: no IDE, files, or terminal</li>
                     <li>AppImage is x64 only; <code>.deb</code> covers both architectures</li>
                     <li>New providers need your keys and are unverified live</li>
                     <li>GPT-6 Astra needs the Responses API for tool calling</li>
@@ -781,6 +787,18 @@ code --install-extension waypoint-0.3.0.vsix</code></pre>
               provider clients are tested end to end. The learned classifier
               trains and predicts but has not been evaluated against real
               production traffic, which is the obvious next step.
+            </p>
+          </details>
+
+          <details class="faq-item">
+            <summary>Does the Android build include the IDE?</summary>
+            <p>
+              Not yet. The APK runs the same renderer in a webview, so you get
+              the app shell - onboarding, settings, and the chat UI - but a
+              webview has no preload bridge, which is what supplies the file
+              tree, terminal, and agent. The app hides those buttons on
+              Android instead of letting them fail, and file access stays
+              desktop-only for now.
             </p>
           </details>
         </div>

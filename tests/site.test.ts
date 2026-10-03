@@ -260,6 +260,37 @@ describe('downloads', () => {
   });
 });
 
+describe('platform claims are scoped to what ships', () => {
+  it('scopes the IDE claim to the desktop', () => {
+    // Regression: the hero read "...and Android - as a CLI, a VS Code
+    // extension, and a full IDE." The Android webview has no preload
+    // bridge, so the renderer hides the IDE button there; the page was
+    // advertising something the app itself hides.
+    expect(prose).toContain('full IDE on the desktop');
+    expect(prose).not.toMatch(/and Android [^.]*a full IDE\./);
+  });
+
+  it('describes the Android build as the webview it is', () => {
+    // The download card is where a phone visitor decides; it has to say
+    // what the APK does and does not carry.
+    expect(prose).toMatch(/run in a webview/);
+    expect(prose).toMatch(/IDE, files, and terminal desktop-only/);
+  });
+
+  it('lists the Android scope among the known limitations', () => {
+    expect(prose).toContain(
+      'Android build is webview-only: no IDE, files, or terminal',
+    );
+  });
+
+  it('answers the Android IDE question in the FAQ', () => {
+    // The question a phone visitor actually has, answered with the cause
+    // (no preload bridge) rather than a vague "coming soon".
+    expect(prose).toContain('Does the Android build include the IDE?');
+    expect(prose).toMatch(/no preload bridge/);
+  });
+});
+
 describe('faq', () => {
   it('has at least eight questions', () => {
     const items = html.match(/<details class="faq-item">/g) ?? [];
