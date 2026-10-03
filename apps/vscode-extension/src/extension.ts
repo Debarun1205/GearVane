@@ -22,6 +22,7 @@ import {
   type SessionEntry,
   type SessionState,
 } from './session.js';
+import { AgentPanel } from './agent-panel.js';
 
 const MAX_LOG_ENTRIES = 100;
 
@@ -56,12 +57,38 @@ export class WaypointExtension implements vscode.Disposable {
   private state: SessionState = emptyState();
   private readonly onStateChanged = new vscode.EventEmitter<SessionState>();
   private readonly treeProvider: vscode.TreeDataProvider<SessionNode>;
+  private agentPanel: AgentPanel | undefined;
 
   readonly stateChanged = this.onStateChanged.event;
 
-  constructor() {
+  constructor(
+    private readonly extensionUri: vscode.Uri = vscode.Uri.file(__filename),
+  ) {
     this.treeProvider = new SessionTreeProvider(this);
     this.disposables.push(this.output, this.onStateChanged);
+  }
+
+  /**
+   * The agent panel, created on first use.
+   *
+   * Built with getters rather than values so it always sees the current
+   * config; an agent panel holding a stale routing config would quietly behave
+   * differently from the rest of the extension.
+   */
+  private agent(): AgentPanel {
+    if (!this.agentPanel) {
+      this.agentPanel = new AgentPanel(
+        this.extensionUri,
+        () => this.config,
+        () => this.workspaceRoot(),
+      );
+      this.disposables.push(this.agentPanel);
+    }
+    return this.agentPanel;
+  }
+
+  private workspaceRoot(): string | undefined {
+    return vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
   }
 
   // --- lifecycle -----------------------------------------------------------
@@ -85,6 +112,7 @@ export class WaypointExtension implements vscode.Disposable {
       'waypoint.routeSelection',
       'waypoint.explainSelection',
       'waypoint.ask',
+      'waypoint.agent',
       'waypoint.health',
       'waypoint.spend',
       'waypoint.showLog',
@@ -121,6 +149,9 @@ export class WaypointExtension implements vscode.Disposable {
           break;
         case 'waypoint.ask':
           await this.ask();
+          break;
+        case 'waypoint.agent':
+          this.agent().reveal();
           break;
         case 'waypoint.health':
           await this.checkHealth();
@@ -642,7 +673,7 @@ class SessionTreeProvider implements vscode.TreeDataProvider<SessionNode> {
 }
 
 export function activate(context: vscode.ExtensionContext): WaypointExtension {
-  const extension = new WaypointExtension();
+  const extension = new WaypointExtension(context.extensionUri);
   void extension.activate(context);
   return extension;
 }

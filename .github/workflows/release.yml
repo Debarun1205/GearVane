@@ -136,8 +136,11 @@ jobs:
         run: npm ci
 
       - name: Build
+        # The extension imports the harness for the agent panel, and package
+        # exports means it must be built first.
         run: |
           npm run build --workspace @waypoint/core
+          npm run build --workspace @waypoint/harness
           npm run build --workspace waypoint
 
       - name: Package the extension

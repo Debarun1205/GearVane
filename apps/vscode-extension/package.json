@@ -9,8 +9,17 @@
     "vscode": "^1.85.0",
     "node": ">=20"
   },
-  "categories": ["AI", "Other"],
-  "keywords": ["llm", "routing", "model selection", "ollama", "openai"],
+  "categories": [
+    "AI",
+    "Other"
+  ],
+  "keywords": [
+    "llm",
+    "routing",
+    "model selection",
+    "ollama",
+    "openai"
+  ],
   "main": "./dist/extension.js",
   "activationEvents": [],
   "contributes": {
@@ -28,6 +37,11 @@
       {
         "command": "waypoint.ask",
         "title": "Waypoint: Ask",
+        "category": "Waypoint"
+      },
+      {
+        "command": "waypoint.agent",
+        "title": "Waypoint: Open Agent Panel",
         "category": "Waypoint"
       },
       {
@@ -66,7 +80,12 @@
         },
         "waypoint.tier": {
           "type": "string",
-          "enum": ["auto", "local", "mid", "frontier"],
+          "enum": [
+            "auto",
+            "local",
+            "mid",
+            "frontier"
+          ],
           "default": "auto",
           "description": "Force a model tier, or leave on auto to classify each request."
         },
@@ -110,10 +129,18 @@
     "clean": "rm -rf dist out"
   },
   "dependencies": {
-    "@waypoint/core": "0.2.0"
+    "@waypoint/core": "0.2.0",
+    "@waypoint/harness": "0.2.0"
   },
   "devDependencies": {
     "@types/vscode": "^1.85.0",
     "@vscode/vsce": "^3.0.0"
-  }
+  },
+  "keybindings": [
+    {
+      "command": "waypoint.agent",
+      "key": "ctrl+alt+w",
+      "mac": "cmd+alt+w"
+    }
+  ]
 }

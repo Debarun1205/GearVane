@@ -298,6 +298,8 @@ jobs:
         run: |
           npm ci
           npm run build --workspace @waypoint/core
+          # The extension imports the harness for the agent panel.
+          npm run build --workspace @waypoint/harness
           npm run build --workspace waypoint
           cd apps/vscode-extension
           npx vsce package --no-dependencies --allow-missing-repository
