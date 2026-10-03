@@ -823,6 +823,16 @@ async function main(): Promise<void> {
             ideRoot.removeAttribute('hidden');
             return;
           }
+          // The last workspace opens directly, exactly as it does on
+          // launch. Only when there is none does the native picker appear -
+          // asking for a folder the user already chose would be a riddle,
+          // and a dialog nothing can dismiss is also what stood between
+          // this handler and its first passing end-to-end test.
+          const stored = storedWorkspaceRoot();
+          if (stored) {
+            mounted = await mountIde(stored);
+            return;
+          }
           const root = bridge.workspaceRoot
             ? await bridge.workspaceRoot()
             : null;
