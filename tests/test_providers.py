@@ -273,6 +273,72 @@ class TestProviderFactory:
         client = self.factory.create(provider, model="c")
         assert client.model == "c"
 
+    def test_meta_resolves_to_documented_endpoint_and_key(self, monkeypatch):
+        monkeypatch.setenv("MODEL_API_KEY", "mk-meta")
+        provider = ModelProvider(name="meta", models=["muse-spark-1.3"])
+        client = self.factory.create(provider)
+        assert isinstance(client, OpenAICompatClient)
+        assert client.base_url == "https://api.meta.ai/v1"
+        assert client.api_key == "mk-meta"
+        assert client.completions_path == "/chat/completions"
+
+    def test_longcat_resolves_to_openai_format_endpoint(self, monkeypatch):
+        monkeypatch.setenv("LONGCAT_API_KEY", "lk-longcat")
+        provider = ModelProvider(name="longcat", models=["LongCat-2.5-Preview"])
+        client = self.factory.create(provider)
+        assert isinstance(client, OpenAICompatClient)
+        assert client.base_url == "https://api.longcat.chat/openai"
+        assert client.api_key == "lk-longcat"
+
+    def test_hosted_endpoint_defaults(self):
+        cases = {
+            "deepseek": "https://api.deepseek.com",
+            "mistral": "https://api.mistral.ai/v1",
+            "xai": "https://api.x.ai/v1",
+            "gemini": "https://generativelanguage.googleapis.com/v1beta/openai",
+        }
+        for name, base_url in cases.items():
+            client = self.factory.create(ModelProvider(name=name, models=["m"]))
+            assert client.base_url == base_url, name
+
+    def test_gemini_uses_chat_and_models_paths(self):
+        client = self.factory.create(ModelProvider(name="gemini", models=["m"]))
+        assert isinstance(client, OpenAICompatClient)
+        assert client.completions_path == "/chat/completions"
+        assert client.models_path == "/models"
+
+    def test_local_servers_resolve_and_stay_keyless(self, monkeypatch):
+        monkeypatch.setenv("LOCALAI_API_KEY", "should-be-ignored")
+        cases = {
+            "localai": "http://localhost:8080",
+            "gpt4all": "http://localhost:4891",
+            "textgen": "http://localhost:5000",
+        }
+        for name, base_url in cases.items():
+            client = self.factory.create(ModelProvider(name=name, models=["m"]))
+            assert isinstance(client, OpenAICompatClient)
+            assert client.base_url == base_url, name
+            assert client.api_key is None, name
+
+    def test_explicit_paths_beat_provider_defaults(self):
+        provider = ModelProvider(
+            name="openai",
+            models=["m"],
+            base_url="https://proxy.example.com/prefix",
+            completions_path="/custom/chat",
+            models_path="/custom/models",
+        )
+        client = self.factory.create(provider)
+        assert isinstance(client, OpenAICompatClient)
+        assert client.completions_path == "/custom/chat"
+        assert client.models_path == "/custom/models"
+
+    def test_default_paths_for_ordinary_providers(self):
+        client = self.factory.create(ModelProvider(name="openrouter", models=["m"]))
+        assert isinstance(client, OpenAICompatClient)
+        assert client.completions_path == "/v1/chat/completions"
+        assert client.models_path == "/v1/models"
+
 
 class TestProviderError:
     """Retryability classification drives the retry layer."""

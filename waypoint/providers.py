@@ -221,11 +221,30 @@ class OllamaClient(ProviderClient):
 
 
 class OpenAICompatClient(ProviderClient):
-    """Client for any OpenAI-compatible /v1/chat/completions endpoint.
+    """Client for any OpenAI-compatible chat completions endpoint.
 
-    Covers OpenRouter, Together, Groq, vLLM, LM Studio's OpenAI mode,
-    llama.cpp's server, and hosted OpenAI itself.
+    Covers OpenRouter, Groq, Together, DeepSeek, Mistral, xAI, Meta, LongCat,
+    Gemini, vLLM, LM Studio's OpenAI mode, llama.cpp's server, LocalAI,
+    GPT4All, oobabooga's text-generation-webui, and hosted OpenAI itself.
+
+    The completions and models paths default to the OpenAI layout but can be
+    overridden per instance, because providers disagree on where the version
+    segment lives: Meta serves chat at `/chat/completions` under a `/v1` base,
+    and Gemini at `/chat/completions` under `/v1beta/openai`.
     """
+
+    def __init__(
+        self,
+        base_url: str,
+        model: str,
+        api_key: Optional[str] = None,
+        timeout: float = 120.0,
+        completions_path: str = "/v1/chat/completions",
+        models_path: str = "/v1/models",
+    ):
+        super().__init__(base_url, model, api_key, timeout)
+        self.completions_path = completions_path
+        self.models_path = models_path
 
     def complete(
         self,
@@ -247,7 +266,7 @@ class OpenAICompatClient(ProviderClient):
             "stream": False,
         }
 
-        data = self._post(f"{self.base_url}/v1/chat/completions", payload)
+        data = self._post(f"{self.base_url}{self.completions_path}", payload)
 
         choices = data.get("choices") or []
         if not choices:
@@ -293,7 +312,7 @@ class OpenAICompatClient(ProviderClient):
             headers["Authorization"] = f"Bearer {self.api_key}"
 
         request = urllib.request.Request(
-            f"{self.base_url}/v1/chat/completions",
+            f"{self.base_url}{self.completions_path}",
             data=json.dumps(payload).encode("utf-8"),
             headers=headers,
             method="POST",
@@ -325,14 +344,14 @@ class OpenAICompatClient(ProviderClient):
 
     def health_check(self) -> bool:
         try:
-            data = self._get(f"{self.base_url}/v1/models")
+            data = self._get(f"{self.base_url}{self.models_path}")
             return "data" in data
         except ProviderError:
             return False
 
     def list_models(self) -> List[str]:
         try:
-            data = self._get(f"{self.base_url}/v1/models")
+            data = self._get(f"{self.base_url}{self.models_path}")
             return [m.get("id", "") for m in data.get("data", [])]
         except ProviderError:
             return []
@@ -465,14 +484,59 @@ DEFAULT_BASE_URLS = {
     "lm_studio": "http://localhost:1234",
     "llama_cpp": "http://localhost:8080",
     "llamacpp": "http://localhost:8080",
+    "vllm": "http://localhost:8000",
+    "localai": "http://localhost:8080",
+    "gpt4all": "http://localhost:4891",
+    # oobabooga's text-generation-webui serves its OpenAI extension on 5000;
+    # newer versions default to 5001, so override base_url if that is yours.
+    "textgen": "http://localhost:5000",
     "openai": "https://api.openai.com",
     "openrouter": "https://openrouter.ai/api",
     "together": "https://api.together.xyz",
     "groq": "https://api.groq.com/openai",
-    "vllm": "http://localhost:8000",
+    "deepseek": "https://api.deepseek.com",
+    "mistral": "https://api.mistral.ai/v1",
+    "xai": "https://api.x.ai/v1",
+    "gemini": "https://generativelanguage.googleapis.com/v1beta/openai",
+    "meta": "https://api.meta.ai/v1",
+    "muse": "https://api.meta.ai/v1",
+    "longcat": "https://api.longcat.chat/openai",
     "anthropic": "https://api.anthropic.com",
     "claude": "https://api.anthropic.com",
 }
+
+# Providers whose endpoints do not live at the default OpenAI paths.
+#
+# Each entry was checked against that provider's docs: Meta serves chat at
+# `/chat/completions` under a `/v1` base, and Gemini serves chat and models at
+# `/chat/completions` and `/models` under `/v1beta/openai`. Anything not
+# listed here uses the OpenAI layout. An explicit completions_path or
+# models_path in the config always wins over these defaults.
+DEFAULT_API_PATHS = {
+    "meta": {"completions": "/chat/completions", "models": "/v1/models"},
+    "muse": {"completions": "/chat/completions", "models": "/v1/models"},
+    "gemini": {"completions": "/chat/completions", "models": "/models"},
+}
+
+# Providers whose documented key variable does not follow NAME_API_KEY.
+#
+# Meta's docs use MODEL_API_KEY, so `meta` would otherwise look for
+# META_API_KEY and never find it.
+KEY_ENV_OVERRIDES = {
+    "meta": "MODEL_API_KEY",
+    "muse": "MODEL_API_KEY",
+}
+
+LOCAL_PROVIDER_NAMES = frozenset({
+    "ollama",
+    "lm_studio",
+    "llama_cpp",
+    "llamacpp",
+    "vllm",
+    "localai",
+    "gpt4all",
+    "textgen",
+})
 
 
 class ProviderFactory:
@@ -507,13 +571,15 @@ class ProviderFactory:
         api_key = None
         if api_key_env:
             api_key = os.environ.get(api_key_env)
+        if not api_key and normalized in KEY_ENV_OVERRIDES:
+            api_key = os.environ.get(KEY_ENV_OVERRIDES[normalized])
         if not api_key:
             for var in (f"{normalized.upper()}_API_KEY", "ANTHROPIC_API_KEY", "OPENAI_API_KEY"):
                 api_key = os.environ.get(var)
                 if api_key:
                     break
 
-        if normalized in ("ollama", "lm_studio", "llama_cpp", "llamacpp"):
+        if normalized in LOCAL_PROVIDER_NAMES:
             # Local servers do not authenticate.
             api_key = None
 
@@ -521,6 +587,29 @@ class ProviderFactory:
         target_model = model or (
             provider.models[0] if hasattr(provider, "models") and provider.models else ""
         )
+
+        # Only the OpenAI-compatible client takes endpoint paths; the others
+        # fix theirs. Keyword arguments keep older callers working.
+        if client_class is OpenAICompatClient:
+            api_paths = DEFAULT_API_PATHS.get(normalized, {})
+            completions_path = (
+                getattr(provider, "completions_path", None)
+                or api_paths.get("completions")
+                or "/v1/chat/completions"
+            )
+            models_path = (
+                getattr(provider, "models_path", None)
+                or api_paths.get("models")
+                or "/v1/models"
+            )
+            return client_class(
+                base_url=base_url,
+                model=target_model,
+                api_key=api_key,
+                timeout=self.timeout,
+                completions_path=completions_path,
+                models_path=models_path,
+            )
 
         return client_class(
             base_url=base_url,

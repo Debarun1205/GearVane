@@ -62,7 +62,16 @@ class TestShippedConfigShape:
 
     def test_hosted_providers_declare_key_env(self, config):
         # A hosted provider with no api_key_env cannot authenticate.
-        local = ("ollama", "lm_studio", "llama_cpp")
+        local = (
+            "ollama",
+            "lm_studio",
+            "llama_cpp",
+            "llamacpp",
+            "vllm",
+            "localai",
+            "gpt4all",
+            "textgen",
+        )
         for tier in ("mid", "frontier"):
             for provider in config["tiers"][tier]["providers"]:
                 if provider["name"] not in local:

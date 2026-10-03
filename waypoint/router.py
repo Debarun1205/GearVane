@@ -15,6 +15,8 @@ class ModelProvider:
     models: List[str]
     base_url: Optional[str] = None
     api_key_env: Optional[str] = None
+    completions_path: Optional[str] = None
+    models_path: Optional[str] = None
 
 
 @dataclass
@@ -108,6 +110,8 @@ class TierRouter:
                         models=prov_data.get("models", []),
                         base_url=prov_data.get("base_url"),
                         api_key_env=prov_data.get("api_key_env"),
+                        completions_path=prov_data.get("completions_path"),
+                        models_path=prov_data.get("models_path"),
                     )
                 )
             self.tiers[tier] = TierConfig(
