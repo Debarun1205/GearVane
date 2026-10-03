@@ -29,6 +29,8 @@ import {
   type AgentStep,
 } from '@waypoint/harness';
 
+import { listFiles, readTextFile } from './ide/fs-store.js';
+
 /**
  * What the model is told before the user's prompt.
  *
@@ -56,6 +58,94 @@ export interface AgentRunResponse {
   ok: boolean;
   result?: AgentResult;
   error?: string;
+  /**
+   * Files the run created or changed, with what they looked like before.
+   *
+   * `original` is null for files that did not exist when the run started.
+   * Present only on success; the renderer offers accept/revert per file.
+   */
+  changed?: FileChange[];
+}
+
+/** One file the agent created or modified. */
+export interface FileChange {
+  path: string;
+  original: string | null;
+  current: string;
+}
+
+/**
+ * Snapshot bounds.
+ *
+ * A snapshot exists so the user can review and revert, not to archive the
+ * workspace: text files only, capped in count and size. Anything beyond the
+ * caps is simply not reviewable, which the renderer states rather than
+ * implying full coverage.
+ */
+export const MAX_SNAPSHOT_FILES = 100;
+export const MAX_SNAPSHOT_BYTES = 64 * 1024;
+
+/**
+ * Record what the workspace files look like before a run.
+ *
+ * Only files that can be diffed as text are worth snapshotting. Binary files
+ * and oversized ones are skipped: a revert that cannot be displayed is a
+ * revert the user cannot meaningfully approve.
+ */
+export async function snapshotWorkspace(root: string): Promise<Map<string, string>> {
+  const snapshot = new Map<string, string>();
+  const entries = await listFiles(root);
+
+  for (const entry of entries) {
+    if (snapshot.size >= MAX_SNAPSHOT_FILES) break;
+    if (entry.isDirectory) continue;
+    if (entry.size !== undefined && entry.size > MAX_SNAPSHOT_BYTES) continue;
+
+    const read = await readTextFile(root, entry.path, MAX_SNAPSHOT_BYTES + 1);
+    if (!read.ok || read.content === undefined) continue;
+    if (read.content.includes('\0')) continue;
+
+    snapshot.set(entry.path, read.content);
+  }
+
+  return snapshot;
+}
+
+/**
+ * Compare a snapshot against the workspace now.
+ *
+ * Detection is by content, not by tool calls: whatever the agent used to
+ * write — scaffold, edit, or write — a changed file is a changed file. Files
+ * the agent deleted cannot happen (no tool deletes), so absence from the
+ * current listing is treated as unchanged rather than guessed about.
+ */
+export async function diffSnapshot(
+  root: string,
+  snapshot: Map<string, string>,
+): Promise<FileChange[]> {
+  const changed: FileChange[] = [];
+  const entries = await listFiles(root);
+  const current = new Map<string, string>();
+
+  for (const entry of entries) {
+    if (entry.isDirectory) continue;
+    if (entry.size !== undefined && entry.size > MAX_SNAPSHOT_BYTES) continue;
+
+    const read = await readTextFile(root, entry.path, MAX_SNAPSHOT_BYTES + 1);
+    if (!read.ok || read.content === undefined) continue;
+    if (read.content.includes('\0')) continue;
+    current.set(entry.path, read.content);
+  }
+
+  for (const [path, content] of current) {
+    if (!snapshot.has(path)) {
+      changed.push({ path, original: null, current: content });
+    } else if (snapshot.get(path) !== content) {
+      changed.push({ path, original: snapshot.get(path) ?? null, current: content });
+    }
+  }
+
+  return changed.sort((a, b) => a.path.localeCompare(b.path));
 }
 
 let active: AbortController | undefined;
@@ -135,6 +225,8 @@ export async function runIdeAgent(
       ? Math.min(Math.floor(request.maxIterations), 50)
       : 25;
 
+  const before = await snapshotWorkspace(request.root);
+
   const result = await runAgent(request.prompt, {
     model: model.client,
     registry,
@@ -145,7 +237,11 @@ export async function runIdeAgent(
     onStep,
   });
 
-  return { ok: true, result };
+  // Snapshotted before, compared after: the user reviews what actually
+  // changed on disk, not what the transcript claims changed.
+  const changed = await diffSnapshot(request.root, before);
+
+  return { ok: true, result, changed };
 }
 
 export function registerIdeAgentHandlers(loadConfig: () => WaypointConfig): void {

@@ -31,7 +31,16 @@ export interface FsBridge {
   list(): Promise<{ ok: boolean; entries?: FsEntry[]; error?: string }>;
   read(path: string): Promise<{ ok: boolean; content?: string; error?: string }>;
   write(path: string, content: string): Promise<{ ok: boolean; error?: string }>;
+  remove(path: string): Promise<{ ok: boolean; error?: string }>;
   search(query: string): Promise<{ ok: boolean; content?: string; error?: string }>;
+}
+
+/** One file an agent run created or changed, with its before-state. */
+export interface FileChange {
+  path: string;
+  /** Null when the file did not exist before the run. */
+  original: string | null;
+  current: string;
 }
 
 /**
@@ -56,7 +65,12 @@ interface OpenFile {
  * renderer sees. Prompts go one way, steps and the final result come back.
  */
 export interface AgentBridge {
-  run(prompt: string): Promise<{ ok: boolean; result?: AgentResult; error?: string }>;
+  run(prompt: string): Promise<{
+    ok: boolean;
+    result?: AgentResult;
+    error?: string;
+    changed?: FileChange[];
+  }>;
   cancel(): void;
   onStep(handler: (step: AgentStep) => void): () => void;
 }
@@ -596,6 +610,10 @@ export class IdeView {
         await this.openFile(last);
         this.options.onAgentFile?.(last);
       }
+
+      if (response.changed && response.changed.length > 0) {
+        this.renderChanges(response.changed);
+      }
     } finally {
       this.agentUnsubscribe?.();
       this.agentUnsubscribe = undefined;
@@ -606,6 +624,198 @@ export class IdeView {
   private stopAgentPrompt(): void {
     this.options.agent.cancel();
     this.agentLogLine('Stopping…', 'ide-agent-meta');
+  }
+
+  /* ---------------------------------------------------------------- */
+  /* Change review                                                      */
+  /* ---------------------------------------------------------------- */
+
+  /**
+   * What the run created or changed, with per-file review.
+   *
+   * Edits land on disk the moment the agent makes them, so review happens
+   * after the fact rather than before. Accept keeps the file and dismisses
+   * it from the list; Revert writes back the before-state, or deletes the
+   * file when the run created it. A file edited again after review reappears
+   * on the next run, which is correct: it changed again.
+   */
+  private renderChanges(changed: FileChange[]): void {
+    const section = document.createElement('div');
+    section.className = 'ide-changes';
+
+    const title = document.createElement('div');
+    title.className = 'ide-changes-title';
+    title.textContent = `Changed files (${changed.length})`;
+    section.append(title);
+
+    const dismissAll = document.createElement('button');
+    dismissAll.type = 'button';
+    dismissAll.className = 'ide-agent-button ide-changes-keep';
+    dismissAll.textContent = 'Keep all';
+    dismissAll.addEventListener('click', () => section.remove());
+    section.append(dismissAll);
+
+    const prune = (): void => {
+      if (section.querySelectorAll('.ide-change-row').length === 0) {
+        section.remove();
+      }
+    };
+
+    for (const change of changed) {
+      section.append(this.renderChangeRow(change, prune));
+    }
+
+    this.agentLog?.append(section);
+    this.agentLog?.append(this.changesNote(changed));
+  }
+
+  private changesNote(changed: FileChange[]): HTMLElement {
+    const note = document.createElement('div');
+    note.className = 'ide-agent-meta';
+    note.textContent =
+      'Review covers files the run created or changed, within snapshot caps. ' +
+      `Showing ${changed.length} file(s).`;
+    return note;
+  }
+
+  private renderChangeRow(change: FileChange, onDone: () => void): HTMLElement {
+    const row = document.createElement('div');
+    row.className = 'ide-change-row';
+
+    const label = document.createElement('span');
+    label.className = 'ide-change-path';
+    label.textContent = `${change.original === null ? 'new' : 'modified'}  ${change.path}`;
+    label.title = change.path;
+    row.append(label);
+
+    const diff = document.createElement('button');
+    diff.type = 'button';
+    diff.className = 'ide-change-button';
+    diff.textContent = 'Diff';
+    diff.addEventListener('click', () => this.openDiff(change));
+    row.append(diff);
+
+    const revert = document.createElement('button');
+    revert.type = 'button';
+    revert.className = 'ide-change-button ide-change-revert';
+    revert.textContent = 'Revert';
+    revert.title =
+      change.original === null
+        ? 'Delete this file (the run created it)'
+        : 'Restore the content from before the run';
+    revert.addEventListener('click', () => {
+      void (async () => {
+        if (await this.revertChange(change)) {
+          row.remove();
+          onDone();
+        }
+      })();
+    });
+    row.append(revert);
+
+    return row;
+  }
+
+  /**
+   * Restore a file to its before-state.
+   *
+   * Returns false when the revert itself failed, so the row stays and the
+   * error stays visible. A failed revert that removed the row would read as
+   * success.
+   */
+  private async revertChange(change: FileChange): Promise<boolean> {
+    if (change.original === null) {
+      const result = await this.options.fs.remove(change.path);
+      if (!result.ok) {
+        this.setStatus(result.error ?? `Could not delete ${change.path}.`);
+        return false;
+      }
+      this.closeFileSilently(change.path);
+    } else {
+      const result = await this.options.fs.write(change.path, change.original);
+      if (!result.ok) {
+        this.setStatus(result.error ?? `Could not revert ${change.path}.`);
+        return false;
+      }
+      const open = this.openFiles.get(change.path);
+      if (open) {
+        open.model.setValue(change.original);
+        open.savedValue = change.original;
+        open.dirty = false;
+        this.renderTabs();
+      }
+    }
+
+    await this.refreshTree();
+    this.setStatus(
+      change.original === null ? `Deleted ${change.path}.` : `Reverted ${change.path}.`,
+    );
+    return true;
+  }
+
+  /** Forget an open file without asking. Used after deleting its file. */
+  private closeFileSilently(path: string): void {
+    const file = this.openFiles.get(path);
+    if (!file) return;
+    file.model.dispose();
+    this.openFiles.delete(path);
+    if (this.activePath === path) this.activePath = undefined;
+    this.renderTabs();
+  }
+
+  /** Show a side-by-side diff of before and after. */
+  private openDiff(change: FileChange): void {
+    const dialog = document.createElement('dialog');
+    dialog.className = 'dialog dialog-wide ide-diff-dialog';
+
+    const title = document.createElement('h2');
+    title.className = 'ide-diff-title';
+    title.textContent = change.path;
+    dialog.append(title);
+
+    const host = document.createElement('div');
+    host.className = 'ide-diff-host';
+    dialog.append(host);
+
+    const row = document.createElement('div');
+    row.className = 'ide-agent-row';
+    const close = document.createElement('button');
+    close.type = 'button';
+    close.className = 'ide-agent-button';
+    close.textContent = 'Close';
+    close.addEventListener('click', () => dialog.close());
+    row.append(close);
+    dialog.append(row);
+
+    document.body.append(dialog);
+
+    const original = monaco.editor.createModel(
+      change.original ?? '',
+      languageForPath(change.path),
+    );
+    const modified = monaco.editor.createModel(
+      change.current,
+      languageForPath(change.path),
+    );
+    const diff = monaco.editor.createDiffEditor(host, {
+      automaticLayout: true,
+      renderSideBySide: true,
+      readOnly: true,
+    });
+    diff.setModel({ original, modified });
+
+    dialog.addEventListener(
+      'close',
+      () => {
+        diff.dispose();
+        original.dispose();
+        modified.dispose();
+        dialog.remove();
+      },
+      { once: true },
+    );
+
+    dialog.showModal();
   }
 
   private status: HTMLElement | undefined;

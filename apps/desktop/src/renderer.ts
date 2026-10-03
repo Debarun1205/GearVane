@@ -66,6 +66,7 @@ interface AgentBridge {
     ok: boolean;
     result?: AgentResult;
     error?: string;
+    changed?: Array<{ path: string; original: string | null; current: string }>;
   }>;
   cancel(): void;
   onStep(handler: (step: AgentStep) => void): () => void;
@@ -75,6 +76,7 @@ interface IdeFsBridge {
   list(root: string): Promise<{ ok: boolean; entries?: Array<{ name: string; path: string; isDirectory: boolean; size?: number }>; error?: string }>;
   read(root: string, path: string): Promise<{ ok: boolean; content?: string; error?: string }>;
   write(root: string, path: string, content: string): Promise<{ ok: boolean; error?: string }>;
+  remove(root: string, path: string): Promise<{ ok: boolean; error?: string }>;
   search(root: string, query: string, directory?: string): Promise<{ ok: boolean; content?: string; error?: string }>;
 }
 
@@ -541,6 +543,7 @@ async function main(): Promise<void> {
             list: () => ideFs.list(root),
             read: (path) => ideFs.read(root, path),
             write: (path, content) => ideFs.write(root, path, content),
+            remove: (path) => ideFs.remove(root, path),
             search: (query) => ideFs.search(root, query),
           },
           agent: {

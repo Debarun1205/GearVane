@@ -1,12 +1,17 @@
 import { readFileSync } from 'node:fs';
+import { mkdir, mkdtemp, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 
 import {
+  MAX_SNAPSHOT_BYTES,
   VIBE_SYSTEM_PROMPT,
+  diffSnapshot,
   resolveIdeModel,
   runIdeAgent,
+  snapshotWorkspace,
 } from '../src/ide-agent-host.js';
 
 /**
@@ -326,6 +331,82 @@ describe('the sidebar searches file contents', () => {
   it('renders result rows as text, never markup', () => {
     expect(view).toMatch(/ide-search-row/);
     expect(view).not.toMatch(/searchResults.*innerHTML/);
+  });
+});
+
+describe('snapshot and diff', () => {
+  let root: string;
+
+  beforeEach(async () => {
+    root = await mkdtemp(join(tmpdir(), 'waypoint-ide-diff-'));
+    await writeFile(join(root, 'keep.ts'), 'const a = 1;\n');
+    await writeFile(join(root, 'change.ts'), 'const b = 1;\n');
+  });
+
+  it('captures file contents before a run', async () => {
+    const snapshot = await snapshotWorkspace(root);
+    expect(snapshot.get('keep.ts')).toBe('const a = 1;\n');
+    expect(snapshot.get('change.ts')).toBe('const b = 1;\n');
+  });
+
+  it('reports modified and created files, sorted', async () => {
+    const snapshot = await snapshotWorkspace(root);
+    await writeFile(join(root, 'change.ts'), 'const b = 2;\n');
+    await writeFile(join(root, 'new.ts'), 'new file\n');
+
+    const changed = await diffSnapshot(root, snapshot);
+    expect(changed).toEqual([
+      { path: 'change.ts', original: 'const b = 1;\n', current: 'const b = 2;\n' },
+      { path: 'new.ts', original: null, current: 'new file\n' },
+    ]);
+  });
+
+  it('reports nothing when nothing changed', async () => {
+    const snapshot = await snapshotWorkspace(root);
+    await expect(diffSnapshot(root, snapshot)).resolves.toEqual([]);
+  });
+
+  it('skips binary and oversized files', async () => {
+    await writeFile(join(root, 'blob.bin'), Buffer.from([0x00, 0x01, 0x02]));
+    await writeFile(join(root, 'huge.txt'), 'x'.repeat(MAX_SNAPSHOT_BYTES + 1));
+
+    const snapshot = await snapshotWorkspace(root);
+    expect(snapshot.has('blob.bin')).toBe(false);
+    expect(snapshot.has('huge.txt')).toBe(false);
+  });
+});
+
+describe('change review in the view', () => {
+  it('lists changed files with diff and revert actions', () => {
+    expect(view).toMatch(/ide-changes/);
+    expect(view).toMatch(/renderChangeRow/);
+    expect(view).toMatch(/openDiff/);
+    expect(view).toMatch(/revertChange/);
+  });
+
+  it('keeps a failed revert visible instead of reading as success', () => {
+    // A failed revert that removed its row would look like it worked.
+    expect(view).toMatch(/Returns false when the revert itself failed/);
+  });
+
+  it('renders diffs side by side, read-only', () => {
+    expect(view).toMatch(/createDiffEditor/);
+    expect(view).toMatch(/renderSideBySide/);
+    expect(view).toMatch(/readOnly/);
+  });
+
+  it('disposes diff models when the dialog closes', () => {
+    expect(view).toMatch(/original\.dispose\(\)/);
+    expect(view).toMatch(/modified\.dispose\(\)/);
+  });
+
+  it('refreshes the tree and open models after a revert', () => {
+    expect(view).toMatch(/await this\.refreshTree\(\)/);
+    expect(view).toMatch(/open\.model\.setValue\(change\.original\)/);
+  });
+
+  it('exposes file removal over the preload bridge', () => {
+    expect(preload).toMatch(/ipcRenderer\.invoke\('ide:remove'/);
   });
 });
 

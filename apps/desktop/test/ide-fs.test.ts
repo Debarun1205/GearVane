@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import {
   listFiles,
   readTextFile,
+  removeFile,
   writeTextFile,
 } from '../src/ide/fs-store.js';
 
@@ -165,6 +166,35 @@ describe('writeTextFile', () => {
 
   it('refuses a path outside the workspace', async () => {
     const result = await writeTextFile(root, '../escaped.txt', 'nope');
+    expect(result.ok).toBe(false);
+  });
+});
+
+describe('removeFile', () => {
+  it('deletes a file', async () => {
+    const result = await removeFile(root, 'README.md');
+    expect(result.ok).toBe(true);
+
+    const read = await readTextFile(root, 'README.md');
+    expect(read.ok).toBe(false);
+  });
+
+  it('reports a file that is already gone', async () => {
+    const result = await removeFile(root, 'missing.txt');
+    expect(result.ok).toBe(false);
+    expect(result.error).toMatch(/no such file/i);
+  });
+
+  it('refuses a directory', async () => {
+    // Reverting a created file must not take a directory with it because a
+    // path was misbuilt.
+    const result = await removeFile(root, 'src');
+    expect(result.ok).toBe(false);
+    expect(result.error).toMatch(/not a file/i);
+  });
+
+  it('refuses a path outside the workspace', async () => {
+    const result = await removeFile(root, '../escaped.txt');
     expect(result.ok).toBe(false);
   });
 });

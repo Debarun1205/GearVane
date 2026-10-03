@@ -12,7 +12,7 @@
  * and the disagreement would be a vulnerability.
  */
 
-import { mkdir, readdir, readFile, stat, writeFile } from 'node:fs/promises';
+import { mkdir, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { dirname, join, relative, sep } from 'node:path';
 
 import { Workspace } from '@waypoint/harness';
@@ -158,6 +158,47 @@ export async function readTextFile(
 export interface WriteResult {
   ok: boolean;
   error?: string;
+}
+
+export interface RemoveResult {
+  ok: boolean;
+  error?: string;
+}
+
+/**
+ * Delete a single file.
+ *
+ * Files only, never directories: a revert that removes a created file must
+ * not be able to take a directory with it because a path was misbuilt.
+ * Containment still applies, so only workspace files are deletable.
+ */
+export async function removeFile(root: string, relPath: string): Promise<RemoveResult> {
+  const workspace = new Workspace(root);
+
+  let absolute: string;
+  try {
+    absolute = await workspace.resolve(relPath);
+  } catch (error) {
+    return { ok: false, error: (error as Error).message };
+  }
+
+  let info;
+  try {
+    info = await stat(absolute);
+  } catch {
+    return { ok: false, error: `No such file: ${relPath}` };
+  }
+
+  if (!info.isFile()) {
+    return { ok: false, error: `${relPath} is not a file` };
+  }
+
+  try {
+    await rm(absolute);
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, error: (error as Error).message };
+  }
 }
 
 /**

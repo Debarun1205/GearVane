@@ -15,7 +15,7 @@ import { dialog, ipcMain } from 'electron';
 
 import { Workspace, searchFilesTool } from '@waypoint/harness';
 
-import { listFiles, readTextFile, writeTextFile } from './ide/fs-store.js';
+import { listFiles, readTextFile, removeFile, writeTextFile } from './ide/fs-store.js';
 
 export function registerIdeFsHandlers(): void {
   ipcMain.handle('workspace:root', async () => {
@@ -68,6 +68,17 @@ export function registerIdeFsHandlers(): void {
       return writeTextFile(root, relPath, content);
     },
   );
+
+  ipcMain.handle('ide:remove', async (_event, root: unknown, relPath: unknown) => {
+    if (typeof root !== 'string' || root.trim() === '') {
+      return { ok: false, error: 'workspace root must be a non-empty string' };
+    }
+    if (typeof relPath !== 'string' || relPath.trim() === '') {
+      return { ok: false, error: 'path must be a non-empty string' };
+    }
+
+    return removeFile(root, relPath);
+  });
 
   ipcMain.handle(
     'ide:search',

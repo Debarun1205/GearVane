@@ -523,6 +523,63 @@ body {
   text-align: left;
 }
 
+/* --- change review --------------------------------------------------------- */
+
+.ide-changes {
+  border-top: 1px solid var(--border);
+  margin-top: 0.75rem;
+  padding-top: 0.5rem;
+}
+
+.ide-changes-title {
+  font-size: 0.82rem;
+  font-weight: 600;
+  margin-bottom: 0.4rem;
+}
+
+.ide-changes-keep { margin-bottom: 0.5rem; }
+
+.ide-change-row {
+  align-items: center;
+  display: flex;
+  gap: 0.4rem;
+  margin-bottom: 0.3rem;
+}
+
+.ide-change-path {
+  flex: 1;
+  font-size: 0.8rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ide-change-button {
+  background: var(--bg-soft);
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 0.78rem;
+  padding: 0.25rem 0.6rem;
+  white-space: nowrap;
+}
+
+.ide-diff-dialog { min-width: min(70rem, 96vw); }
+
+.ide-diff-title {
+  font-size: 1rem;
+  margin: 0 0 0.75rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ide-diff-host {
+  height: min(60vh, 34rem);
+  min-height: 16rem;
+}
+
 /* --- sidebar search -------------------------------------------------------- */
 
 .ide-search-input {
