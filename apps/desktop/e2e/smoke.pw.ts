@@ -118,3 +118,29 @@ test('settings mode reopens and cancel reverts the live preview', async ({ page 
 
   expect(errors).toEqual([]);
 });
+
+test('keys dialog stores keys on this device', async ({ page }) => {
+  const errors = trackErrors(page);
+  await page.goto('/');
+  await page.locator('#appearance-cancel').click();
+
+  await expect(page.locator('#keys-button')).toBeVisible();
+  await page.locator('#keys-button').click();
+  const dialog = page.locator('#keys-dialog');
+  await expect(dialog).toBeVisible();
+  await expect(page.locator('#keys-fields input[type="password"]')).toHaveCount(11);
+
+  // Save persists the vault; the dialog closes on submit.
+  await page.locator('#keys-fields input[aria-label="OpenAI API key"]').fill('sk-test');
+  await page.locator('#keys-save').click();
+  await expect(dialog).toBeHidden();
+  expect(await page.evaluate(() => localStorage.getItem('waypoint.keys'))).toContain('sk-test');
+
+  // Reopen and clear: nothing survives.
+  await page.locator('#keys-button').click();
+  await expect(dialog).toBeVisible();
+  await page.locator('#keys-clear').click();
+  expect(await page.evaluate(() => localStorage.getItem('waypoint.keys'))).toBeNull();
+
+  expect(errors).toEqual([]);
+});

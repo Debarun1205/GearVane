@@ -38,6 +38,13 @@ import {
   type Appearance,
   type AppearanceStorage,
 } from './theme.js';
+import {
+  KEY_FIELDS,
+  clearKeys,
+  loadKeys,
+  saveKeys,
+  type KeyStorage,
+} from './keys.js';
 
 // Type-only, so the builder view is not pulled into the Android bundle at the
 // entry point. It is loaded on demand below, and only where the bridge exists.
@@ -83,7 +90,7 @@ interface AgentBridge {
   run(
     prompt: string,
     root: string,
-    options?: { maxIterations?: number; mode?: 'ask' | 'build'; model?: string },
+    options?: { maxIterations?: number; mode?: 'ask' | 'build'; model?: string; keys?: Record<string, string> },
   ): Promise<{
     ok: boolean;
     result?: AgentResult;
@@ -143,6 +150,40 @@ applyAppearance(document.documentElement, loadAppearance(appearanceStorage));
 let state: AppState = initialState();
 let controller: AppController | undefined;
 let activeTaskId: string | null = null;
+// The config the controller runs on, and whether it is built-in defaults.
+// Keys can reshape defaults (toggling hosted tiers on) but never a host
+// or served config, which the user owns.
+let activeConfig: WaypointConfig | undefined;
+let configFromDefaults = false;
+
+/**
+ * Build the chat controller with the vault's keys.
+ *
+ * Keys authenticate whatever providers the config carries; on a
+ * defaults-derived config they also switch the hosted tiers on, because
+ * defaultConfig only lists a hosted provider when its key is present.
+ * Health probes inherit the same keys through the controller.
+ */
+function buildController(config: WaypointConfig): AppController {
+  return new AppController({ config, env: readEnv() });
+}
+
+/**
+ * Rebuild the controller after the vault changes, without losing the chat.
+ *
+ * Only defaults-derived configs are rebuilt: a host or served config is
+ * owned by the user, and silently rewriting it would be a surprise.
+ */
+function applyKeys(): void {
+  if (configFromDefaults) {
+    activeConfig = defaultConfig(readEnv());
+  }
+  if (!activeConfig) return;
+  state = { ...state, limits: activeConfig.safety.spendLimits };
+  controller = buildController(activeConfig);
+  syncKeysButton();
+  render();
+}
 
 const els = {
   transcript: byId('transcript'),
@@ -155,6 +196,11 @@ const els = {
   health: byId<HTMLButtonElement>('health-button'),
   healthDialog: byId<HTMLDialogElement>('health-dialog'),
   healthBody: byId('health-body'),
+  keysButton: byId<HTMLButtonElement>('keys-button'),
+  keysDialog: byId<HTMLDialogElement>('keys-dialog'),
+  keysFields: byId('keys-fields'),
+  keysSave: byId<HTMLButtonElement>('keys-save'),
+  keysClear: byId<HTMLButtonElement>('keys-clear'),
   tierBadge: byId('tier-badge'),
   spendFill: byId('spend-fill'),
   spendMeter: byId('spend-meter'),
@@ -605,9 +651,77 @@ function openAppearance(mode: 'onboarding' | 'settings'): void {
   }
 }
 
+// --- keys -------------------------------------------------------------------
+
+function syncKeysButton(): void {
+  const count = Object.keys(loadKeys(keyStorage)).length;
+  els.keysButton.title =
+    count > 0 ? `API keys (${count} stored on this device)` : 'API keys (none stored)';
+}
+
+/**
+ * Build the Keys dialog once and keep it fed from the vault.
+ *
+ * Inputs are created here, not in the static markup: there are eleven and
+ * counting, and generating them from KEY_FIELDS keeps markup and code from
+ * drifting. The dialog always opens prefilled, so Cancel and Escape revert
+ * for free.
+ */
+function wireKeys(): void {
+  els.keysFields.textContent = '';
+  const inputs = new Map<string, HTMLInputElement>();
+  for (const field of KEY_FIELDS) {
+    const label = document.createElement('label');
+    label.className = 'builder-label';
+    label.textContent = field.label;
+
+    const input = document.createElement('input');
+    input.className = 'builder-input keys-input';
+    input.type = 'password';
+    input.autocomplete = 'off';
+    input.spellcheck = false;
+    input.placeholder = field.env;
+    input.setAttribute('aria-label', `${field.label} API key`);
+
+    label.append(input);
+    els.keysFields.append(label);
+    inputs.set(field.env, input);
+  }
+
+  const open = (): void => {
+    const stored = loadKeys(keyStorage);
+    for (const [env, input] of inputs) input.value = stored[env] ?? '';
+    if (typeof els.keysDialog.showModal === 'function') els.keysDialog.showModal();
+  };
+  els.keysButton.addEventListener('click', open);
+  // The IDE top bar lives in markup that is hidden until the IDE mounts;
+  // wiring it here is safe because the listener waits for a click.
+  document.getElementById('ide-keys-toggle')?.addEventListener('click', open);
+
+  els.keysSave.addEventListener('click', () => {
+    const next: Record<string, string> = {};
+    for (const [env, input] of inputs) next[env] = input.value;
+    // Sanitized again on save: pasted whitespace is not a key.
+    saveKeys(keyStorage, next);
+    applyKeys();
+    // The surrounding form uses method=dialog, so this submit closes it.
+  });
+
+  els.keysClear.addEventListener('click', () => {
+    for (const input of inputs.values()) input.value = '';
+    clearKeys(keyStorage);
+    applyKeys();
+  });
+}
+
 // --- wiring -----------------------------------------------------------------
 
-async function resolveConfig(): Promise<{ config: WaypointConfig; error: string | null }> {
+async function resolveConfig(): Promise<{
+  config: WaypointConfig;
+  error: string | null;
+  /** True when the config is built-in defaults, which keys can reshape. */
+  fromDefaults?: boolean;
+}> {
   if (bridge.readConfig) {
     try {
       const loaded = await bridge.readConfig();
@@ -616,6 +730,7 @@ async function resolveConfig(): Promise<{ config: WaypointConfig; error: string 
       return {
         config: defaultConfig(readEnv()),
         error: `Could not read host config: ${(error as Error).message}`,
+        fromDefaults: true,
       };
     }
   }
@@ -632,16 +747,53 @@ async function resolveConfig(): Promise<{ config: WaypointConfig; error: string 
     // No config served; defaults are fine.
   }
 
-  return { config: defaultConfig(readEnv()), error: null };
+  // Built-in defaults, with hosted tiers toggled by whatever keys the
+  // vault holds — the only way keys can enable providers where there is
+  // no host config to read. fromDefaults lets applyKeys rebuild this
+  // when the vault changes.
+  return { config: defaultConfig(readEnv()), error: null, fromDefaults: true };
 }
 
 /**
- * Keys are never read in the renderer: there is no environment there, and
- * credentials must arrive through the host bridge or a served config.
+ * Keys are never read in the renderer process environment: there is none,
+ * and credentials must arrive through the host bridge, a served config, or
+ * the device-local vault below. Local models need none of these.
  */
 function readEnv(): Record<string, string | undefined> {
-  return {};
+  return loadKeys(keyStorage);
 }
+
+/**
+ * Device-local key vault, beside the appearance settings.
+ *
+ * A never-throwing wrapper like the appearance one: storage can be
+ * disabled, and losing the vault must not kill the app. Entries are
+ * sanitized on every read, so a hand-edited value cannot smuggle
+ * unrelated variables into provider calls.
+ */
+const keyStorage: KeyStorage = {
+  getItem: (key) => {
+    try {
+      return window.localStorage.getItem(key);
+    } catch {
+      return null;
+    }
+  },
+  setItem: (key, value) => {
+    try {
+      window.localStorage.setItem(key, value);
+    } catch {
+      // Device-local and non-essential; skip it.
+    }
+  },
+  removeItem: (key) => {
+    try {
+      window.localStorage.removeItem(key);
+    } catch {
+      // Already gone or disabled; either way the goal is met.
+    }
+  },
+};
 
 async function main(): Promise<void> {
   renderSamples();
@@ -661,14 +813,13 @@ async function main(): Promise<void> {
     markOnboarded(appearanceStorage);
   }
 
-  const { config, error } = await resolveConfig();
+  const { config, error, fromDefaults } = await resolveConfig();
+  activeConfig = config;
+  configFromDefaults = fromDefaults ?? false;
   state = { ...state, limits: config.safety.spendLimits };
-  controller = new AppController({
-    config,
-    // The renderer has no environment, so keys come from the host via the
-    // bridge or from the served config. Local models need neither.
-    env: {},
-  });
+  controller = buildController(config);
+  wireKeys();
+  syncKeysButton();
 
   if (error) {
     els.hint.textContent = `Config problem: ${error}`;
@@ -788,7 +939,10 @@ async function main(): Promise<void> {
           },
           agent: {
             models: () => agent.models(),
-            run: (prompt, options) => agent.run(prompt, root, options),
+            // Keys ride with the run and are allowlisted in the main
+            // process, so a packaged app without shell environment still
+            // reaches hosted models.
+            run: (prompt, options) => agent.run(prompt, root, { ...options, keys: loadKeys(keyStorage) }),
             cancel: () => agent.cancel(),
             onStep: (handler) => agent.onStep(handler),
           },

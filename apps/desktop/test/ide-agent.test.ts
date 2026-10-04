@@ -227,6 +227,14 @@ describe('the main process wires the handler', () => {
   it('serves the configured model list', () => {
     expect(host).toMatch(/ipcMain\.handle\('agent:models'/);
   });
+
+  it('merges renderer keys over process env through an allowlist', () => {
+    // Vault keys let a packaged app without a shell environment reach
+    // hosted models, but the merge must drop everything else: a renderer
+    // that could set PATH in the main process would own it.
+    expect(host).toMatch(/sanitizeKeys\(request\.keys\)/);
+    expect(host).toMatch(/\.\.\.sanitizeKeys\(request\.keys\)/);
+  });
 });
 
 describe('the preload bridge exposes the agent', () => {
@@ -316,7 +324,9 @@ describe('the renderer gates the IDE on all three bridges', () => {
 
   it('forwards the model list and selection through the adapter', () => {
     expect(renderer).toMatch(/models: \(\) => agent\.models\(\)/);
-    expect(renderer).toMatch(/run: \(prompt, options\) => agent\.run\(prompt, root, options\)/);
+    expect(renderer).toMatch(
+      /run: \(prompt, options\) => agent\.run\(prompt, root, \{ \.\.\.options, keys: loadKeys\(keyStorage\) \}\)/,
+    );
   });
 
   it('opens the IDE full-window instead of a dialog', () => {

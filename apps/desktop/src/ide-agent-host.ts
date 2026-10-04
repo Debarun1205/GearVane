@@ -33,6 +33,7 @@ import {
 } from '@waypoint/harness';
 
 import { listFiles, readTextFile } from './ide/fs-store.js';
+import { sanitizeKeys } from './keys.js';
 
 /**
  * What the model is told before the user's prompt.
@@ -77,6 +78,12 @@ export interface AgentRunRequest {
    * Absent means the first configured provider, same as before.
    */
   model?: unknown;
+  /**
+   * Vault keys from the renderer. Allowlisted and merged over the main
+   * process environment in registerIdeAgentHandlers below, so a packaged
+   * app without a shell environment still reaches hosted models.
+   */
+  keys?: unknown;
 }
 
 /** One selectable model: every configured provider/model pair, in tier order. */
@@ -391,13 +398,15 @@ export function registerIdeAgentHandlers(loadConfig: () => WaypointConfig): void
     };
 
     try {
-      return await runIdeAgent(
-        request,
-        loadConfig(),
-        process.env as Record<string, string | undefined>,
-        onStep,
-        signal,
-      );
+      // Renderer vault keys win over the shell: they were entered for this
+      // device after the process started. sanitizeKeys drops everything but
+      // known API key variables, so PATH and friends cannot be overridden
+      // across the IPC boundary.
+      const env = {
+        ...(process.env as Record<string, string | undefined>),
+        ...sanitizeKeys(request.keys),
+      };
+      return await runIdeAgent(request, loadConfig(), env, onStep, signal);
     } catch (error) {
       return {
         ok: false,

@@ -19,6 +19,12 @@ export interface HealthOptions {
   latencyThresholdMs?: number;
   timeoutMs?: number;
   now?: () => number;
+  /**
+   * Supplies API keys to the probed clients. Without this, hosted models
+   * probe anonymously and report unhealthy even when a key exists, which
+   * is exactly what the app's bring-your-own-keys dialog would show.
+   */
+  env?: Record<string, string | undefined>;
   createClient?: (providerName: string, model: string) => ProviderClient | undefined;
 }
 
@@ -147,7 +153,10 @@ export class HealthChecker {
     for (const tier of Object.values(this.config.tiers)) {
       for (const provider of tier.providers) {
         if (provider.name === providerName && provider.models.includes(model)) {
-          return new ProviderFactory({ timeoutMs: this.timeoutMs }).create(provider, model);
+          return new ProviderFactory({ timeoutMs: this.timeoutMs, env: this.options.env }).create(
+            provider,
+            model,
+          );
         }
       }
     }

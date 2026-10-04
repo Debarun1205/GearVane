@@ -29,6 +29,7 @@
           <button id="ide-chat-toggle" class="ghost-button" type="button">Chat</button>
           <button id="ide-builder-toggle" class="ghost-button" type="button">Builder</button>
           <button id="ide-health-toggle" class="ghost-button" type="button">Health</button>
+          <button id="ide-keys-toggle" class="ghost-button" type="button">Keys</button>
           <button id="ide-appearance-toggle" class="ghost-button" type="button">Look</button>
         </div>
       </header>
@@ -53,6 +54,7 @@
           <button id="ide-toggle" class="ghost-button" type="button">IDE</button>
           <button id="builder-toggle" class="ghost-button" type="button">Builder</button>
           <button id="health-button" class="ghost-button" type="button">Health</button>
+          <button id="keys-button" class="ghost-button" type="button">Keys</button>
           <button id="appearance-toggle" class="ghost-button" type="button">Look</button>
           <button id="clear-button" class="ghost-button" type="button">Clear</button>
         </div>
@@ -84,7 +86,7 @@
           <button id="cancel" class="ghost-button" type="button" hidden>Stop</button>
         </div>
         <p class="composer-hint" id="hint">
-          Keys come from your environment, never from this app. Local models are free.
+          Local models are free. Hosted models use keys from your environment or the Keys dialog.
         </p>
       </footer>
     </div>
@@ -101,6 +103,20 @@
       <div id="health-body" class="health-body">Checking...</div>
       <form method="dialog">
         <button class="ghost-button" type="submit">Close</button>
+      </form>
+    </dialog>
+
+    <dialog id="keys-dialog" class="dialog" aria-label="API keys">
+      <h2>API keys</h2>
+      <p class="builder-help">
+        Local models need nothing. Paste a key to unlock its hosted models;
+        keys stay on this device and are sent only to that provider.
+      </p>
+      <div id="keys-fields" class="keys-fields"></div>
+      <form method="dialog" class="builder-actions">
+        <button id="keys-clear" class="ghost-button" type="button">Clear</button>
+        <button id="keys-cancel" class="ghost-button" type="submit" value="cancel">Cancel</button>
+        <button id="keys-save" class="send-button" type="submit" value="save">Save</button>
       </form>
     </dialog>
 

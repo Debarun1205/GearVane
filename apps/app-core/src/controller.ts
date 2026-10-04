@@ -70,6 +70,9 @@ export class AppController {
     this.health = new HealthChecker(options.config, this.orchestrator.router, {
       timeoutMs: options.timeoutMs ?? 5000,
       latencyThresholdMs: options.latencyThresholdMs ?? 30_000,
+      // Keys reach the probes as well as execution, so the Health dialog
+      // reflects the same credentials the chat uses.
+      env: options.env ?? readEnvironment(),
       // Forwarded so health probes use the same client construction as
       // execution. Without this the checker builds its own clients and hits
       // the network even when a factory was injected.

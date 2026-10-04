@@ -699,7 +699,10 @@ code --install-extension waypoint-0.3.0.vsix</code></pre>
               In your shell environment, and nowhere else. Waypoint reads
               <code>ANTHROPIC_API_KEY</code> and similar variables, and never
               writes a credential to a config file, a log, or the dashboard.
-              Local model servers are never sent a key at all.
+              The desktop and Android apps additionally offer a Keys dialog
+              whose vault lives only on that device, in its own storage;
+              entries are sent solely to their own provider. Local model
+              servers are never sent a key at all.
             </p>
           </details>
 
