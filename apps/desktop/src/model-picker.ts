@@ -88,6 +88,8 @@ export function createModelPicker(options: {
   selected: string;
   autoLabel: string;
   handlers: ModelPickerHandlers;
+  /** Notified on every selection, including Auto. */
+  onSelect(id: string): void;
 }): ModelPicker {
   const root = document.createElement('div');
   root.className = 'model-picker';
@@ -127,6 +129,7 @@ export function createModelPicker(options: {
       id === ''
         ? 'Auto: GearVane classifies the request and picks the tier'
         : label;
+    options.onSelect(id);
   };
 
   const choose = async (entry: ModelPickerEntry): Promise<void> => {

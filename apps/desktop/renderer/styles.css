@@ -238,6 +238,113 @@ html[data-bg='grid'] .ambience::after {
   border-color: color-mix(in srgb, var(--tier-frontier) 45%, transparent);
 }
 
+/* Model picker: the header dropdown that chooses what
+   drives the next run. Auto first, then every model, with
+   a green marker beside weights already on disk. */
+.model-picker {
+  position: relative;
+}
+
+.model-picker-button {
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text);
+  background: var(--bg-raised);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  padding: 0.3rem 0.65rem;
+  cursor: pointer;
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.model-picker-button:hover {
+  border-color: var(--accent);
+}
+
+.model-picker-button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.model-picker-panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 40;
+  min-width: 340px;
+  max-width: 420px;
+  max-height: min(480px, 70vh);
+  overflow-y: auto;
+  background: var(--bg-raised);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  box-shadow: 0 12px 32px rgb(0 0 0 / 0.45);
+  padding: 0.35rem;
+}
+
+.model-picker-row {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.45rem 0.55rem;
+  border-radius: calc(var(--radius) - 3px);
+  cursor: pointer;
+}
+
+.model-picker-row:hover,
+.model-picker-row:focus-visible {
+  background: var(--bg-soft);
+}
+
+.model-picker-row.selected {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+}
+
+.model-picker-row.selected .model-picker-label {
+  color: var(--accent);
+}
+
+.model-picker-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.82rem;
+  color: var(--text);
+}
+
+.model-picker-detail {
+  flex-shrink: 0;
+  font-size: 0.68rem;
+  color: var(--text-dim);
+  margin-left: auto;
+}
+
+.model-dot {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  background: transparent;
+}
+
+.model-dot.present {
+  background: var(--tier-local);
+  border-color: var(--tier-local);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--tier-local) 60%, transparent);
+}
+
+.model-picker-host {
+  display: flex;
+  align-items: center;
+}
+
 .spend-meter {
   display: block;
   width: 84px;

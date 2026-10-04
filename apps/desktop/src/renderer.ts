@@ -54,6 +54,11 @@ import type { AgentResult, AgentStep } from '@gearvane/harness';
 import { createWebBackend, type WebFsStorage } from './web-backend.js';
 import { hostedModelRows } from './hosted-models.js';
 import MODEL_CATALOG from './models.json';
+import {
+  createModelPicker,
+  type ModelPicker,
+  type ModelPickerEntry,
+} from './model-picker.js';
 
 /** Capabilities the host may provide. Every one is optional. */
 interface HostBridge {
@@ -201,6 +206,8 @@ function applyKeys(): void {
   controller = buildController(activeConfig);
   syncKeysButton();
   render();
+  // Hosted rows in the picker follow the keys, so rebuild it too.
+  void mountPicker();
 }
 
 const els = {
@@ -217,6 +224,9 @@ const els = {
   modelsButton: byId<HTMLButtonElement>('models-button'),
   modelsDialog: byId<HTMLDialogElement>('models-dialog'),
   modelsBody: byId('models-body'),
+  modelInstallDialog: byId<HTMLDialogElement>('model-install-dialog'),
+  modelInstallText: byId('model-install-text'),
+  modelPickerHost: byId('model-picker-host'),
   keysButton: byId<HTMLButtonElement>('keys-button'),
   keysDialog: byId<HTMLDialogElement>('keys-dialog'),
   keysFields: byId('keys-fields'),
@@ -236,6 +246,147 @@ function byId<T extends HTMLElement = HTMLElement>(id: string): T {
   const element = document.getElementById(id);
   if (!element) throw new Error(`Missing element: #${id}`);
   return element as T;
+}
+
+// --- model picker -----------------------------------------------------------
+
+const PIN_STORAGE_KEY = 'gearvane.modelPin';
+
+/** The model pinned for the next runs; empty means Auto. */
+let modelPin = ((): string => {
+  try {
+    return window.localStorage.getItem(PIN_STORAGE_KEY) ?? '';
+  } catch {
+    return '';
+  }
+})();
+
+function saveModelPin(): void {
+  try {
+    window.localStorage.setItem(PIN_STORAGE_KEY, modelPin);
+  } catch {
+    // A lost pin only means Auto next launch.
+  }
+}
+
+/**
+ * Everything the picker lists: Auto, every downloadable weight, and
+ * the hosted models the active config exposes.
+ *
+ * Downloadable rows carry a green marker when the weight is already
+ * on disk. In the bridgeless webview there is no model directory,
+ * so rows are read-only and say so instead of promising a download.
+ */
+async function pickerEntries(): Promise<ModelPickerEntry[]> {
+  const entries: ModelPickerEntry[] = [
+    {
+      id: '',
+      label: 'Auto',
+      detail: 'classify the request, pick the tier',
+    },
+  ];
+
+  const present = new Set<string>();
+  if (bridge.models) {
+    try {
+      const listed = await bridge.models.list();
+      for (const entry of listed) {
+        if (entry.present) present.add(entry.id);
+      }
+    } catch {
+      // Status is best-effort; the list renders without it.
+    }
+  }
+
+  for (const entry of MODEL_CATALOG as CatalogEntry[]) {
+    entries.push(
+      bridge.models
+        ? {
+            id: entry.id,
+            label: entry.id,
+            detail: `${entry.use} · ${formatMB(entry.bytes)}`,
+            present: present.has(entry.id),
+            download: { bytes: entry.bytes },
+          }
+        : {
+            id: entry.id,
+            label: entry.id,
+            detail: `${entry.use} · desktop app only`,
+          },
+    );
+  }
+
+  const config = activeConfig;
+  if (config) {
+    for (const row of hostedModelRows(config, loadKeys(keyStorage))) {
+      entries.push({
+        id: row.label,
+        label: row.label,
+        detail: row.keyless ? `${row.tier} · no key needed` : row.tier,
+      });
+    }
+  }
+
+  return entries;
+}
+
+const pickerHandlers = {
+  install: async (entry: ModelPickerEntry): Promise<boolean> => {
+    if (!bridge.models) return false;
+    try {
+      const result = await bridge.models.fetch(entry.id);
+      return result.ok;
+    } catch {
+      return false;
+    }
+  },
+  confirmInstall: (entry: ModelPickerEntry): Promise<boolean> =>
+    new Promise<boolean>((resolve) => {
+      const size = entry.download ? formatMB(entry.download.bytes) : '';
+      els.modelInstallText.textContent =
+        `${entry.label} is not on this device yet. ` +
+        `Download ${size} now? It is served locally by GearVane — ` +
+        'no key, no cloud, and it stays available offline.';
+      els.modelInstallDialog.returnValue = '';
+      els.modelInstallDialog.addEventListener(
+        'close',
+        () => resolve(els.modelInstallDialog.returnValue === 'install'),
+        { once: true },
+      );
+      if (typeof els.modelInstallDialog.showModal === 'function') {
+        els.modelInstallDialog.showModal();
+      } else {
+        resolve(false);
+      }
+    }),
+};
+
+let picker: ModelPicker | undefined;
+
+/**
+ * (Re)build the header picker.
+ *
+ * Rebuilding rather than mutating keeps the component dumb: any
+ * download — from here or from the Models dialog — ends with a
+ * remount, and the green markers are always current.
+ */
+async function mountPicker(): Promise<void> {
+  picker?.destroy();
+  picker = undefined;
+  els.modelPickerHost.textContent = '';
+
+  const instance = createModelPicker({
+    entries: await pickerEntries(),
+    selected: modelPin,
+    autoLabel: 'Auto',
+    handlers: pickerHandlers,
+    onSelect: (id) => {
+      modelPin = id;
+      saveModelPin();
+    },
+  });
+  els.modelPickerHost.append(instance.root);
+  picker = instance;
 }
 
 // --- state ------------------------------------------------------------------
@@ -359,7 +510,8 @@ function renderTierBadge(): void {
   }
 
   // Preview while typing so the user sees the tier before committing.
-  const preview = controller.preview(draft);
+  // A pin previews the pinned model, so the badge says what will run.
+  const preview = controller.preview(draft, [], modelPin || undefined);
   els.tierBadge.textContent = preview.tier;
   els.tierBadge.className = `tier-badge tier-${preview.tier}`;
   els.tierBadge.title = `${preview.provider}/${preview.model} - ${preview.reasons.join('; ')}`;
@@ -427,6 +579,9 @@ async function send(): Promise<void> {
       taskId: messageId,
       prompt,
       stream: true,
+      // A pinned model rides along; empty (Auto) omits it so the
+      // router classifies the request as it always did.
+      ...(modelPin ? { model: modelPin } : {}),
       onToken: (_token, accumulated) => {
         // submitStreaming reports the full accumulated text on every token,
         // so replace the bubble rather than appending to it.
@@ -1030,6 +1185,12 @@ async function main(): Promise<void> {
   els.cancel.addEventListener('click', cancel);
   els.health.addEventListener('click', () => void showHealth());
   els.modelsButton.addEventListener('click', () => void showModels());
+
+  // The header picker reflects what is on disk, so rebuild it once
+  // the config is known, and again whenever the Models dialog
+  // closes — downloads there must show up here without a reload.
+  void mountPicker();
+  els.modelsDialog.addEventListener('close', () => void mountPicker());
 
   const builderToggle = document.getElementById('builder-toggle');
   const builderDialog = document.getElementById('builder-dialog');

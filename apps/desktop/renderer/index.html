@@ -46,6 +46,7 @@
         </div>
 
         <div class="topbar-meta">
+          <span id="model-picker-host" class="model-picker-host"></span>
           <span id="tier-badge" class="tier-badge tier-none" title="Model tier for your next message">
             no prompt
           </span>
@@ -118,6 +119,17 @@
       <div id="models-body" class="health-body"></div>
       <form method="dialog">
         <button class="ghost-button" type="submit">Close</button>
+      </form>
+    </dialog>
+
+    <dialog id="model-install-dialog" class="dialog" aria-label="Install model">
+      <h2>Install model</h2>
+      <p class="builder-help" id="model-install-text"></p>
+      <form method="dialog" class="builder-actions">
+        <button class="ghost-button" type="submit" value="cancel">Cancel</button>
+        <button class="send-button" type="submit" value="install">
+          Download and use
+        </button>
       </form>
     </dialog>
 
