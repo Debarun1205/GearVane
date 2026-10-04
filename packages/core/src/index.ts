@@ -76,6 +76,18 @@ export {
   type StreamingClient,
 } from './orchestrator.js';
 export {
+  FeedbackLoop,
+  FeedbackStore,
+  formatFeedbackPercent,
+  formatRating,
+  roundHalfEven,
+  type AdjustmentSuggestion,
+  type FeedbackEntry,
+  type FeedbackStats,
+  type FeedbackStorage,
+  type TierAccuracy,
+} from './feedback.js';
+export {
   SafetyManager,
   type ApprovalRequest,
   type ApprovalStatus,

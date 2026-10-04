@@ -20,6 +20,7 @@ import {
   type ParsedArgs,
 } from './args.js';
 import { loadConfig } from './config-loader.js';
+import { cmdFeedback, cmdTrain, loadLearnedModel, recordRunFeedback } from './feedback-commands.js';
 import {
   AGENT_HELP,
   BUILD_HELP,
@@ -34,6 +35,8 @@ waypoint --version
 Usage:
   waypoint route --task "<description>" [--files a b] [--json]
   waypoint run   --task "<description>" [--files a b] [--stream] [--json]
+  waypoint feedback [--json]
+  waypoint train [--epochs N] [--learning-rate F] [--l2 F] [--json]
   waypoint health [--offline] [--json]
   waypoint models [--json]
   waypoint cost [--json]
@@ -53,6 +56,9 @@ Options:
   --config <path>   Config file to use
   --json            Machine-readable output
   --no-color        Disable ANSI colour
+  --epochs N        Number of training epochs (default: 50)
+  --learning-rate F Learning rate for training (default: 0.5)
+  --l2 F            L2 regularization strength (default: 0.001)
 
 Local models are free. Hosted models need an API key in the environment,
 never in the config file.`;
@@ -103,6 +109,10 @@ async function main(argv: string[]): Promise<number> {
       return cmdRoute(args, config, json, useColor);
     case 'run':
       return await cmdRun(args, config, json);
+    case 'feedback':
+      return cmdFeedback(config, json);
+    case 'train':
+      return cmdTrain(args, config, json);
     case 'health':
       return await cmdHealth(args, config, json);
     case 'models':
@@ -139,8 +149,12 @@ function cmdRoute(
     return 1;
   }
 
+  // A trained model file from `waypoint train` engages the hybrid
+  // classifier; without one (or with it disabled) the router stays on
+  // heuristics, exactly like the Python router's fallback.
   const orchestrator = new Orchestrator(config, {
     env: process.env as Record<string, string | undefined>,
+    learnedModel: loadLearnedModel(config),
   });
 
   const decision = orchestrator.router.route('cli', {
@@ -213,6 +227,10 @@ async function cmdRun(
   }
 
   const result = await orchestrator.execute(taskId, task, options);
+
+  // Close the feedback loop: the prediction was the router's first pick,
+  // the outcome is the tier that served the request.
+  recordRunFeedback(config, taskId, task, result);
 
   if (json) {
     process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);

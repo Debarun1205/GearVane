@@ -189,6 +189,26 @@ describe('parseConfig', () => {
     expect(config.router.manualOverride).toBeNull();
   });
 
+  it('reads the learned_classifier section in either spelling', () => {
+    // Regression: only the snake_case section name was read, so a JSON
+    // config using the core's camelCase style silently lost the whole
+    // section and `route` never engaged a trained model.
+    const snake = parseConfig(
+      ['learned_classifier:', '  enabled: true', '  model_file: m.json', '  min_samples: 3'].join(
+        '\n',
+      ),
+    );
+    expect(snake.learnedClassifier.enabled).toBe(true);
+    expect(snake.learnedClassifier.modelFile).toBe('m.json');
+    expect(snake.learnedClassifier.minSamples).toBe(3);
+
+    const camel = parseConfig(
+      '{"learnedClassifier": {"enabled": true, "modelFile": "m.json", "minSamples": 3}}',
+      'json',
+    );
+    expect(camel.learnedClassifier).toEqual(snake.learnedClassifier);
+  });
+
   it('reads safety limits', () => {
     const config = parseConfig(sample);
     expect(config.safety.spendLimits.perTask).toBeCloseTo(2.5);

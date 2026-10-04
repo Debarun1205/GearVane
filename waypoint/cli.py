@@ -130,6 +130,23 @@ def cmd_run(args):
         test_failures=args.test_failures or 0,
     )
 
+    # Record the prediction and outcome into the feedback loop so that
+    # `waypoint train` can learn from completed runs. The prediction is the
+    # router's first pick (the first attempt's tier); the outcome is the tier
+    # that served the request, so escalation records as a miss. Failed runs
+    # record the prediction with no outcome and never enter training data.
+    try:
+        feedback_path = config.get("logging", {}).get("feedback_file", "feedback.jsonl")
+        predicted = result.history[0].get("tier") if result.history else result.tier
+        if predicted:
+            loop = FeedbackLoop(FeedbackStore(feedback_path))
+            loop.record_prediction(task_id, args.task, predicted)
+            if result.success and result.tier:
+                loop.record_outcome(task_id, result.tier)
+    except Exception:
+        # Feedback recording failure must not affect the exit code of a run.
+        pass
+
     if args.json:
         print(
             json.dumps(
@@ -361,7 +378,11 @@ def cmd_feedback(args):
 
 def cmd_train(args):
     """Train the learned classifier from recorded feedback."""
-    config = load_config(args.config)
+    # --config after the subcommand lands in unused_config (argparse fills
+    # the subparser's namespace first); prefer it over the global default so
+    # the flag is honoured wherever it is placed.
+    config_path = getattr(args, "unused_config", None) or args.config
+    config = load_config(config_path)
     learned_config = config.get("learned_classifier", {})
     feedback_path = learned_config.get(
         "feedback_file", config.get("logging", {}).get("feedback_file", "feedback.jsonl")
@@ -672,9 +693,16 @@ def main():
     if len(sys.argv) > 1 and sys.argv[1] in ("--version", "-V"):
         parser.parse_args()
 
-    # Dispatch on sys.argv[1] directly. Subparser options can collide with the
-    # parser's own "command" dest, so args.command is not reliable here.
-    subcommand = sys.argv[1] if len(sys.argv) > 1 and not sys.argv[1].startswith("-") else None
+    # Dispatch on the subcommand directly. Subparser options can collide with
+    # the parser's own "command" dest, so args.command is not reliable here.
+    # A leading global --config is skipped so `waypoint --config f.yaml run`
+    # dispatches instead of printing help.
+    rest = sys.argv[1:]
+    if rest[:1] == ["--config"] and len(rest) > 2:
+        rest = rest[2:]
+    elif rest and rest[0].startswith("--config="):
+        rest = rest[1:]
+    subcommand = rest[0] if rest and not rest[0].startswith("-") else None
 
     if subcommand is None:
         parser.print_help()

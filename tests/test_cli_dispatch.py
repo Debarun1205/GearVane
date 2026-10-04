@@ -215,6 +215,40 @@ class TestEndToEndCommands:
         assert result.returncode != 0
         assert "Traceback" not in result.stderr
 
+    def test_global_config_before_subcommand_dispatches(self, tmp_path):
+        # Regression: `waypoint --config f.yaml feedback` printed help and
+        # exited 1, because dispatch only inspected sys.argv[1].
+        import json
+
+        cfg = tmp_path / "c.yaml"
+        cfg.write_text('logging:\n  feedback_file: "nope.jsonl"\n', encoding="utf-8")
+        result = run_cli("--config", str(cfg), "feedback", "--json")
+        assert result.returncode == 0, result.stderr + result.stdout
+        assert json.loads(result.stdout)["total_entries"] == 0
+
+    def test_train_honours_config_after_subcommand(self, tmp_path):
+        # Regression: `train --config f.yaml` parsed the flag into a
+        # suppressed dest and then ignored it, always training (or failing)
+        # against the default config instead.
+        feedback = tmp_path / "feedback.jsonl"
+        feedback.write_text(
+            '{"task_id": "t1", "description": "fix a typo", "predicted_tier": "local", '
+            '"actual_tier": "local", "was_correct": true, "user_rating": 5, '
+            '"timestamp": 1700000000.0, "metadata": {}}\n',
+            encoding="utf-8",
+        )
+        model = tmp_path / "learned_model.json"
+        cfg = tmp_path / "c.yaml"
+        fb = str(feedback).replace("\\", "/")
+        mo = str(model).replace("\\", "/")
+        cfg.write_text(
+            f'learned_classifier:\n  model_file: "{mo}"\n  feedback_file: "{fb}"\n',
+            encoding="utf-8",
+        )
+        result = run_cli("train", "--config", str(cfg))
+        assert result.returncode == 0, result.stderr + result.stdout
+        assert model.exists(), "train ignored --config and wrote elsewhere"
+
     def test_health_offline_runs(self):
         result = run_cli("health", "--offline")
         # No local servers running, so unhealthy/degraded, but no traceback.

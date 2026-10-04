@@ -82,6 +82,12 @@ export interface LearnedClassifierConfig {
   blend: number;
   learningRate?: number;
   epochs?: number;
+  /**
+   * Per-model feedback file override, mirroring Python's
+   * learned_classifier.feedback_file (which falls back to
+   * logging.feedback_file). Absent unless the user sets it.
+   */
+  feedbackFile?: string;
 }
 
 export interface SpendLimits {

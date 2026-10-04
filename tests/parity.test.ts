@@ -12,7 +12,8 @@
  */
 
 import { execFileSync } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
@@ -152,5 +153,85 @@ describe('both engines find the same config', () => {
     // a user comparing the two CLIs saw different versions.
     const number = (text: string): string => text.match(/(\d+\.\d+\.\d+)/)?.[1] ?? '';
     expect(number(tsVersion)).toBe(number(pythonVersion));
+  });
+});
+
+describe('both engines read the same feedback file', () => {
+  it.skipIf(!PYTHON || !tsAvailable)('report identical feedback stats', () => {
+    // A feedback.jsonl written by hand in Python's asdict format, with the
+    // same config file both CLIs discover in the working directory. The two
+    // `feedback --json` outputs must agree key for key, which is what makes
+    // `train` on one side learn from `run` on the other.
+    const dir = mkdtempSync(join(tmpdir(), 'waypoint-parity-feedback-'));
+    const feedbackPath = join(dir, 'feedback.jsonl').replace(/\\/g, '/');
+    const configPath = join(dir, 'config.yaml');
+
+    const line = (taskId: string, predicted: string, actual: string | null): string =>
+      JSON.stringify({
+        task_id: taskId,
+        description: `task ${taskId}`,
+        predicted_tier: predicted,
+        actual_tier: actual,
+        was_correct: actual === null ? null : predicted === actual,
+        user_rating: actual === null ? null : 4,
+        timestamp: 1700000000,
+        metadata: {},
+      });
+    writeFileSync(
+      join(dir, 'feedback.jsonl'),
+      [
+        line('a', 'local', 'local'),
+        line('b', 'local', 'mid'),
+        line('c', 'mid', 'mid'),
+        line('d', 'frontier', null),
+      ].join('\n') + '\n',
+      'utf8',
+    );
+    writeFileSync(
+      configPath,
+      `logging:\n  feedback_file: "${feedbackPath}"\n`,
+      'utf8',
+    );
+
+    // Both CLIs run from the repo root (where the Python package imports
+    // from) with an explicit --config, so neither depends on the working
+    // directory for config discovery or module resolution.
+    const pythonStats = JSON.parse(
+      execFileSync(
+        PYTHON as string,
+        ['-m', 'waypoint', '--config', configPath, 'feedback', '--json'],
+        {
+          cwd: REPO,
+          encoding: 'utf8',
+          timeout: 120_000,
+          stdio: ['ignore', 'pipe', 'ignore'],
+        },
+      ),
+    ) as unknown;
+
+    const tsStats = JSON.parse(
+      execFileSync(process.execPath, [TS_CLI, '--config', configPath, 'feedback', '--json'], {
+        cwd: REPO,
+        encoding: 'utf8',
+        timeout: 120_000,
+        stdio: ['ignore', 'pipe', 'ignore'],
+      }),
+    ) as unknown;
+
+    expect(tsStats).toEqual(pythonStats);
+    // And the agreed stats are the ones the fixture dictates.
+    expect(tsStats).toMatchObject({
+      total_entries: 4,
+      rated_entries: 3,
+      correct_predictions: 2,
+      incorrect_predictions: 1,
+      accuracy: 0.5,
+      average_rating: 4,
+      by_tier: {
+        local: { total: 2, correct: 1, accuracy: 0.5 },
+        mid: { total: 1, correct: 1, accuracy: 1 },
+        frontier: { total: 1, correct: 0, accuracy: 0 },
+      },
+    });
   });
 });

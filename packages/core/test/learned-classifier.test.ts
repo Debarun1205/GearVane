@@ -172,6 +172,33 @@ describe('LearnedClassifier', () => {
     });
     expect(restored.trainedOn).toBe(0);
   });
+
+  it('reads a model file written by the Python CLI', () => {
+    // Python's LearnedWeights.to_dict writes `trained_on`; without the
+    // alias a Python-trained model loads as untrained and the hybrid
+    // classifier silently never engages.
+    const clf = new LearnedClassifier();
+    clf.train(SAMPLES);
+    const serialized = serializeWeights(clf.weights);
+    const pythonShaped = {
+      weights: serialized.weights,
+      bias: serialized.bias,
+      trained_on: serialized.trainedOn,
+      accuracy: serialized.accuracy,
+    };
+    const restored = new LearnedClassifier();
+    restored.weights = deserializeWeights(pythonShaped);
+    expect(restored.weights.trainedOn).toBe(clf.weights.trainedOn);
+    expect(restored.predict('fix a typo')).toEqual(clf.predict('fix a typo'));
+  });
+
+  it('writes both key spellings so Python can read the model back', () => {
+    const clf = new LearnedClassifier();
+    clf.train(SAMPLES);
+    const serialized = serializeWeights(clf.weights);
+    expect(serialized.trainedOn).toBe(clf.weights.trainedOn);
+    expect(serialized.trained_on).toBe(clf.weights.trainedOn);
+  });
 });
 
 describe('HybridClassifier', () => {

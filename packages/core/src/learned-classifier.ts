@@ -75,6 +75,12 @@ export interface SerializedWeights {
   weights: Record<Tier, Record<string, number>>;
   bias: Record<Tier, number>;
   trainedOn: number;
+  /**
+   * Alias for the Python engine, whose LearnedWeights.to_dict writes
+   * `trained_on`. Emitted on save and accepted on load so model files are
+   * interchangeable between the two CLIs.
+   */
+  trained_on?: number;
   accuracy: number;
 }
 
@@ -93,6 +99,10 @@ export function serializeWeights(weights: LearnedWeights): SerializedWeights {
     weights: out,
     bias: { ...weights.bias },
     trainedOn: weights.trainedOn,
+    // The Python engine writes `trained_on`; emit both keys so a model file
+    // written by either CLI loads in the other. Python's from_dict ignores
+    // the camelCase extra, and deserializeWeights below reads either.
+    trained_on: weights.trainedOn,
     accuracy: weights.accuracy,
   };
 }
@@ -105,7 +115,7 @@ export function deserializeWeights(data: SerializedWeights): LearnedWeights {
     }
     weights.bias[tier] = data.bias?.[tier] ?? 0;
   }
-  weights.trainedOn = data.trainedOn ?? 0;
+  weights.trainedOn = data.trainedOn ?? data.trained_on ?? 0;
   weights.accuracy = data.accuracy ?? 0;
   return weights;
 }

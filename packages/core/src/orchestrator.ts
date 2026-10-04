@@ -1,6 +1,7 @@
 import { ProviderError, ProviderFactory } from './providers.js';
 import { RetryExhaustedError, withRetry, type RetryConfig } from './retry.js';
 import { TierRouter } from './router.js';
+import type { SerializedWeights } from './learned-classifier.js';
 import type {
   AttemptRecord,
   ExecutionResult,
@@ -205,6 +206,9 @@ export interface OrchestratorOptions {
   now?: () => number;
   /** Injected for tests. */
   createClient?: (provider: ProviderConfig, model?: string) => unknown;
+  /** Pre-trained model weights. When supplied and learnedClassifier.enabled
+   * is set, the router builds a HybridClassifier around the heuristics. */
+  learnedModel?: SerializedWeights;
 }
 
 export type StreamingClient = {
@@ -228,7 +232,7 @@ export class Orchestrator {
   private readonly createClient: (provider: ProviderConfig, model?: string) => unknown;
 
   constructor(config: WaypointConfig, options: OrchestratorOptions = {}) {
-    this.router = new TierRouter(config);
+    this.router = new TierRouter(config, { learnedModel: options.learnedModel });
     this.spend = new SpendTracker(config.safety.spendLimits, options.now);
     this.providers = new ProviderFactory({
       env: options.env ?? {},

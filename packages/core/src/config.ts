@@ -79,7 +79,12 @@ export function parseConfig(
   const rawLimits = (rawSafety['spend_limits'] ?? {}) as Record<string, unknown>;
 
   const rawProviders = (config['providers'] ?? {}) as Record<string, unknown>;
-  const rawLearned = (config['learned_classifier'] ?? {}) as Record<string, unknown>;
+  // Accept both spellings: this is the only multi-word section name, and a
+  // JSON config written in the core's camelCase style would otherwise lose
+  // the entire section silently (tiers/router/providers/safety/logging are
+  // spelled the same in both styles).
+  const rawLearned = (config['learned_classifier'] ??
+    config['learnedClassifier'] ?? {}) as Record<string, unknown>;
   const rawLogging = (config['logging'] ?? {}) as Record<string, unknown>;
 
   const defaultTier = str(rawRouter['default_tier'] ?? rawRouter['defaultTier'], 'mid');
@@ -130,6 +135,16 @@ export function parseConfig(
         ? { learningRate: num(rawLearned['learning_rate'], 0.5) }
         : {}),
       ...(rawLearned['epochs'] !== undefined ? { epochs: num(rawLearned['epochs'], 50) } : {}),
+      // Optional per-model feedback file, mirroring Python's
+      // learned_classifier.feedback_file fallback chain.
+      ...(((rawLearned['feedback_file'] ?? rawLearned['feedbackFile']) !== undefined)
+        ? {
+            feedbackFile: str(
+              rawLearned['feedback_file'] ?? rawLearned['feedbackFile'],
+              'feedback.jsonl',
+            ),
+          }
+        : {}),
     },
     safety: {
       requireApproval: strArray(rawSafety['require_approval'] ?? rawSafety['requireApproval']),
