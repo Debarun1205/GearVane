@@ -134,5 +134,45 @@
     "bytes": 428730208,
     "use": "Light general chat",
     "bundled": false
+  },
+  {
+    "id": "qwen2.5-7b-instruct-q4_k_m",
+    "file": "Qwen2.5-7B-Instruct-Q4_K_M.gguf",
+    "url": "https://huggingface.co/bartowski/Qwen2.5-7B-Instruct-GGUF/resolve/main/Qwen2.5-7B-Instruct-Q4_K_M.gguf",
+    "bytes": 4683074240,
+    "use": "Mid all-rounder, needs 8GB RAM",
+    "bundled": false
+  },
+  {
+    "id": "mistral-7b-instruct-v0.3-q4_k_m",
+    "file": "Mistral-7B-Instruct-v0.3-Q4_K_M.gguf",
+    "url": "https://huggingface.co/bartowski/Mistral-7B-Instruct-v0.3-GGUF/resolve/main/Mistral-7B-Instruct-v0.3-Q4_K_M.gguf",
+    "bytes": 4372812000,
+    "use": "Mid chat, needs 8GB RAM",
+    "bundled": false
+  },
+  {
+    "id": "deepseek-r1-distill-qwen-7b-q4_k_m",
+    "file": "DeepSeek-R1-Distill-Qwen-7B-Q4_K_M.gguf",
+    "url": "https://huggingface.co/bartowski/DeepSeek-R1-Distill-Qwen-7B-GGUF/resolve/main/DeepSeek-R1-Distill-Qwen-7B-Q4_K_M.gguf",
+    "bytes": 4683073504,
+    "use": "Mid reasoning, needs 8GB RAM",
+    "bundled": false
+  },
+  {
+    "id": "falcon3-7b-instruct-q4_k_m",
+    "file": "Falcon3-7B-Instruct-q4_k_m.gguf",
+    "url": "https://huggingface.co/tiiuae/Falcon3-7B-Instruct-GGUF/resolve/main/Falcon3-7B-Instruct-q4_k_m.gguf",
+    "bytes": 4569726368,
+    "use": "Mid chat, needs 8GB RAM",
+    "bundled": false
+  },
+  {
+    "id": "qwen2.5-coder-7b-instruct-q4_0",
+    "file": "qwen2.5-coder-7b-instruct-q4_0.gguf",
+    "url": "https://huggingface.co/Qwen/Qwen2.5-Coder-7B-Instruct-GGUF/resolve/main/qwen2.5-coder-7b-instruct-q4_0.gguf",
+    "bytes": 4431390720,
+    "use": "Mid coder, needs 8GB RAM",
+    "bundled": false
   }
 ]

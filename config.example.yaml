@@ -111,6 +111,17 @@ tiers:
     cost_per_token: 0.0001
     max_retries: 2
     providers:
+      # Keyless mid-tier capability: larger local weights served by the
+      # app itself. First, like the local tier; missing files fail fast
+      # and routing moves on.
+      - name: embedded
+        base_url: "http://127.0.0.1:11439"
+        models:
+          - qwen2.5-7b-instruct-q4_k_m
+          - mistral-7b-instruct-v0.3-q4_k_m
+          - deepseek-r1-distill-qwen-7b-q4_k_m
+          - falcon3-7b-instruct-q4_k_m
+          - qwen2.5-coder-7b-instruct-q4_0
       - name: openrouter
         api_key_env: OPENROUTER_API_KEY
         models:

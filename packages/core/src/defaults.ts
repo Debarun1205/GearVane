@@ -122,8 +122,23 @@ export function defaultConfig(env: Record<string, string | undefined> = {}): Gea
         description: 'Mid-tier models for medium complexity',
         // Hosted providers appear only with their key in the environment
         // (or the app vault), so a fresh install stays local-only while a
-        // single pasted key unlocks its models. Eight models total.
+        // single pasted key unlocks its models. Eight hosted models total,
+        // plus five keyless embedded ones below: mid-tier capability with
+        // no keys once downloaded, served by the app itself.
         providers: [
+          {
+            // Local-first, like the local tier: free and keyless when the
+            // weight is on disk, skipped fast when it is not.
+            name: 'embedded',
+            baseUrl: 'http://127.0.0.1:11439',
+            models: [
+              'qwen2.5-7b-instruct-q4_k_m',
+              'mistral-7b-instruct-v0.3-q4_k_m',
+              'deepseek-r1-distill-qwen-7b-q4_k_m',
+              'falcon3-7b-instruct-q4_k_m',
+              'qwen2.5-coder-7b-instruct-q4_0',
+            ],
+          },
           ...(hasOpenRouter
             ? [
                 {

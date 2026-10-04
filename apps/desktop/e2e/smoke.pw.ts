@@ -175,7 +175,7 @@ test('models dialog lists the catalog without host bridges', async ({ page }) =>
   await page.locator('#models-button').click();
   const dialog = page.locator('#models-dialog');
   await expect(dialog).toBeVisible();
-  await expect(page.locator('#models-body [data-tier="local"] .health-row')).toHaveCount(17);
+  await expect(page.locator('#models-body [data-tier="local"] .health-row')).toHaveCount(22);
   await expect(page.locator('#models-body')).toContainText('desktop app');
   await expect(page.locator('#models-body')).toContainText('qwen2.5-coder-0.5b-instruct-q4_0');
 

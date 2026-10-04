@@ -16,7 +16,7 @@ describe('default local tier', () => {
     expect(total).toBeGreaterThanOrEqual(10);
   });
 
-  it('wires eight mid and five frontier models when keys are present', () => {
+  it('wires eight hosted mid and five frontier models when keys are present', () => {
     const config = defaultConfig({
       OPENROUTER_API_KEY: 'x',
       MODEL_API_KEY: 'x',
@@ -27,15 +27,27 @@ describe('default local tier', () => {
       OPENAI_API_KEY: 'x',
       XAI_API_KEY: 'x',
     });
-    const mid = config.tiers.mid.providers.reduce((sum, p) => sum + p.models.length, 0);
-    const frontier = config.tiers.frontier.providers.reduce((sum, p) => sum + p.models.length, 0);
-    expect(mid).toBe(8);
-    expect(frontier).toBe(5);
+    const hosted = (tier: 'mid' | 'frontier'): number =>
+      config.tiers[tier].providers
+        .filter((p) => p.name !== 'embedded')
+        .reduce((sum, p) => sum + p.models.length, 0);
+    expect(hosted('mid')).toBe(8);
+    expect(hosted('frontier')).toBe(5);
   });
 
-  it('stays local-only with no keys', () => {
+  it('leads the mid tier with five keyless embedded weights', () => {
     const config = defaultConfig();
-    expect(config.tiers.mid.providers).toEqual([]);
+    const [first] = config.tiers.mid.providers;
+    expect(first?.name).toBe('embedded');
+    expect(first?.models).toHaveLength(5);
+    expect(first?.apiKeyEnv).toBeUndefined();
+  });
+
+  it('keeps hosted tiers key-gated with no keys', () => {
+    const config = defaultConfig();
+    // Only the keyless embedded entry survives; every hosted provider is
+    // absent, and frontier is entirely empty.
+    expect(config.tiers.mid.providers.map((p) => p.name)).toEqual(['embedded']);
     expect(config.tiers.frontier.providers).toEqual([]);
   });
 

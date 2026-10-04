@@ -21,8 +21,8 @@ const ENTRIES = CATALOG as CatalogEntry[];
  * upstream file fails loudly instead of silently changing the installer.
  */
 describe('model catalog', () => {
-  it('lists seventeen models', () => {
-    expect(ENTRIES).toHaveLength(17);
+  it('lists twenty-two models', () => {
+    expect(ENTRIES).toHaveLength(22);
   });
 
   it('keeps ids unique, lowercase, and matching their file stems', () => {
@@ -56,6 +56,11 @@ describe('model catalog', () => {
       'phi-3-mini-4k-instruct-q4': 2393231072,
       'qwen2.5-3b-instruct-q4_0': 1997879712,
       'qwen2.5-0.5b-instruct-q4_0': 428730208,
+      'qwen2.5-7b-instruct-q4_k_m': 4683074240,
+      'mistral-7b-instruct-v0.3-q4_k_m': 4372812000,
+      'deepseek-r1-distill-qwen-7b-q4_k_m': 4683073504,
+      'falcon3-7b-instruct-q4_k_m': 4569726368,
+      'qwen2.5-coder-7b-instruct-q4_0': 4431390720,
     });
   });
 

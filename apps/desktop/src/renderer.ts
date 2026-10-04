@@ -607,8 +607,9 @@ async function showModels(): Promise<void> {
         const name = document.createElement('span');
         name.textContent = rowData.label;
         const state = document.createElement('span');
-        state.textContent = rowData.keyed ? 'key saved' : 'needs key';
-        state.className = rowData.keyed ? 'health-status-healthy' : 'health-status-unknown';
+        state.textContent = rowData.keyless ? 'no key needed' : rowData.keyed ? 'key saved' : 'needs key';
+        state.className =
+          rowData.keyless || rowData.keyed ? 'health-status-healthy' : 'health-status-unknown';
         row.append(name, state);
         group.append(row);
       }

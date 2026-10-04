@@ -7,6 +7,7 @@
  */
 
 import type { ProviderConfig, GearVaneConfig } from '@gearvane/core';
+import { LOCAL_PROVIDER_NAMES } from '@gearvane/core';
 
 export type HostedTier = 'mid' | 'frontier';
 
@@ -14,6 +15,8 @@ export interface HostedRow {
   tier: HostedTier;
   label: string;
   keyed: boolean;
+  /** Local providers never take keys; the row says so instead. */
+  keyless: boolean;
 }
 
 /**
@@ -41,11 +44,15 @@ export function hostedModelRows(
   for (const tier of ['mid', 'frontier'] as const) {
     const providers: ProviderConfig[] = config.tiers[tier]?.providers ?? [];
     for (const provider of providers) {
+      // A local provider inside a hosted tier (the embedded mid-tier
+      // weights) needs no key and must never read as "needs key".
+      const keyless = LOCAL_PROVIDER_NAMES.includes(provider.name.toLowerCase().trim());
       for (const model of provider.models) {
         rows.push({
           tier,
           label: `${provider.name}/${model}`,
-          keyed: keyStateFor(provider, keys),
+          keyed: keyless || keyStateFor(provider, keys),
+          keyless,
         });
       }
     }

@@ -62,19 +62,13 @@ class TestShippedConfigShape:
 
     def test_hosted_providers_declare_key_env(self, config):
         # A hosted provider with no api_key_env cannot authenticate.
-        local = (
-            "ollama",
-            "lm_studio",
-            "llama_cpp",
-            "llamacpp",
-            "vllm",
-            "localai",
-            "gpt4all",
-            "textgen",
-        )
+        # Anything the factory classifies local (including the embedded
+        # provider wherever it appears) is exempt by construction.
+        from gearvane.providers import LOCAL_PROVIDER_NAMES
+
         for tier in ("mid", "frontier"):
             for provider in config["tiers"][tier]["providers"]:
-                if provider["name"] not in local:
+                if provider["name"] not in LOCAL_PROVIDER_NAMES:
                     assert "api_key_env" in provider, f"{provider['name']} has no api_key_env"
 
     def test_local_tier_covers_every_local_server(self, config):
