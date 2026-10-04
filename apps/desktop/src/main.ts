@@ -19,6 +19,7 @@ import { registerBuilderHandlers } from './builder-host.js';
 import { EMBEDDED_MODEL_DIR_ENV, startEmbeddedServer } from './embedded-server.js';
 import { registerIdeAgentHandlers } from './ide-agent-host.js';
 import { registerIdeFsHandlers } from './ide-fs-host.js';
+import { registerModelsHandlers } from './models-host.js';
 import { registerTerminalHandlers } from './terminal-host.js';
 
 const HERE = fileURLToPath(new URL('.', import.meta.url));
@@ -150,7 +151,7 @@ function describePlatform(): Record<string, string> {
  * both. A missing directory is fine: the embedded server reports itself
  * unavailable and the other local providers carry on.
  */
-export function findModelDir(): string | null {
+export function findModelDir(): string {
   const override = process.env[EMBEDDED_MODEL_DIR_ENV];
   if (override) return override;
   if (isDevelopment()) return join(HERE, '..', 'resources', 'models');
@@ -166,7 +167,7 @@ app.whenReady().then(() => {
   // install. Fire-and-forget on purpose: a missing model, a taken port, or
   // an unloadable native module only logs, never stops the app booting.
   void startEmbeddedServer({
-    modelDir: findModelDir() ?? undefined,
+    modelDir: findModelDir(),
     onLog: (message) => console.log(`[gearvane] ${message}`),
   }).catch((startupError: unknown) => {
     console.log(
@@ -233,5 +234,9 @@ registerIdeFsHandlers();
 // The IDE agent loop needs the harness tool layer, which the renderer cannot
 // load. See ide-agent-host.ts for why the split matters.
 registerIdeAgentHandlers(() => loadConfigFile().config);
+
+// Model downloads land in the same directory the embedded server serves,
+// so a finished fetch is usable without a restart. See models-host.ts.
+registerModelsHandlers(findModelDir());
 
 export { mainWindow, createWindow };

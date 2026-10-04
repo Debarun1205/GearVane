@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
@@ -135,7 +135,11 @@ describe('main process', () => {
     expect(source).toMatch(/\^https\?:/);
   });
 
-  it('falls back to defaults when a config is missing or broken', () => {
+  it('registers the model download handlers', () => {
+    // Downloads land where the embedded server serves, so the dialog and
+    // the server cannot disagree about what is installed.
+    expect(source).toMatch(/registerModelsHandlers/);
+  });  it('falls back to defaults when a config is missing or broken', () => {
     expect(source).toMatch(/defaultConfig/);
     expect(source).toMatch(/error:/);
   });
@@ -143,6 +147,29 @@ describe('main process', () => {
   it('searches for a config beside the executable when packaged', () => {
     expect(source).toMatch(/process\.resourcesPath/);
     expect(source).toMatch(/app\.getAppPath/);
+  });
+
+  it('loads the model catalog with fs, not a JSON import', () => {
+    // Regression: models-host imported ./models.json, which tsc compiles
+    // to a bare ESM JSON import. esbuild inlines those for the renderer,
+    // but Electron's Node rejects them without import attributes, so the
+    // main process died before creating a window and every Electron spec
+    // failed on firstWindow. Static assets cross into dist/ via fs reads.
+    const dir = join(APP, 'src');
+    const offenders: string[] = [];
+    const walk = (current: string): void => {
+      for (const entry of readdirSync(current, { withFileTypes: true })) {
+        const full = join(current, entry.name);
+        if (entry.isDirectory()) {
+          walk(full);
+        } else if (entry.name.endsWith('.ts') && entry.name !== 'renderer.ts') {
+          const text = read(full);
+          if (/from\s+['"]\.[^'"]*\.json['"]/.test(text)) offenders.push(full);
+        }
+      }
+    };
+    walk(dir);
+    expect(offenders).toEqual([]);
   });
 });
 
@@ -162,6 +189,13 @@ describe('preload bridge', () => {
 
   it('returns an unsubscribe function', () => {
     expect(source).toMatch(/removeListener/);
+  });
+
+  it('exposes the model catalog without arbitrary downloads', () => {
+    expect(source).toMatch(/models:\s*\{/);
+    expect(source).toMatch(/ipcRenderer\.invoke\('models:list'\)/);
+    expect(source).toMatch(/ipcRenderer\.invoke\('models:fetch'/);
+    expect(source).toMatch(/ipcRenderer\.on\('models:progress'/);
   });
 });
 

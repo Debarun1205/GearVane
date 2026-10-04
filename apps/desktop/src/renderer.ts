@@ -52,6 +52,7 @@ import type { BuilderBridge } from './builder-view.js';
 import type { TerminalBridge } from './ide/terminal.js';
 import type { AgentResult, AgentStep } from '@gearvane/harness';
 import { createWebBackend, type WebFsStorage } from './web-backend.js';
+import MODEL_CATALOG from './models.json';
 
 /** Capabilities the host may provide. Every one is optional. */
 interface HostBridge {
@@ -78,6 +79,21 @@ interface HostBridge {
 
   /** IDE agent bridge. Absent where the harness tool layer cannot load. */
   agent?: AgentBridge;
+
+  /**
+   * Model catalog bridge, present only in the desktop app.
+   *
+   * Listing and fetching run in the main process, which writes into the
+   * directory the embedded server serves. Absent in the webview, where
+   * the dialog shows the catalog read-only instead.
+   */
+  models?: {
+    list(): Promise<
+      Array<{ id: string; file: string; use: string; bytes: number; present: boolean }>
+    >;
+    fetch(id: string): Promise<{ ok: boolean; error?: string }>;
+    onProgress(handler: (progress: { id: string; done: number; total: number }) => void): () => void;
+  };
 }
 
 export interface IdeAgentModel {
@@ -197,6 +213,9 @@ const els = {
   health: byId<HTMLButtonElement>('health-button'),
   healthDialog: byId<HTMLDialogElement>('health-dialog'),
   healthBody: byId('health-body'),
+  modelsButton: byId<HTMLButtonElement>('models-button'),
+  modelsDialog: byId<HTMLDialogElement>('models-dialog'),
+  modelsBody: byId('models-body'),
   keysButton: byId<HTMLButtonElement>('keys-button'),
   keysDialog: byId<HTMLDialogElement>('keys-dialog'),
   keysFields: byId('keys-fields'),
@@ -477,6 +496,112 @@ async function showHealth(): Promise<void> {
 
     row.append(name, status);
     els.healthBody.appendChild(row);
+  }
+}
+
+interface CatalogEntry {
+  id: string;
+  file: string;
+  url: string;
+  bytes: number;
+  use: string;
+  bundled: boolean;
+}
+
+function formatMB(bytes: number): string {
+  return `${Math.round(bytes / 1048576)} MB`;
+}
+
+/**
+ * Render the Models dialog from the static catalog, then layer live
+ * status over it where the host bridge exists.
+ *
+ * Without a bridge (plain browser, Android webview) the rows still render
+ * — the catalog is bundled — with a note that downloads need the desktop
+ * app. Nothing here fetches a weight directly: listing and fetching run
+ * in the main process, which writes where the embedded server serves.
+ */
+async function showModels(): Promise<void> {
+  const entries = MODEL_CATALOG as CatalogEntry[];
+  els.modelsBody.textContent = '';
+
+  let present = new Set<string>();
+  if (bridge.models) {
+    try {
+      const listed = await bridge.models.list();
+      present = new Set(listed.filter((entry) => entry.present).map((entry) => entry.id));
+    } catch {
+      // Status is best-effort; the catalog below renders regardless.
+    }
+  } else {
+    const note = document.createElement('p');
+    note.className = 'builder-help';
+    note.textContent = 'Downloads need the desktop app; this list is what it offers.';
+    els.modelsBody.append(note);
+  }
+
+  for (const entry of entries) {
+    const row = document.createElement('div');
+    row.className = 'health-row';
+
+    const name = document.createElement('span');
+    name.textContent = `${entry.id} — ${entry.use} (${formatMB(entry.bytes)})`;
+
+    const action = document.createElement('span');
+    if (present.has(entry.id)) {
+      action.textContent = 'ready';
+      action.className = 'health-status-healthy';
+    } else if (bridge.models) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'ghost-button';
+      button.textContent = 'Download';
+      button.addEventListener('click', () => void downloadModel(entry, button, action));
+      action.append(button);
+    } else {
+      action.textContent = entry.bundled ? 'in the installer' : 'desktop only';
+      action.className = 'health-status-unknown';
+    }
+
+    row.append(name, action);
+    els.modelsBody.append(row);
+  }
+
+  if (typeof els.modelsDialog.showModal === 'function') els.modelsDialog.showModal();
+}
+
+async function downloadModel(
+  entry: CatalogEntry,
+  button: HTMLButtonElement,
+  status: HTMLElement,
+): Promise<void> {
+  if (!bridge.models) return;
+  button.disabled = true;
+  button.textContent = 'Fetching…';
+  const stop = bridge.models.onProgress((progress) => {
+    if (progress.id !== entry.id) return;
+    const pct =
+      progress.total > 0 ? Math.round((progress.done / progress.total) * 100) : 0;
+    button.textContent = `${pct}%`;
+  });
+  try {
+    const result = await bridge.models.fetch(entry.id);
+    if (result.ok) {
+      status.textContent = '';
+      const ready = document.createElement('span');
+      ready.textContent = 'ready';
+      ready.className = 'health-status-healthy';
+      status.append(ready);
+    } else {
+      button.disabled = false;
+      button.textContent = 'Retry';
+      status.title = result.error ?? 'download failed';
+    }
+  } catch {
+    button.disabled = false;
+    button.textContent = 'Retry';
+  } finally {
+    stop();
   }
 }
 
@@ -854,6 +979,7 @@ async function main(): Promise<void> {
   els.send.addEventListener('click', () => void send());
   els.cancel.addEventListener('click', cancel);
   els.health.addEventListener('click', () => void showHealth());
+  els.modelsButton.addEventListener('click', () => void showModels());
 
   const builderToggle = document.getElementById('builder-toggle');
   const builderDialog = document.getElementById('builder-dialog');
@@ -1075,6 +1201,9 @@ async function main(): Promise<void> {
 
     const healthToggle = document.getElementById('ide-health-toggle');
     healthToggle?.addEventListener('click', () => void showHealth());
+
+    const modelsToggle = document.getElementById('ide-models-toggle');
+    modelsToggle?.addEventListener('click', () => void showModels());
 
     const appearanceIdeToggle = document.getElementById('ide-appearance-toggle');
     appearanceIdeToggle?.addEventListener('click', () => openAppearance('settings'));

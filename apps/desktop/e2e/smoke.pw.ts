@@ -164,3 +164,20 @@ test('ide mounts the device-local workspace without host bridges', async ({ page
 
   expect(errors).toEqual([]);
 });
+
+test('models dialog lists the catalog without host bridges', async ({ page }) => {
+  // No bridge, so no downloads: the eight catalog rows still render from
+  // the bundled list, with the note saying where fetching works.
+  const errors = trackErrors(page);
+  await page.goto('/');
+  await page.locator('#appearance-cancel').click();
+
+  await page.locator('#models-button').click();
+  const dialog = page.locator('#models-dialog');
+  await expect(dialog).toBeVisible();
+  await expect(page.locator('#models-body .health-row')).toHaveCount(8);
+  await expect(page.locator('#models-body')).toContainText('desktop app');
+  await expect(page.locator('#models-body')).toContainText('qwen2.5-coder-0.5b-instruct-q4_0');
+
+  expect(errors).toEqual([]);
+});

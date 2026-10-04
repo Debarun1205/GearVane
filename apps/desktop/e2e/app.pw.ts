@@ -96,3 +96,25 @@ test('boots chat with onboarding, then opens the IDE', async () => {
 
   expect(errors).toEqual([]);
 });
+
+test('models dialog reports on-disk weights as ready', async () => {
+  // Real main process, real preload bridge, real resources/models dir:
+  // whatever GGUFs the developer fetched show as ready, the rest offer
+  // downloads. No download is clicked here; fetching gigabytes is not an
+  // end-to-end test's job.
+  const page = await app!.firstWindow();
+  const errors = trackErrors(page);
+
+  await expect(page.locator('#transcript')).toBeVisible();
+  await page.locator('#appearance-cancel').click();
+
+  await page.locator('#models-button').click();
+  await expect(page.locator('#models-dialog')).toBeVisible();
+  await expect(page.locator('#models-body .health-row')).toHaveCount(8);
+  // The developer machine fetched the bundled set, so at least the two
+  // installer weights report ready through the real IPC round-trip.
+  const body = await page.locator('#models-body').textContent();
+  expect(body).toContain('ready');
+
+  expect(errors).toEqual([]);
+});

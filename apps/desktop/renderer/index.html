@@ -30,6 +30,7 @@
           <button id="ide-builder-toggle" class="ghost-button" type="button">Builder</button>
           <button id="ide-health-toggle" class="ghost-button" type="button">Health</button>
           <button id="ide-keys-toggle" class="ghost-button" type="button">Keys</button>
+          <button id="ide-models-toggle" class="ghost-button" type="button">Models</button>
           <button id="ide-appearance-toggle" class="ghost-button" type="button">Look</button>
         </div>
       </header>
@@ -55,6 +56,7 @@
           <button id="builder-toggle" class="ghost-button" type="button">Builder</button>
           <button id="health-button" class="ghost-button" type="button">Health</button>
           <button id="keys-button" class="ghost-button" type="button">Keys</button>
+          <button id="models-button" class="ghost-button" type="button">Models</button>
           <button id="appearance-toggle" class="ghost-button" type="button">Look</button>
           <button id="clear-button" class="ghost-button" type="button">Clear</button>
         </div>
@@ -101,6 +103,19 @@
     <dialog id="health-dialog" class="dialog">
       <h2>Model health</h2>
       <div id="health-body" class="health-body">Checking...</div>
+      <form method="dialog">
+        <button class="ghost-button" type="submit">Close</button>
+      </form>
+    </dialog>
+
+    <dialog id="models-dialog" class="dialog" aria-label="Local models">
+      <h2>Local models</h2>
+      <p class="builder-help">
+        The embedded server runs whatever is here — no other installs. Two
+        weights ship with the app; the rest download on demand into the
+        same folder and serve without a restart.
+      </p>
+      <div id="models-body" class="health-body"></div>
       <form method="dialog">
         <button class="ghost-button" type="submit">Close</button>
       </form>

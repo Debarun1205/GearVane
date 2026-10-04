@@ -95,6 +95,24 @@ const api = {
   },
 
   /**
+   * Model catalog for the Models dialog.
+   *
+   * Listing and fetching go through the main process, which writes into
+   * the same directory the embedded server serves. The id is checked
+   * against the catalog there, so the renderer cannot aim a download at
+   * an arbitrary URL.
+   */
+  models: {
+    list: () => ipcRenderer.invoke('models:list'),
+    fetch: (id) => ipcRenderer.invoke('models:fetch', id),
+    onProgress: (handler) => {
+      const listener = (_event, progress) => handler(progress);
+      ipcRenderer.on('models:progress', listener);
+      return () => ipcRenderer.removeListener('models:progress', listener);
+    },
+  },
+
+  /**
    * Subscribe to a main-process message.
    *
    * Returns an unsubscribe function so the renderer cannot leak listeners
