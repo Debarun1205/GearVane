@@ -250,6 +250,17 @@ describe('ProviderFactory', () => {
     expect(client).toBeInstanceOf(OpenAICompatClient);
   });
 
+  it('routes the embedded provider to the loopback server without a key', () => {
+    const factory = new ProviderFactory({ env: { EMBEDDED_API_KEY: 'should-be-ignored' } });
+    const client = factory.create({
+      name: 'embedded',
+      models: ['qwen2.5-coder-0.5b-instruct-q4_0'],
+    });
+    expect(client).toBeInstanceOf(OpenAICompatClient);
+    expect(client.baseUrl).toBe('http://127.0.0.1:11439');
+    expect((client as unknown as { apiKey: string | undefined }).apiKey).toBeUndefined();
+  });
+
   it('refuses a provider with no base URL', () => {
     const factory = new ProviderFactory();
     expect(() => factory.create({ name: 'some-unknown-cloud', models: ['m'] })).toThrow(

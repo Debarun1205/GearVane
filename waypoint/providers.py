@@ -480,6 +480,7 @@ PROVIDER_REGISTRY = {
 
 # Default base URLs for hosted providers.
 DEFAULT_BASE_URLS = {
+    "embedded": "http://127.0.0.1:11439",
     "ollama": "http://localhost:11434",
     "lm_studio": "http://localhost:1234",
     "llama_cpp": "http://localhost:8080",
@@ -529,6 +530,7 @@ KEY_ENV_OVERRIDES = {
 
 LOCAL_PROVIDER_NAMES = frozenset(
     {
+        "embedded",
         "ollama",
         "lm_studio",
         "llama_cpp",

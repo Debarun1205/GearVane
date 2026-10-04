@@ -310,6 +310,7 @@ class TestProviderFactory:
     def test_local_servers_resolve_and_stay_keyless(self, monkeypatch):
         monkeypatch.setenv("LOCALAI_API_KEY", "should-be-ignored")
         cases = {
+            "embedded": "http://127.0.0.1:11439",
             "localai": "http://localhost:8080",
             "gpt4all": "http://localhost:4891",
             "textgen": "http://localhost:5000",

@@ -812,6 +812,7 @@ const REGISTRY: Record<string, new (...args: ConstructorParameters<typeof OpenAI
 };
 
 export const DEFAULT_BASE_URLS: Record<string, string> = {
+  embedded: 'http://127.0.0.1:11439',
   ollama: 'http://localhost:11434',
   lm_studio: 'http://localhost:1234',
   llama_cpp: 'http://localhost:8080',
@@ -863,25 +864,14 @@ const KEY_ENV_OVERRIDES: Record<string, string> = {
   muse: 'MODEL_API_KEY',
 };
 
-/** Local servers do not authenticate, so keys are never sent to them. */
-const LOCAL_PROVIDERS = new Set([
-  'ollama',
-  'lm_studio',
-  'llama_cpp',
-  'llamacpp',
-  'vllm',
-  'localai',
-  'gpt4all',
-  'textgen',
-]);
-
 /**
  * Names the CLI and the app treat as local: no API key needed, probed by
  * `health --offline`, and listed by `models`. Exported so the CLI filters
- * with the same list the factory enforces above instead of a copy that can
+ * with the same list the factory enforces below instead of a copy that can
  * drift (localai/gpt4all/textgen were missing from the CLI copy).
  */
 export const LOCAL_PROVIDER_NAMES: readonly string[] = [
+  'embedded',
   'ollama',
   'lm_studio',
   'llama_cpp',
@@ -891,6 +881,9 @@ export const LOCAL_PROVIDER_NAMES: readonly string[] = [
   'gpt4all',
   'textgen',
 ];
+
+/** Local servers do not authenticate, so keys are never sent to them. */
+const LOCAL_PROVIDERS = new Set<string>(LOCAL_PROVIDER_NAMES);
 
 export interface ClientFactoryOptions {
   /** Supplies API keys; kept separate so config never carries secrets. */

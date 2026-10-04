@@ -68,6 +68,16 @@ describe('desktop manifest', () => {
     expect(manifest.build.files).toContain('renderer/**/*');
   });
 
+  it('bundles the local model beside the app', () => {
+    // The embedded tier's whole point is zero setup: the GGUF travels
+    // inside the installer via extraResources, fetched at build time
+    // rather than committed to git.
+    const extra = (manifest.build.extraResources ?? []) as Array<{ from?: string; to?: string }>;
+    expect(extra.some((entry) => entry.from === 'resources/models' && entry.to === 'models')).toBe(
+      true,
+    );
+  });
+
   it('has an app id and a product name', () => {
     expect(manifest.build.appId).toBe('dev.waypoint.app');
     expect(manifest.productName).toBe('Waypoint');

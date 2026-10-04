@@ -45,6 +45,12 @@ jobs:
           npm run build --workspace @waypoint/app-core
           npm run build --workspace waypoint-app
 
+      - name: Fetch the bundled local model
+        # The GGUF is gitignored (400MB+); the installer carries it via
+        # extraResources, so release builds download it here.
+        working-directory: apps/desktop
+        run: npm run models:fetch
+
       - name: Package installers
         working-directory: apps/desktop
         run: npx electron-builder --${{ matrix.platform }} --publish never

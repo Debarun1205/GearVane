@@ -28,6 +28,14 @@ export function defaultConfig(env: Record<string, string | undefined> = {}): Way
         // Nothing here needs an API key.
         providers: [
           {
+            // The model bundled with the desktop app: nothing to install,
+            // served by the app itself on loopback. First, so a fresh
+            // install works before any server is set up.
+            name: 'embedded',
+            baseUrl: 'http://127.0.0.1:11439',
+            models: ['qwen2.5-coder-0.5b-instruct-q4_0'],
+          },
+          {
             name: 'ollama',
             baseUrl: 'http://localhost:11434',
             models: [

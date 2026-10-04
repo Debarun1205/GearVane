@@ -27,7 +27,9 @@ describe('default local tier', () => {
 
   it('gives every local provider a base URL and at least one model', () => {
     for (const provider of defaultConfig().tiers.local.providers) {
-      expect(provider.baseUrl).toMatch(/^http:\/\/localhost:/);
+      // Loopback IPs are deliberate: 127.0.0.1 skips DNS and proxy quirks
+      // that break sandboxed webviews.
+      expect(provider.baseUrl).toMatch(/^http:\/\/(localhost|127\.0\.0\.1):/);
       expect(provider.models.length).toBeGreaterThan(0);
     }
   });

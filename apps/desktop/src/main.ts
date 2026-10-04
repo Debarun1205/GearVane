@@ -16,6 +16,7 @@ import { fileURLToPath } from 'node:url';
 import { parseConfig, defaultConfig, type WaypointConfig } from '@waypoint/core';
 
 import { registerBuilderHandlers } from './builder-host.js';
+import { EMBEDDED_MODEL_DIR_ENV, startEmbeddedServer } from './embedded-server.js';
 import { registerIdeAgentHandlers } from './ide-agent-host.js';
 import { registerIdeFsHandlers } from './ide-fs-host.js';
 import { registerTerminalHandlers } from './terminal-host.js';
@@ -141,10 +142,37 @@ function describePlatform(): Record<string, string> {
   };
 }
 
+/**
+ * Where the bundled GGUF lives.
+ *
+ * Packaged builds carry resources/models via extraResources; development
+ * uses the same path under the package root. WAYPOINT_MODEL_DIR overrides
+ * both. A missing directory is fine: the embedded server reports itself
+ * unavailable and the other local providers carry on.
+ */
+export function findModelDir(): string | null {
+  const override = process.env[EMBEDDED_MODEL_DIR_ENV];
+  if (override) return override;
+  if (isDevelopment()) return join(HERE, '..', 'resources', 'models');
+  return join(process.resourcesPath, 'models');
+}
+
 app.whenReady().then(() => {
   const { error } = loadConfigFile();
 
   mainWindow = createWindow();
+
+  // The bundled local model answers the local tier with nothing else to
+  // install. Fire-and-forget on purpose: a missing model, a taken port, or
+  // an unloadable native module only logs, never stops the app booting.
+  void startEmbeddedServer({
+    modelDir: findModelDir() ?? undefined,
+    onLog: (message) => console.log(`[waypoint] ${message}`),
+  }).catch((startupError: unknown) => {
+    console.log(
+      `[waypoint] embedded model failed to start: ${startupError instanceof Error ? startupError.message : String(startupError)}`,
+    );
+  });
 
   if (error) {
     // Surface a bad config immediately rather than letting it look like a

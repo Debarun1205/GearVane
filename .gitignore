@@ -47,6 +47,10 @@ dist/
 build/
 *.egg-info/
 
+# The bundled local model (400MB+). Fetched by `npm run models:fetch`,
+# never committed; release builds download it before packaging.
+apps/desktop/resources/models/
+
 # Node / TypeScript
 node_modules/
 *.tsbuildinfo

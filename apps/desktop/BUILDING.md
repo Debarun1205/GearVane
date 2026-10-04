@@ -19,6 +19,25 @@ What is **not** in the repository, and why:
 | macOS `.dmg` | Must run on macOS; Apple does not permit building macOS installers elsewhere |
 | Android `.apk` | Android SDK, a JDK, and the Gradle wrapper in `android/` |
 
+## Bundled local model
+
+The desktop installer carries its own local model (Qwen2.5-Coder 0.5B,
+Q4, ~400MB), so a fresh install answers the local tier with nothing else
+to set up. The GGUF is **not** committed to git; fetch it before packaging:
+
+```bash
+cd apps/desktop
+npm run models:fetch   # downloads into resources/models/ (gitignored)
+npm run dist:win       # or dist:linux / dist
+```
+
+`extraResources` copies `resources/models` beside the app, where the main
+process serves it on loopback. Without the file the embedded tier reports
+unavailable and the other local providers carry on — the app never
+downloads a model on its own. Point `WAYPOINT_MODEL_DIR` elsewhere, or
+`WAYPOINT_EMBEDDED_MODEL` at a different GGUF name, to run another model.
+The release workflow fetches automatically on tag builds.
+
 ## Windows
 
 ```bash

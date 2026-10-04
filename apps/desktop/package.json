@@ -25,6 +25,7 @@
     "test": "vitest run",
     "test:e2e": "npm run build && playwright test",
     "lint": "eslint src",
+    "models:fetch": "node scripts/fetch-model.mjs",
     "start": "npm run build && electron dist/main.js",
     "dist": "npm run build && electron-builder",
     "dist:linux": "npm run build && electron-builder --linux",
@@ -39,7 +40,8 @@
     "@waypoint/harness": "0.3.0",
     "@xterm/addon-fit": "^0.10.0",
     "@xterm/xterm": "^5.5.0",
-    "monaco-editor": "^0.52.2"
+    "monaco-editor": "^0.52.2",
+    "node-llama-cpp": "3.22.1"
   },
   "devDependencies": {
     "@capacitor/android": "^6.2.0",
@@ -62,6 +64,12 @@
     "files": [
       "dist/**/*",
       "renderer/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "resources/models",
+        "to": "models"
+      }
     ],
     "linux": {
       "target": [
