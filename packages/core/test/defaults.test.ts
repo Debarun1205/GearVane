@@ -52,12 +52,17 @@ describe('default local tier', () => {
     expect(last?.apiKeyEnv).toBeUndefined();
   });
 
-  it('keeps hosted tiers key-gated with no keys', () => {
+  it('keeps hosted providers key-gated with no keys', () => {
     const config = defaultConfig();
-    // Only the keyless embedded entry survives; every hosted provider is
-    // absent, and frontier is entirely empty.
+    // Only keyless embedded entries survive anywhere: every hosted
+    // provider is absent from all three tiers.
+    for (const tier of [config.tiers.local, config.tiers.mid, config.tiers.frontier]) {
+      for (const provider of tier.providers) {
+        expect(provider.apiKeyEnv).toBeUndefined();
+      }
+    }
     expect(config.tiers.mid.providers.map((p) => p.name)).toEqual(['embedded']);
-    expect(config.tiers.frontier.providers).toEqual([]);
+    expect(config.tiers.frontier.providers.map((p) => p.name)).toEqual(['embedded']);
   });
 
   it('covers every local server the factory supports', () => {
