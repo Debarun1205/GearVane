@@ -180,6 +180,25 @@ describe('renderer', () => {
   });
 });
 
+describe('IDE without a terminal', () => {
+  // The Android webview has no PTY to own, so the view must mount without
+  // one rather than demanding it. Source-level pins: the view needs a DOM
+  // and Monaco, which the node test environment cannot host.
+  const view = read(APP, 'src', 'ide', 'ide-view.ts');
+
+  it('accepts a missing terminal bridge', () => {
+    expect(view).toMatch(/terminal\?: TerminalBridge/);
+  });
+
+  it('shows Problems instead of a dead Terminal tab', () => {
+    expect(view).toMatch(/No shell, no Terminal tab/);
+  });
+
+  it('still disposes the terminal where one exists', () => {
+    expect(view).toMatch(/this\.terminal\?\.dispose\(\)/);
+  });
+});
+
 describe('renderer assets', () => {
   it('ships an html entry point', () => {
     expect(existsSync(join(RENDERER, 'index.html'))).toBe(true);

@@ -98,7 +98,11 @@ export interface AgentBridge {
 
 export interface IdeViewOptions {
   workspaceRoot: string;
-  terminal: TerminalBridge;
+  /**
+   * Terminal bridge. Absent where no shell exists — the Android webview has
+   * no PTY to own — and the bottom pane then shows only the Problems tab.
+   */
+  terminal?: TerminalBridge;
   fs: FsBridge;
   agent: AgentBridge;
   /**
@@ -444,22 +448,29 @@ export class IdeView {
     const showTerminal = (): void => {
       terminalHost.removeAttribute('hidden');
       problemsHost.setAttribute('hidden', '');
-      terminalTab.classList.add('ide-tab-active');
+      terminalTab?.classList.add('ide-tab-active');
       problemsTab.classList.remove('ide-tab-active');
     };
     const showProblems = (): void => {
       problemsHost.removeAttribute('hidden');
       terminalHost.setAttribute('hidden', '');
       problemsTab.classList.add('ide-tab-active');
-      terminalTab.classList.remove('ide-tab-active');
+      terminalTab?.classList.remove('ide-tab-active');
     };
 
-    const terminalTab = this.tab('Terminal', true, showTerminal);
-    const problemsTab = this.tab('Problems', false, showProblems);
-    tabs.append(terminalTab, problemsTab);
+    // No shell, no Terminal tab: the webview backend cannot own a PTY, so
+    // the pane opens on Problems instead of offering a dead terminal.
+    const hasTerminal = this.options.terminal !== undefined;
+    const terminalTab = hasTerminal ? this.tab('Terminal', true, showTerminal) : undefined;
+    const problemsTab = this.tab('Problems', !hasTerminal, showProblems);
+    if (terminalTab) tabs.append(terminalTab);
+    tabs.append(problemsTab);
     this.problemsTab = problemsTab;
+    if (!hasTerminal) terminalHost.setAttribute('hidden', '');
 
-    this.terminal = createTerminal(terminalHost, this.options.terminal, this.options.workspaceRoot);
+    if (hasTerminal && this.options.terminal) {
+      this.terminal = createTerminal(terminalHost, this.options.terminal, this.options.workspaceRoot);
+    }
 
     return pane;
   }
