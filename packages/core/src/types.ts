@@ -90,15 +90,8 @@ export interface LearnedClassifierConfig {
   feedbackFile?: string;
 }
 
-export interface SpendLimits {
-  perSession: number;
-  perDay: number;
-  perTask: number;
-}
-
 export interface SafetyConfig {
   requireApproval: string[];
-  spendLimits: SpendLimits;
   sandboxAllowed: string[];
   blockedCommands: string[];
 }

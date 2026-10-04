@@ -328,11 +328,6 @@ export function defaultConfig(env: Record<string, string | undefined> = {}): Gea
         'merge_pr',
         'delete_branch',
       ],
-      spendLimits: {
-        perSession: 10,
-        perDay: 50,
-        perTask: 5,
-      },
       sandboxAllowed: ['git status', 'git log', 'git diff', 'ls', 'cat', 'pytest'],
       blockedCommands: ['rm -rf', 'sudo', 'chmod 777', 'dd if='],
     },

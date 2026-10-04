@@ -303,7 +303,7 @@ export class GearVaneExtension implements vscode.Disposable {
       ``,
       `## Configuration`,
       `- Source: ${this.configPath ?? 'built-in defaults'}`,
-      `- Per-task budget: $${this.config.safety.spendLimits.perTask}`,
+      `- Per-task budget: $`,
     ];
 
     const document = await vscode.workspace.openTextDocument({
@@ -371,13 +371,11 @@ export class GearVaneExtension implements vscode.Disposable {
     const status = this.requireOrchestrator().spend.getStatus();
     this.output.show(true);
     this.logLine(
-      `spend  session $${status.sessionSpend.toFixed(4)} / ` +
-        `$${this.config.safety.spendLimits.perSession}  ` +
+      `spend  session $${status.sessionSpend.toFixed(4)} ` +
         `task $${status.taskSpend.toFixed(4)}`,
     );
     void vscode.window.showInformationMessage(
-      `GearVane session spend $${status.sessionSpend.toFixed(2)} of ` +
-        `$${this.config.safety.spendLimits.perSession}`,
+      `GearVane session spend $${status.sessionSpend.toFixed(2)}`,
     );
   }
 
@@ -522,15 +520,11 @@ export class GearVaneExtension implements vscode.Disposable {
     const spend: SessionEntry[] = status
       ? [
           {
-            label: `Session  ${formatUsd(status.sessionSpend)} / ${formatUsd(
-              this.config.safety.spendLimits.perSession,
-            )}`,
+            label: `Session  ${formatUsd(status.sessionSpend)}`,
             icon: 'account',
           },
           {
-            label: `Task  ${formatUsd(status.taskSpend)} / ${formatUsd(
-              this.config.safety.spendLimits.perTask,
-            )}`,
+            label: `Task  ${formatUsd(status.taskSpend)}`,
             icon: 'account',
           },
         ]

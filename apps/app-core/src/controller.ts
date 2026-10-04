@@ -237,10 +237,6 @@ export class AppController {
     return this.orchestrator.cost.getStats();
   }
 
-  limits(): { perTask: number; perSession: number; perDay: number } {
-    return this.options.config.safety.spendLimits;
-  }
-
   /** Exposed so the UI can preview a gated command before running it. */
   gate(command: string): ReturnType<SafetyManager['check']> {
     return this.safety.check(command);

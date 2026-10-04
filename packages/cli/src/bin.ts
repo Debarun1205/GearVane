@@ -366,19 +366,18 @@ function cmdCost(args: ParsedArgs, config: GearVaneConfig, json: boolean): numbe
   });
 
   const status = orchestrator.spend.getStatus();
-  const limits = config.safety.spendLimits;
 
   if (json) {
     process.stdout.write(
-      `${JSON.stringify({ spend: status, limits, cost: orchestrator.cost.getStats() }, null, 2)}\n`,
+      `${JSON.stringify({ spend: status, cost: orchestrator.cost.getStats() }, null, 2)}\n`,
     );
     return 0;
   }
 
   process.stdout.write(
-    `session  $${status.sessionSpend.toFixed(2)} / $${limits.perSession}\n` +
-      `day      $${status.daySpend.toFixed(2)} / $${limits.perDay}\n` +
-      `task     $${status.taskSpend.toFixed(2)} / $${limits.perTask}\n`,
+    `session  $${status.sessionSpend.toFixed(2)}\n` +
+      `day      $${status.daySpend.toFixed(2)}\n` +
+      `task     $${status.taskSpend.toFixed(2)}\n`,
   );
 
   const stats = orchestrator.cost.getStats();
@@ -433,12 +432,6 @@ function cmdSafety(args: ParsedArgs, config: GearVaneConfig, json: boolean): num
 
     case 'spend':
     case undefined: {
-      const limits = config.safety.spendLimits;
-      process.stdout.write(
-        `per task      $${limits.perTask}\n` +
-          `per session   $${limits.perSession}\n` +
-          `per day       $${limits.perDay}\n`,
-      );
       return 0;
     }
 

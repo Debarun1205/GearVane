@@ -34,11 +34,6 @@ export interface AppState {
   /** True while a request is in flight. */
   busy: boolean;
   sessionSpendUsd: number;
-  limits: {
-    perTask: number;
-    perSession: number;
-    perDay: number;
-  };
   error: string | null;
 }
 
@@ -48,7 +43,6 @@ export function initialState(): AppState {
     draft: '',
     busy: false,
     sessionSpendUsd: 0,
-    limits: { perTask: 5, perSession: 10, perDay: 50 },
     error: null,
   };
 }
@@ -151,7 +145,7 @@ export function reducer(state: AppState, action: Action): AppState {
       return { ...state, error: null };
 
     case 'clear':
-      return { ...initialState(), limits: state.limits };
+      return initialState();
 
     default:
       return state;
@@ -211,16 +205,6 @@ export function totalCostUsd(state: AppState): number {
   return round(
     state.messages.reduce((sum, message) => sum + (message.costUsd ?? 0), 0),
   );
-}
-
-export function spendFraction(state: AppState): number {
-  if (state.limits.perSession <= 0) return 1;
-  return Math.min(state.sessionSpendUsd / state.limits.perSession, 1);
-}
-
-/** True when the session budget is exhausted and further requests will fail. */
-export function budgetExhausted(state: AppState): boolean {
-  return state.sessionSpendUsd >= state.limits.perSession;
 }
 
 export function canSubmit(state: AppState): boolean {

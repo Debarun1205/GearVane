@@ -5,7 +5,6 @@ import type { SafetyConfig } from '../src/types.js';
 
 const safety = (): SafetyConfig => ({
   requireApproval: ['git_push', 'git_force_push', 'deploy_production', 'merge_pr'],
-  spendLimits: { perSession: 10, perDay: 50, perTask: 5 },
   sandboxAllowed: ['git status', 'git log', 'ls', 'cat'],
   blockedCommands: ['rm -rf', 'sudo'],
 });

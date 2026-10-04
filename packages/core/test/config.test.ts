@@ -133,10 +133,6 @@ describe('parseConfig', () => {
     '  require_approval:',
     '    - git_push',
     '    - deploy_production',
-    '  spend_limits:',
-    '    per_task: 2.5',
-    '    per_session: 12.0',
-    '    per_day: 60.0',
     '  blocked_commands:',
     '    - "rm -rf"',
   ].join('\n');
@@ -211,9 +207,6 @@ describe('parseConfig', () => {
 
   it('reads safety limits', () => {
     const config = parseConfig(sample);
-    expect(config.safety.spendLimits.perTask).toBeCloseTo(2.5);
-    expect(config.safety.spendLimits.perSession).toBeCloseTo(12);
-    expect(config.safety.spendLimits.perDay).toBeCloseTo(60);
     expect(config.safety.requireApproval).toEqual(['git_push', 'deploy_production']);
     expect(config.safety.blockedCommands).toEqual(['rm -rf']);
   });
@@ -222,7 +215,6 @@ describe('parseConfig', () => {
     const config = parseConfig('router:\n  default_tier: local\n');
     expect(config.router.defaultTier).toBe('local');
     expect(config.router.escalation.maxAttemptsPerTier).toBe(2);
-    expect(config.safety.spendLimits.perTask).toBeCloseTo(5);
     expect(config.providers.timeoutSeconds).toBeCloseTo(120);
   });
 

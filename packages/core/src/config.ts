@@ -76,7 +76,6 @@ export function parseConfig(
   const rawEscalation = (rawRouter['escalation'] ?? {}) as Record<string, unknown>;
 
   const rawSafety = (config['safety'] ?? {}) as Record<string, unknown>;
-  const rawLimits = (rawSafety['spend_limits'] ?? {}) as Record<string, unknown>;
 
   const rawProviders = (config['providers'] ?? {}) as Record<string, unknown>;
   // Accept both spellings: this is the only multi-word section name, and a
@@ -148,11 +147,6 @@ export function parseConfig(
     },
     safety: {
       requireApproval: strArray(rawSafety['require_approval'] ?? rawSafety['requireApproval']),
-      spendLimits: {
-        perSession: num(rawLimits['per_session'] ?? rawLimits['perSession'], 10),
-        perDay: num(rawLimits['per_day'] ?? rawLimits['perDay'], 50),
-        perTask: num(rawLimits['per_task'] ?? rawLimits['perTask'], 5),
-      },
       sandboxAllowed: strArray(
         rawSafety['sandbox_allowed'] ?? rawSafety['sandboxAllowed'],
       ),

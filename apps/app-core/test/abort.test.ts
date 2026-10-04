@@ -22,7 +22,7 @@ const config = (): GearVaneConfig => {
     providers: { timeoutSeconds: 5, maxRetries: 0, retryBaseDelay: 0, retryMaxDelay: 0 },
     safety: {
       ...base.safety,
-      spendLimits: { perSession: 100, perDay: 100, perTask: 100 },
+      
     },
   };
 };

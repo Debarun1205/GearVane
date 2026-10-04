@@ -10,12 +10,10 @@
 import {
   AppController,
   SAMPLE_PROMPTS,
-  budgetExhausted,
   canSubmit,
   initialState,
   nextId,
   reducer,
-  spendFraction,
   type Action,
   type AppState,
 } from '@gearvane/app-core';
@@ -202,7 +200,7 @@ function applyKeys(): void {
     activeConfig = defaultConfig(readEnv());
   }
   if (!activeConfig) return;
-  state = { ...state, limits: activeConfig.safety.spendLimits };
+  
   controller = buildController(activeConfig);
   syncKeysButton();
   render();
@@ -528,22 +526,14 @@ function renderTierBadge(): void {
 }
 
 function renderSpend(): void {
-  const fraction = spendFraction(state);
-  els.spendFill.style.width = `${Math.round(fraction * 100)}%`;
-  els.spendFill.className =
-    'spend-fill' + (fraction >= 1 ? ' spend-full' : fraction >= 0.7 ? ' warn' : '');
-  els.spendMeter.title = `$${state.sessionSpendUsd.toFixed(4)} of $${state.limits.perSession}`;
+  els.spendFill.style.width = '100%';
+  els.spendFill.className = 'spend-fill';
+  els.spendMeter.title = `$${state.sessionSpendUsd.toFixed(4)}`;
 }
 
 function renderComposer(): void {
   els.send.disabled = !canSubmit(state);
   els.cancel.hidden = !state.busy;
-
-  if (budgetExhausted(state)) {
-    els.hint.textContent =
-      'Session budget reached. Raise safety.spend_limits or clear the session to keep going.';
-    els.hint.classList.add('warn');
-  }
 }
 
 function renderSamples(): void {
@@ -1428,7 +1418,7 @@ async function main(): Promise<void> {
   const { config, error, fromDefaults } = await resolveConfig();
   activeConfig = applyPosture(config);
   configFromDefaults = fromDefaults ?? false;
-  state = { ...state, limits: config.safety.spendLimits };
+  state = { ...state };
   controller = buildController(config);
   wireKeys();
   syncKeysButton();
@@ -1466,7 +1456,7 @@ async function main(): Promise<void> {
   els.clear.addEventListener('click', () => {
     controller?.cancelAll();
     activeTaskId = null;
-    state = { ...initialState(), limits: state.limits };
+    state = { ...initialState() };
 
     // The welcome panel is removed on first message, so put it back.
     if (!els.welcome.isConnected) {

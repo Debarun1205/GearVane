@@ -23,7 +23,7 @@ import type { ToolContext } from '../src/tools/types.js';
 
 const SAFETY: SafetyConfig = {
   requireApproval: ['git_push', 'deploy_production', 'destructive'],
-  spendLimits: { perSession: 10, perDay: 50, perTask: 5 },
+  
   sandboxAllowed: ['git status', 'echo', 'node', 'pwd'],
   blockedCommands: ['rm -rf', 'sudo', 'format'],
 };

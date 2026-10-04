@@ -23,27 +23,14 @@ export class BudgetExceededError extends Error {
   }
 }
 
-export interface SpendLimits {
-  perSession: number;
-  perDay: number;
-  perTask: number;
-}
-
 export interface SpendStatus {
   sessionSpend: number;
   daySpend: number;
   taskSpend: number;
-  sessionRemaining: number;
-  dayRemaining: number;
-  taskRemaining: number;
 }
 
 /**
- * Tracks spend against per-task, per-session, and per-day ceilings.
- *
- * Per-task spend resets when the task id changes. The Python implementation
- * originally never reset it, so one expensive task blocked every later task
- * for the life of the process; this version resets on task change.
+ * Tracks spend without any limits.
  */
 export class SpendTracker {
   sessionSpend = 0;
@@ -54,7 +41,6 @@ export class SpendTracker {
   private readonly dayEntries: Array<{ at: number; amount: number }> = [];
 
   constructor(
-    readonly limits: SpendLimits,
     private readonly now: () => number = Date.now,
   ) {}
 
@@ -77,11 +63,7 @@ export class SpendTracker {
   canSpend(amount: number, taskId?: string): boolean {
     if (taskId !== undefined) this.startTask(taskId);
     this.pruneDay();
-    return (
-      this.sessionSpend + amount <= this.limits.perSession &&
-      this.daySpend + amount <= this.limits.perDay &&
-      this.taskSpend + amount <= this.limits.perTask
-    );
+    return true;
   }
 
   recordSpend(amount: number, taskId?: string): void {
@@ -106,9 +88,6 @@ export class SpendTracker {
       sessionSpend: round(this.sessionSpend),
       daySpend: round(this.daySpend),
       taskSpend: round(this.taskSpend),
-      sessionRemaining: round(this.limits.perSession - this.sessionSpend),
-      dayRemaining: round(this.limits.perDay - this.daySpend),
-      taskRemaining: round(this.limits.perTask - this.taskSpend),
     };
   }
 }
@@ -233,7 +212,7 @@ export class Orchestrator {
 
   constructor(config: GearVaneConfig, options: OrchestratorOptions = {}) {
     this.router = new TierRouter(config, { learnedModel: options.learnedModel });
-    this.spend = new SpendTracker(config.safety.spendLimits, options.now);
+    this.spend = new SpendTracker(options.now);
     this.providers = new ProviderFactory({
       env: options.env ?? {},
       timeoutMs: config.providers.timeoutSeconds * 1000,
