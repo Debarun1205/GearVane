@@ -261,20 +261,20 @@ describe('downloads', () => {
 });
 
 describe('platform claims are scoped to what ships', () => {
-  it('scopes the IDE claim to the desktop', () => {
-    // Regression: the hero read "...and Android - as a CLI, a VS Code
-    // extension, and a full IDE." The Android webview has no preload
-    // bridge, so the renderer hides the IDE button there; the page was
-    // advertising something the app itself hides.
-    expect(prose).toContain('full IDE on the desktop');
-    expect(prose).not.toMatch(/and Android [^.]*a full IDE\./);
+  it('claims the IDE on desktop and Android alike', () => {
+    // The webview backend mounts the IDE over a device-local workspace, so
+    // the hero no longer scopes it to the desktop. The scope that remains
+    // is the honest one: terminal and file-changing builds stay behind.
+    expect(prose).toContain('full IDE on desktop and Android alike');
+    expect(prose).toContain('device-local workspace');
   });
 
   it('describes the Android build as the webview it is', () => {
     // The download card is where a phone visitor decides; it has to say
     // what the APK does and does not carry.
     expect(prose).toMatch(/run in a webview/);
-    expect(prose).toMatch(/IDE, files, and terminal desktop-only/);
+    expect(prose).toMatch(/IDE over a device-local workspace/);
+    expect(prose).toMatch(/terminal.*desktop-only/);
   });
 
   it('lists the Android scope among the known limitations', () => {
@@ -284,10 +284,12 @@ describe('platform claims are scoped to what ships', () => {
   });
 
   it('answers the Android IDE question in the FAQ', () => {
-    // The question a phone visitor actually has, answered with the cause
-    // (no preload bridge) rather than a vague "coming soon".
+    // The question a phone visitor actually has, answered with the scope
+    // (device-local workspace, Ask agent) and the cause (no shell, so no
+    // terminal and no file-changing builds).
     expect(prose).toContain('Does the Android build include the IDE?');
-    expect(prose).toMatch(/no preload bridge/);
+    expect(prose).toMatch(/device-local workspace/);
+    expect(prose).toMatch(/no shell/);
   });
 });
 

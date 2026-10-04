@@ -144,3 +144,23 @@ test('keys dialog stores keys on this device', async ({ page }) => {
 
   expect(errors).toEqual([]);
 });
+
+test('ide mounts the device-local workspace without host bridges', async ({ page }) => {
+  // The static server injects no window.waypoint, exactly like the Android
+  // webview: the IDE button must be visible, and opening it mounts the
+  // editor over the seeded workspace rather than an error.
+  const errors = trackErrors(page);
+  await page.goto('/');
+  await page.locator('#appearance-cancel').click();
+
+  await expect(page.locator('#ide-toggle')).toBeVisible();
+  await page.locator('#ide-toggle').click();
+  await expect(page.locator('#ide-root')).toBeVisible();
+  await expect(page.locator('#ide')).toContainText('README.md');
+
+  // The workspace persists: reload reopens the IDE where it left off.
+  await page.reload();
+  await expect(page.locator('#ide-root')).toBeVisible();
+
+  expect(errors).toEqual([]);
+});

@@ -346,6 +346,14 @@ describe('the renderer gates the IDE on all three bridges', () => {
     expect(renderer).toMatch(/removeAttribute\('hidden'\)/);
   });
 
+  it('falls back to the device-local backend without host bridges', () => {
+    // No host bridges (Android webview, plain browser): files and the Ask
+    // agent come from the web backend instead of an empty IDE button.
+    expect(renderer).toMatch(/createWebBackend/);
+    expect(renderer).toMatch(/bridge\.ideFs \?\? webBackend\?\.ideFs/);
+    expect(renderer).toMatch(/bridge\.agent \?\? webBackend\?\.agent/);
+  });
+
   it('remembers the workspace between launches', () => {
     expect(renderer).toMatch(/waypoint\.ide\.root/);
     expect(renderer).toMatch(/rememberWorkspaceRoot/);

@@ -61,8 +61,9 @@
           </div>
           <p class="hero-note">
             Works on Windows, Linux, macOS, and Android - as a CLI, a VS Code
-            extension, and a full IDE on the desktop. Android runs the app
-            itself in a webview. Bring your own keys, or run entirely on
+            extension, and a full IDE on desktop and Android alike. Android runs the app
+            itself in a webview, where the IDE works over a device-local workspace.
+            Bring your own keys, or run entirely on
             your own machine.
           </p>
         </div>
@@ -123,7 +124,7 @@
                 <h3>local</h3>
                 <span class="tier-cost">free</span>
               </header>
-              <p>Ollama, LM Studio, llama.cpp, vLLM</p>
+              <p>Ollama, LM Studio, llama.cpp, vLLM, LocalAI, GPT4All, oobabooga</p>
               <ul>
                 <li>Typos, formatting, renames</li>
                 <li>Small mechanical refactors</li>
@@ -328,8 +329,9 @@
               <h3>Android</h3>
               <p>
                 Debug APK, built from the same renderer bundle and run in a
-                webview: onboarding, settings, and the chat UI, with the IDE,
-                files, and terminal desktop-only for now.
+                webview: onboarding, settings, chat, and the IDE over a
+                device-local workspace. The terminal and file-changing
+                builds stay desktop-only.
               </p>
               <a
                 class="button button-small"
@@ -796,12 +798,12 @@ code --install-extension waypoint-0.3.0.vsix</code></pre>
           <details class="faq-item">
             <summary>Does the Android build include the IDE?</summary>
             <p>
-              Not yet. The APK runs the same renderer in a webview, so you get
-              the app shell - onboarding, settings, and the chat UI - but a
-              webview has no preload bridge, which is what supplies the file
-              tree, terminal, and agent. The app hides those buttons on
-              Android instead of letting them fail, and file access stays
-              desktop-only for now.
+              Yes. The APK runs the same renderer in a webview, and the IDE
+              mounts over a device-local workspace kept in the app's own
+              storage: editor, file tree, search, and the Ask-mode agent all
+              work there. A webview has no shell, so there is no terminal,
+              and file-changing builds stay desktop-only. The workspace
+              README created on first launch says exactly this.
             </p>
           </details>
         </div>

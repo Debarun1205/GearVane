@@ -51,6 +51,7 @@ import {
 import type { BuilderBridge } from './builder-view.js';
 import type { TerminalBridge } from './ide/terminal.js';
 import type { AgentResult, AgentStep } from '@waypoint/harness';
+import { createWebBackend, type WebFsStorage } from './web-backend.js';
 
 /** Capabilities the host may provide. Every one is optional. */
 interface HostBridge {
@@ -764,6 +765,30 @@ function readEnv(): Record<string, string | undefined> {
 }
 
 /**
+ * Device-local workspace storage for the web backend, beside the
+ * appearance settings and the key vault.
+ *
+ * A never-throwing wrapper: losing the workspace must not kill the app,
+ * and the backend treats a missing snapshot as a fresh workspace.
+ */
+const webFsStorage: WebFsStorage = {
+  getItem: (key) => {
+    try {
+      return window.localStorage.getItem(key);
+    } catch {
+      return null;
+    }
+  },
+  setItem: (key, value) => {
+    try {
+      window.localStorage.setItem(key, value);
+    } catch {
+      // Device-local and non-essential; skip it.
+    }
+  },
+};
+
+/**
  * Device-local key vault, beside the appearance settings.
  *
  * A never-throwing wrapper like the appearance one: storage can be
@@ -838,9 +863,10 @@ async function main(): Promise<void> {
     });
   }
 
-  // The chat view's IDE button. It stays visible wherever the bridges exist
-  // and opens the full-window IDE; where they do not (Android) it is hidden
-  // by the mount block below.
+  // The chat view's IDE button. It stays visible wherever the IDE can
+  // mount — over host bridges on desktop, over the device-local web
+  // backend elsewhere — and is hidden by the mount block below only
+  // where neither exists.
   const ideToggle = document.getElementById('ide-toggle');
 
   els.clear.addEventListener('click', () => {
@@ -896,9 +922,10 @@ async function main(): Promise<void> {
 
   // The IDE is the desktop app's main UI. It needs a terminal bridge, a
   // filesystem bridge, and an agent bridge, so it only mounts where all three
-  // exist — the Android webview has none of them and keeps the chat UI.
-  // Monaco is loaded on demand, because it is several megabytes and the chat
-  // view must not pay for it.
+  // exist — everywhere else (the Android webview, a plain browser) the
+  // device-local web backend provides files and an Ask agent instead, and
+  // the IDE mounts over that. Monaco is bundled, so the chat view pays
+  // nothing until the IDE opens.
   //
   // On launch the IDE opens straight into the last workspace. With no stored
   // workspace the app opens on chat instead of popping a native folder dialog
@@ -906,9 +933,21 @@ async function main(): Promise<void> {
   const ideHost = document.getElementById('ide');
   const ideRoot = document.getElementById('ide-root');
   const appRoot = document.querySelector('.app');
-  const ideCapable = Boolean(
-    ideHost && ideRoot && bridge.terminal && bridge.ideFs && bridge.agent,
-  );
+  const hostIde = bridge.terminal && bridge.ideFs && bridge.agent;
+  // The web backend fills exactly the gap the webview has: no host bridges
+  // at all. Where real bridges exist it is never created, so desktop
+  // behaviour is untouched — and its localStorage seed never writes there.
+  const webBackend = !hostIde
+    ? createWebBackend({
+        config: () => activeConfig ?? defaultConfig(readEnv()),
+        env: readEnv,
+        storage: webFsStorage,
+      })
+    : null;
+  const terminal = bridge.terminal;
+  const ideFs = bridge.ideFs ?? webBackend?.ideFs;
+  const agent = bridge.agent ?? webBackend?.agent;
+  const ideCapable = Boolean(ideHost && ideRoot && ideFs && agent);
 
   if (!ideCapable && ideToggle instanceof HTMLButtonElement) {
     ideToggle.hidden = true;
@@ -916,12 +955,8 @@ async function main(): Promise<void> {
 
   if (
     ideCapable && ideHost && ideRoot && appRoot &&
-    bridge.terminal && bridge.ideFs && bridge.agent
+    ideFs && agent
   ) {
-    const terminal = bridge.terminal;
-    const ideFs = bridge.ideFs;
-    const agent = bridge.agent;
-
     const mountIde = async (root: string): Promise<boolean> => {
       try {
         const { IdeView } = await import('./ide/ide-view.js');
@@ -981,7 +1016,8 @@ async function main(): Promise<void> {
           // launch. Only when there is none does the native picker appear -
           // asking for a folder the user already chose would be a riddle,
           // and a dialog nothing can dismiss is also what stood between
-          // this handler and its first passing end-to-end test.
+          // this handler and its first passing end-to-end test. Without a
+          // host picker (web backend) the fixed device workspace opens.
           const stored = storedWorkspaceRoot();
           if (stored) {
             mounted = await mountIde(stored);
@@ -989,7 +1025,7 @@ async function main(): Promise<void> {
           }
           const root = bridge.workspaceRoot
             ? await bridge.workspaceRoot()
-            : null;
+            : await webBackend?.workspaceRoot() ?? null;
           if (root) mounted = await mountIde(root);
         })();
       });
@@ -999,6 +1035,11 @@ async function main(): Promise<void> {
     chatToggle?.addEventListener('click', showChat);
 
     const folderButton = document.getElementById('ide-folder-button');
+    // The web backend owns one fixed workspace, so the folder picker has
+    // nothing to pick there and stays hidden with it.
+    if (folderButton && !bridge.workspaceRoot) {
+      folderButton.setAttribute('hidden', '');
+    }
     folderButton?.addEventListener('click', () => {
       void (async () => {
         const root = bridge.workspaceRoot ? await bridge.workspaceRoot() : null;
