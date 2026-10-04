@@ -325,11 +325,14 @@ async function pickerEntries(): Promise<ModelPickerEntry[]> {
 
   const config = activeConfig;
   if (config) {
+    // Only keyed hosted rows: keyless embedded models are already in
+    // the catalog above, and showing them twice would be a duplicate.
     for (const row of hostedModelRows(config, loadKeys(keyStorage))) {
+      if (row.keyless) continue;
       entries.push({
         id: row.label,
         label: row.label,
-        detail: row.keyless ? `${row.tier} · no key needed` : row.tier,
+        detail: row.tier,
       });
     }
   }

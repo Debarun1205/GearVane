@@ -142,3 +142,52 @@ test('models dialog reports on-disk weights as ready', async () => {
 
   expect(errors).toEqual([]);
 });
+
+test('chat model picker lists models, marks installed, and pins a choice', async () => {
+  // A seeded models dir gives one weight the green installed marker.
+  const modelsDir = await mkdtemp(join(tmpdir(), 'gearvane-models-'));
+  await writeFile(join(modelsDir, 'qwen2.5-coder-0.5b-instruct-q4_0.gguf'), 'fake-bytes');
+
+  await app?.close();
+  const userData = await mkdtemp(join(tmpdir(), 'gearvane-e2e-'));
+  const env: Record<string, string> = {};
+  for (const [key, value] of Object.entries(process.env)) {
+    if (value !== undefined) env[key] = value;
+  }
+  env['GEARVANE_MODEL_DIR'] = modelsDir;
+  app = await electron.launch({
+    args: [MAIN, '--no-sandbox', '--disable-gpu', `--user-data-dir=${userData}`],
+    env,
+  });
+
+  const page = await app!.firstWindow();
+  const errors = trackErrors(page);
+
+  await expect(page.locator('#transcript')).toBeVisible();
+  await page.locator('#appearance-cancel').click();
+
+  // The header picker opens on Auto with the catalog listed.
+  const button = page.locator('#model-picker-host .model-picker-button');
+  await expect(button).toBeVisible();
+  await expect(button).toHaveText('Auto');
+  await button.click();
+  const panel = page.locator('#model-picker-host .model-picker-panel');
+  await expect(panel).toBeVisible();
+  // Auto plus the thirty-five downloadable weights.
+  await expect(panel.locator('.model-picker-row')).toHaveCount(36);
+
+  // The seeded weight carries the green installed marker.
+  const seeded = panel.locator(
+    '.model-picker-row[data-model-id="qwen2.5-coder-0.5b-instruct-q4_0"]',
+  );
+  await expect(seeded.locator('.model-dot.present')).toHaveCount(1);
+
+  // Choosing it pins the run; the button label and storage follow.
+  await seeded.click();
+  await expect(button).toHaveText('qwen2.5-coder-0.5b-instruct-q4_0');
+  expect(await page.evaluate(() => localStorage.getItem('gearvane.modelPin'))).toBe(
+    'qwen2.5-coder-0.5b-instruct-q4_0',
+  );
+
+  expect(errors).toEqual([]);
+});
