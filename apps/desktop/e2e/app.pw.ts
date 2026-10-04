@@ -130,12 +130,12 @@ test('models dialog reports on-disk weights as ready', async () => {
 
   await page.locator('#models-button').click();
   await expect(page.locator('#models-dialog')).toBeVisible();
-  // Twenty-two downloadable locals plus five keyless embedded mid-tier
-  // weights. Frontier is absent here by design: a fresh dev launch has
-  // no config file and no vault keys, so the key-gated tier is empty.
-  await expect(page.locator('#models-body [data-tier="local"] .health-row')).toHaveCount(22);
-  await expect(page.locator('#models-body [data-tier="mid"] .health-row')).toHaveCount(5);
-  await expect(page.locator('#models-body [data-tier="frontier"]')).toHaveCount(0);
+  // Thirty-five downloadable locals plus ten keyless embedded mid-tier
+  // weights. Frontier shows eight keyless embedded rows; only the hosted
+  // providers need keys.
+  await expect(page.locator('#models-body [data-tier="local"] .health-row')).toHaveCount(35);
+  await expect(page.locator('#models-body [data-tier="mid"] .health-row')).toHaveCount(10);
+  await expect(page.locator('#models-body [data-tier="frontier"] .health-row')).toHaveCount(8);
   await expect(page.locator('#models-body')).toContainText('no key needed');
   const body = await page.locator('#models-body').textContent();
   expect(body).toContain('ready');

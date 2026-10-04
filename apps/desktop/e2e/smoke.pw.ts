@@ -175,7 +175,13 @@ test('models dialog lists the catalog without host bridges', async ({ page }) =>
   await page.locator('#models-button').click();
   const dialog = page.locator('#models-dialog');
   await expect(dialog).toBeVisible();
-  await expect(page.locator('#models-body [data-tier="local"] .health-row')).toHaveCount(22);
+  // Thirty-five downloadable locals. Hosted groups are absent here by
+  // design: the static server answers an empty config, so mid and
+  // frontier have no providers at all. Their grouping is pinned in unit
+  // tests and the Electron spec, which run against real configs.
+  await expect(page.locator('#models-body [data-tier="local"] .health-row')).toHaveCount(35);
+  await expect(page.locator('#models-body [data-tier="mid"]')).toHaveCount(0);
+  await expect(page.locator('#models-body [data-tier="frontier"]')).toHaveCount(0);
   await expect(page.locator('#models-body')).toContainText('desktop app');
   await expect(page.locator('#models-body')).toContainText('qwen2.5-coder-0.5b-instruct-q4_0');
 

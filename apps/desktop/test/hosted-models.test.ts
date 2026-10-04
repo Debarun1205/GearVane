@@ -16,10 +16,12 @@ describe('keyStateFor', () => {
 });
 
 describe('hostedModelRows', () => {
-  it('is empty without keys on defaults except keyless embedded', () => {
+  it('lists keyless embedded rows without keys on defaults', () => {
     const rows = hostedModelRows(defaultConfig(), {});
-    expect(rows).toHaveLength(5);
-    expect(rows.every((row) => row.tier === 'mid' && row.keyless && row.keyed)).toBe(true);
+    expect(rows).toHaveLength(18);
+    expect(rows.filter((row) => row.tier === 'mid')).toHaveLength(10);
+    expect(rows.filter((row) => row.tier === 'frontier')).toHaveLength(8);
+    expect(rows.every((row) => row.keyless && row.keyed)).toBe(true);
   });
 
   it('lists eight hosted mid and five frontier rows with keys, plus keyless embedded', () => {
@@ -45,12 +47,13 @@ describe('hostedModelRows', () => {
     };
     const rows = hostedModelRows(config, keys);
     const mid = rows.filter((row) => row.tier === 'mid');
-    expect(mid).toHaveLength(13);
+    expect(mid).toHaveLength(18);
     expect(mid.filter((row) => !row.keyless)).toHaveLength(8);
     const embedded = mid.filter((row) => row.keyless);
-    expect(embedded).toHaveLength(5);
+    expect(embedded).toHaveLength(10);
     expect(embedded.every((row) => row.keyed)).toBe(true);
-    expect(rows.filter((row) => row.tier === 'frontier')).toHaveLength(5);
+    expect(rows.filter((row) => row.tier === 'frontier')).toHaveLength(13);
+    expect(rows.filter((row) => row.tier === 'frontier' && !row.keyless)).toHaveLength(5);
     expect(rows.every((row) => row.keyed)).toBe(true);
     expect(rows[0]?.label).toMatch(/\//);
   });

@@ -21,8 +21,8 @@ const ENTRIES = CATALOG as CatalogEntry[];
  * upstream file fails loudly instead of silently changing the installer.
  */
 describe('model catalog', () => {
-  it('lists twenty-two models', () => {
-    expect(ENTRIES).toHaveLength(22);
+  it('lists thirty-five models', () => {
+    expect(ENTRIES).toHaveLength(35);
   });
 
   it('keeps ids unique, lowercase, and matching their file stems', () => {
@@ -61,6 +61,19 @@ describe('model catalog', () => {
       'deepseek-r1-distill-qwen-7b-q4_k_m': 4683073504,
       'falcon3-7b-instruct-q4_k_m': 4569726368,
       'qwen2.5-coder-7b-instruct-q4_0': 4431390720,
+      'falcon3-1b-instruct-q4_k_m': 1057044608,
+      'qwen3-1.7b.q4_k_m': 1282439264,
+      'starcoder2-7b-q4_k_m': 4402887488,
+      'qwen3-4b.q4_k_m': 2716068512,
+      'starcoder2-3b-q4_k_m': 1848976448,
+      'qwen2.5-14b-instruct-q4_k_m': 8988110976,
+      'deepseek-r1-distill-qwen-14b-q4_k_m': 8988110240,
+      'mistral-nemo-instruct-2407-q4_k_m': 7477208192,
+      'falcon3-10b-instruct-q4_k_m': 6287521408,
+      'qwen2.5-coder-14b-instruct-q4_k_m': 8988111072,
+      'qwen3-8b.q4_k_m': 5027783872,
+      'starcoder2-15b-q4_k_m': 9860188000,
+      'phi-4-q4_k': 9053114560,
     });
   });
 

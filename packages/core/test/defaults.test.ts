@@ -35,12 +35,21 @@ describe('default local tier', () => {
     expect(hosted('frontier')).toBe(5);
   });
 
-  it('leads the mid tier with five keyless embedded weights', () => {
+  it('leads the mid tier with ten keyless embedded weights', () => {
     const config = defaultConfig();
     const [first] = config.tiers.mid.providers;
     expect(first?.name).toBe('embedded');
-    expect(first?.models).toHaveLength(5);
+    expect(first?.models).toHaveLength(10);
     expect(first?.apiKeyEnv).toBeUndefined();
+  });
+
+  it('ends the frontier tier with eight keyless embedded weights', () => {
+    const config = defaultConfig();
+    const providers = config.tiers.frontier.providers;
+    const last = providers[providers.length - 1];
+    expect(last?.name).toBe('embedded');
+    expect(last?.models).toHaveLength(8);
+    expect(last?.apiKeyEnv).toBeUndefined();
   });
 
   it('keeps hosted tiers key-gated with no keys', () => {

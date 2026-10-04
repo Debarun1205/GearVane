@@ -174,5 +174,109 @@
     "bytes": 4431390720,
     "use": "Mid coder, needs 8GB RAM",
     "bundled": false
+  },
+  {
+    "id": "falcon3-1b-instruct-q4_k_m",
+    "file": "Falcon3-1B-Instruct-q4_k_m.gguf",
+    "url": "https://huggingface.co/tiiuae/Falcon3-1B-Instruct-GGUF/resolve/main/Falcon3-1B-Instruct-q4_k_m.gguf",
+    "bytes": 1057044608,
+    "use": "Tiny Falcon chat",
+    "bundled": false
+  },
+  {
+    "id": "qwen3-1.7b.q4_k_m",
+    "file": "Qwen3-1.7B.Q4_K_M.gguf",
+    "url": "https://huggingface.co/QuantFactory/Qwen3-1.7B-GGUF/resolve/main/Qwen3-1.7B.Q4_K_M.gguf",
+    "bytes": 1282439264,
+    "use": "Newest small chat",
+    "bundled": false
+  },
+  {
+    "id": "starcoder2-7b-q4_k_m",
+    "file": "starcoder2-7b-Q4_K_M.gguf",
+    "url": "https://huggingface.co/second-state/StarCoder2-7B-GGUF/resolve/main/starcoder2-7b-Q4_K_M.gguf",
+    "bytes": 4402887488,
+    "use": "Mid coder, needs 8GB RAM",
+    "bundled": false
+  },
+  {
+    "id": "qwen3-4b.q4_k_m",
+    "file": "Qwen3-4B.Q4_K_M.gguf",
+    "url": "https://huggingface.co/QuantFactory/Qwen3-4B-GGUF/resolve/main/Qwen3-4B.Q4_K_M.gguf",
+    "bytes": 2716068512,
+    "use": "Capable small chat",
+    "bundled": false
+  },
+  {
+    "id": "starcoder2-3b-q4_k_m",
+    "file": "starcoder2-3b-Q4_K_M.gguf",
+    "url": "https://huggingface.co/second-state/StarCoder2-3B-GGUF/resolve/main/starcoder2-3b-Q4_K_M.gguf",
+    "bytes": 1848976448,
+    "use": "Small coder",
+    "bundled": false
+  },
+  {
+    "id": "qwen2.5-14b-instruct-q4_k_m",
+    "file": "Qwen2.5-14B-Instruct-Q4_K_M.gguf",
+    "url": "https://huggingface.co/bartowski/Qwen2.5-14B-Instruct-GGUF/resolve/main/Qwen2.5-14B-Instruct-Q4_K_M.gguf",
+    "bytes": 8988110976,
+    "use": "Flagship chat, needs 16GB RAM",
+    "bundled": false
+  },
+  {
+    "id": "deepseek-r1-distill-qwen-14b-q4_k_m",
+    "file": "DeepSeek-R1-Distill-Qwen-14B-Q4_K_M.gguf",
+    "url": "https://huggingface.co/bartowski/DeepSeek-R1-Distill-Qwen-14B-GGUF/resolve/main/DeepSeek-R1-Distill-Qwen-14B-Q4_K_M.gguf",
+    "bytes": 8988110240,
+    "use": "Flagship reasoning, needs 16GB RAM",
+    "bundled": false
+  },
+  {
+    "id": "mistral-nemo-instruct-2407-q4_k_m",
+    "file": "Mistral-Nemo-Instruct-2407-Q4_K_M.gguf",
+    "url": "https://huggingface.co/bartowski/Mistral-Nemo-Instruct-2407-GGUF/resolve/main/Mistral-Nemo-Instruct-2407-Q4_K_M.gguf",
+    "bytes": 7477208192,
+    "use": "Frontier chat, needs 16GB RAM",
+    "bundled": false
+  },
+  {
+    "id": "falcon3-10b-instruct-q4_k_m",
+    "file": "Falcon3-10B-Instruct-q4_k_m.gguf",
+    "url": "https://huggingface.co/tiiuae/Falcon3-10B-Instruct-GGUF/resolve/main/Falcon3-10B-Instruct-q4_k_m.gguf",
+    "bytes": 6287521408,
+    "use": "Frontier chat, needs 16GB RAM",
+    "bundled": false
+  },
+  {
+    "id": "qwen2.5-coder-14b-instruct-q4_k_m",
+    "file": "Qwen2.5-Coder-14B-Instruct-Q4_K_M.gguf",
+    "url": "https://huggingface.co/bartowski/Qwen2.5-Coder-14B-Instruct-GGUF/resolve/main/Qwen2.5-Coder-14B-Instruct-Q4_K_M.gguf",
+    "bytes": 8988111072,
+    "use": "Flagship coder, needs 16GB RAM",
+    "bundled": false
+  },
+  {
+    "id": "qwen3-8b.q4_k_m",
+    "file": "Qwen3-8B.Q4_K_M.gguf",
+    "url": "https://huggingface.co/QuantFactory/Qwen3-8B-GGUF/resolve/main/Qwen3-8B.Q4_K_M.gguf",
+    "bytes": 5027783872,
+    "use": "Frontier chat, needs 16GB RAM",
+    "bundled": false
+  },
+  {
+    "id": "starcoder2-15b-q4_k_m",
+    "file": "starcoder2-15b-Q4_K_M.gguf",
+    "url": "https://huggingface.co/second-state/StarCoder2-15B-GGUF/resolve/main/starcoder2-15b-Q4_K_M.gguf",
+    "bytes": 9860188000,
+    "use": "Frontier coder, needs 16GB RAM",
+    "bundled": false
+  },
+  {
+    "id": "phi-4-q4_k",
+    "file": "phi-4-Q4_K.gguf",
+    "url": "https://huggingface.co/microsoft/phi-4-gguf/resolve/main/phi-4-Q4_K.gguf",
+    "bytes": 9053114560,
+    "use": "Microsoft flagship, needs 16GB RAM",
+    "bundled": false
   }
 ]

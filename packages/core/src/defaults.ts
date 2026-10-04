@@ -137,6 +137,11 @@ export function defaultConfig(env: Record<string, string | undefined> = {}): Gea
               'deepseek-r1-distill-qwen-7b-q4_k_m',
               'falcon3-7b-instruct-q4_k_m',
               'qwen2.5-coder-7b-instruct-q4_0',
+              'falcon3-1b-instruct-q4_k_m',
+              'qwen3-1.7b.q4_k_m',
+              'starcoder2-7b-q4_k_m',
+              'qwen3-4b.q4_k_m',
+              'starcoder2-3b-q4_k_m',
             ],
           },
           ...(hasOpenRouter
@@ -224,6 +229,23 @@ export function defaultConfig(env: Record<string, string | undefined> = {}): Gea
                 },
               ]
             : []),
+          // Keyless frontier capability, last on purpose: hosted models
+          // win when keys exist, and these catch everything otherwise.
+          // 8-16GB weights — the dialog says what each needs.
+          {
+            name: 'embedded',
+            baseUrl: 'http://127.0.0.1:11439',
+            models: [
+              'qwen2.5-14b-instruct-q4_k_m',
+              'deepseek-r1-distill-qwen-14b-q4_k_m',
+              'mistral-nemo-instruct-2407-q4_k_m',
+              'falcon3-10b-instruct-q4_k_m',
+              'qwen2.5-coder-14b-instruct-q4_k_m',
+              'qwen3-8b.q4_k_m',
+              'starcoder2-15b-q4_k_m',
+              'phi-4-q4_k',
+            ],
+          },
         ],
         maxRetries: 3,
         costPerToken: 0.005,
