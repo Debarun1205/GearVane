@@ -2,6 +2,7 @@
 import {
   ConfigError,
   HealthChecker,
+  LOCAL_PROVIDER_NAMES,
   Orchestrator,
   SafetyManager,
   VERSION,
@@ -267,7 +268,7 @@ async function cmdHealth(
   json: boolean,
 ): Promise<number> {
   const offline = flagBool(args, 'offline');
-  const localOnly = ['ollama', 'lm_studio', 'llama_cpp', 'llamacpp', 'vllm'];
+  const localOnly = [...LOCAL_PROVIDER_NAMES];
 
   const scoped: WaypointConfig = offline
     ? {
@@ -335,9 +336,7 @@ async function cmdModels(config: WaypointConfig, json: boolean): Promise<number>
   const results = await checker.checkAll();
 
   const local = results.filter((result) =>
-    ['ollama', 'lm_studio', 'llama_cpp', 'llamacpp', 'vllm'].includes(
-      result.provider.toLowerCase(),
-    ),
+    (LOCAL_PROVIDER_NAMES as readonly string[]).includes(result.provider.toLowerCase()),
   );
 
   if (json) {

@@ -187,22 +187,19 @@ def cmd_run(args):
         sys.exit(1)
 
 
-LOCAL_PROVIDERS = ("ollama", "lm_studio", "llama_cpp", "llamacpp", "vllm")
-
-
 def cmd_health(args):
     """Check model availability by probing real endpoints."""
     config = load_config(args.config)
     checker = ModelHealthChecker(config)
     router = TierRouter(config)
 
-    from .providers import ProviderFactory
+    from .providers import LOCAL_PROVIDER_NAMES, ProviderFactory
 
     factory = ProviderFactory(timeout=5.0)
 
     for tier, tier_config in router.tiers.items():
         for provider in tier_config.providers:
-            is_local = provider.name.lower() in LOCAL_PROVIDERS
+            is_local = provider.name.lower() in LOCAL_PROVIDER_NAMES
             if args.offline and not is_local:
                 continue
 

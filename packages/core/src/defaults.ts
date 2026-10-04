@@ -21,6 +21,11 @@ export function defaultConfig(env: Record<string, string | undefined> = {}): Way
       local: {
         name: 'local',
         description: 'Local models for simple tasks',
+        // Every server speaks an OpenAI-compatible API except Ollama, which
+        // has its own client. Model IDs are exemplars of what to pull, not
+        // an inventory: the router takes the first healthy provider's first
+        // model, and `health` reports the rest as unknown until probed.
+        // Nothing here needs an API key.
         providers: [
           {
             name: 'ollama',
@@ -34,7 +39,47 @@ export function defaultConfig(env: Record<string, string | undefined> = {}): Way
               'codestral',
               'llama3.3',
               'gemma3',
+              'phi3',
+              'mistral',
             ],
+          },
+          {
+            name: 'lm_studio',
+            baseUrl: 'http://localhost:1234',
+            models: ['qwen2.5-coder-7b'],
+          },
+          {
+            // Serves the single model passed with -m; use its file name
+            // here. Shares 8080 with LocalAI below, so only one runs at a
+            // time; the router takes whichever answers.
+            name: 'llama_cpp',
+            baseUrl: 'http://localhost:8080',
+            models: ['qwen2.5-coder-7b-instruct-q4_k_m'],
+          },
+          {
+            // Serves Hugging Face IDs given to --model.
+            name: 'vllm',
+            baseUrl: 'http://localhost:8000',
+            models: ['Qwen/Qwen2.5-Coder-7B-Instruct'],
+          },
+          {
+            // Serves any GGUF it hosts; models are whatever is installed.
+            name: 'localai',
+            baseUrl: 'http://localhost:8080',
+            models: ['qwen3-4b'],
+          },
+          {
+            name: 'gpt4all',
+            baseUrl: 'http://localhost:4891',
+            models: ['Meta-Llama-3-8B-Instruct'],
+          },
+          {
+            // oobabooga's text-generation-webui with the OpenAI extension
+            // (5001 on newer versions). The model is the loaded character's
+            // directory name.
+            name: 'textgen',
+            baseUrl: 'http://localhost:5000',
+            models: ['qwen2.5-coder-7b-instruct'],
           },
         ],
         maxRetries: 2,

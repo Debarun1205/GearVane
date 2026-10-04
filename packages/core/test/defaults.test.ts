@@ -1,0 +1,56 @@
+import { describe, expect, it } from 'vitest';
+
+import { defaultConfig } from '../src/defaults.js';
+import { ProviderFactory, LOCAL_PROVIDER_NAMES } from '../src/providers.js';
+
+/**
+ * The zero-config experience is local-first: a fresh install with no keys
+ * and no config file must still route to a working local tier, and every
+ * local server the factory knows must be represented so `health --offline`
+ * and `models` see the same world the factory does.
+ */
+describe('default local tier', () => {
+  it('wires at least ten local models', () => {
+    const providers = defaultConfig().tiers.local.providers;
+    const total = providers.reduce((sum, provider) => sum + provider.models.length, 0);
+    expect(total).toBeGreaterThanOrEqual(10);
+  });
+
+  it('covers every local server the factory supports', () => {
+    // llamacpp is a spelling alias for llama_cpp, not a second server.
+    const expected = LOCAL_PROVIDER_NAMES.filter((name) => name !== 'llamacpp');
+    const configured = defaultConfig().tiers.local.providers.map((provider) => provider.name);
+    for (const name of expected) {
+      expect(configured).toContain(name);
+    }
+  });
+
+  it('gives every local provider a base URL and at least one model', () => {
+    for (const provider of defaultConfig().tiers.local.providers) {
+      expect(provider.baseUrl).toMatch(/^http:\/\/localhost:/);
+      expect(provider.models.length).toBeGreaterThan(0);
+    }
+  });
+
+  it('builds a client for every default local model without a key', () => {
+    const factory = new ProviderFactory({ env: {} });
+    for (const provider of defaultConfig().tiers.local.providers) {
+      for (const model of provider.models) {
+        const client = factory.create(provider, model);
+        expect(client).toBeDefined();
+      }
+    }
+  });
+
+  it('never sends an API key to a local server', () => {
+    const factory = new ProviderFactory({ env: { ANTHROPIC_API_KEY: 'sk-test' } });
+    for (const provider of defaultConfig().tiers.local.providers) {
+      for (const model of provider.models) {
+        // ProviderClient stores the key on the instance; the factory passes
+        // undefined for local servers even when a key is in the environment.
+        const client = factory.create(provider, model) as unknown as { apiKey?: string };
+        expect(client.apiKey).toBeUndefined();
+      }
+    }
+  });
+});

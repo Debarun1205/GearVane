@@ -875,6 +875,23 @@ const LOCAL_PROVIDERS = new Set([
   'textgen',
 ]);
 
+/**
+ * Names the CLI and the app treat as local: no API key needed, probed by
+ * `health --offline`, and listed by `models`. Exported so the CLI filters
+ * with the same list the factory enforces above instead of a copy that can
+ * drift (localai/gpt4all/textgen were missing from the CLI copy).
+ */
+export const LOCAL_PROVIDER_NAMES: readonly string[] = [
+  'ollama',
+  'lm_studio',
+  'llama_cpp',
+  'llamacpp',
+  'vllm',
+  'localai',
+  'gpt4all',
+  'textgen',
+];
+
 export interface ClientFactoryOptions {
   /** Supplies API keys; kept separate so config never carries secrets. */
   env?: Record<string, string | undefined>;

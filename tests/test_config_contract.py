@@ -77,6 +77,21 @@ class TestShippedConfigShape:
                 if provider["name"] not in local:
                     assert "api_key_env" in provider, f"{provider['name']} has no api_key_env"
 
+    def test_local_tier_covers_every_local_server(self, config):
+        # The zero-config experience is local-first: every server the
+        # factory knows (minus the llamacpp spelling alias) must be
+        # represented with at least one model, or `health --offline` and
+        # `models` see a smaller world than the code supports.
+        from waypoint.providers import LOCAL_PROVIDER_NAMES
+
+        configured = [p["name"] for p in config["tiers"]["local"]["providers"]]
+        for name in LOCAL_PROVIDER_NAMES:
+            if name == "llamacpp":
+                continue
+            assert name in configured, f"local server {name} missing from the example"
+            entry = next(p for p in config["tiers"]["local"]["providers"] if p["name"] == name)
+            assert entry["models"], f"local server {name} has no models"
+
     def test_no_secrets_in_config(self, config):
         # Keys must be referenced by env var name, never inlined.
         text = CONFIG_PATH.read_text()

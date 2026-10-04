@@ -35,21 +35,43 @@ tiers:
           - codestral
           - llama3.3
           - gemma3
+          - phi3
+          - mistral
       - name: lm_studio
         base_url: "http://localhost:1234"
         models:
           - qwen2.5-coder-7b
+      # llama.cpp's server answers with the single model passed via -m; use
+      # its file name here. It shares 8080 with LocalAI, so only one runs
+      # at a time; the router takes whichever answers.
+      - name: llama_cpp
+        base_url: "http://localhost:8080"
+        models:
+          - qwen2.5-coder-7b-instruct-q4_k_m
+      # vLLM serves the Hugging Face ID given to --model.
+      - name: vllm
+        base_url: "http://localhost:8000"
+        models:
+          - Qwen/Qwen2.5-Coder-7B-Instruct
       # LocalAI serves any GGUF it hosts over an OpenAI-compatible API.
       # Models are whatever you have installed; qwen3-4b is one example.
       - name: localai
         base_url: "http://localhost:8080"
         models:
           - qwen3-4b
-      # More local servers work the same way, with their own default ports:
-      # gpt4all on http://localhost:4891, oobabooga's text-generation-webui
-      # (OpenAI extension) on http://localhost:5000 (5001 on newer versions),
-      # llama.cpp's server and vLLM. Any OpenAI-compatible server also works
-      # with an explicit base_url and no entry in the defaults at all.
+      # GPT4All's local server. Models are the installed model names.
+      - name: gpt4all
+        base_url: "http://localhost:4891"
+        models:
+          - Meta-Llama-3-8B-Instruct
+      # oobabooga's text-generation-webui with the OpenAI extension enabled
+      # (port 5001 on newer versions). The model is the loaded model name.
+      - name: textgen
+        base_url: "http://localhost:5000"
+        models:
+          - qwen2.5-coder-7b-instruct
+      # Any other OpenAI-compatible server works the same way with an
+      # explicit base_url and no entry in the defaults at all.
 
   # Medium complexity, usually multi-file changes.
   mid:

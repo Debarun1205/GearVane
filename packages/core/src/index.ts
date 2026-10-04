@@ -41,6 +41,7 @@ export {
   AnthropicClient,
   DEFAULT_API_PATHS,
   DEFAULT_BASE_URLS,
+  LOCAL_PROVIDER_NAMES,
   OllamaClient,
   OpenAICompatClient,
   ProviderError,
