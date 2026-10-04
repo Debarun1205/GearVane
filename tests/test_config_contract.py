@@ -92,6 +92,22 @@ class TestShippedConfigShape:
             entry = next(p for p in config["tiers"]["local"]["providers"] if p["name"] == name)
             assert entry["models"], f"local server {name} has no models"
 
+    def test_embedded_models_come_from_the_catalog(self, config):
+        # The desktop app's models.json is the single source: every id the
+        # example routes to on embedded must exist there, or the dialog
+        # cannot fetch it and the router names a ghost.
+        import json
+
+        catalog_path = PROJECT_ROOT / "apps" / "desktop" / "src" / "models.json"
+        catalog = json.loads(catalog_path.read_text(encoding="utf-8"))
+        known = {entry["id"] for entry in catalog}
+        embedded = next(
+            p for p in config["tiers"]["local"]["providers"] if p["name"] == "embedded"
+        )
+        assert embedded["models"], "embedded lists no models"
+        for model in embedded["models"]:
+            assert model in known, f"embedded model {model} missing from models.json"
+
     def test_no_secrets_in_config(self, config):
         # Keys must be referenced by env var name, never inlined.
         text = CONFIG_PATH.read_text()

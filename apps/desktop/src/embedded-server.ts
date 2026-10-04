@@ -253,23 +253,26 @@ export async function startEmbeddedServer(options: EmbeddedServerOptions = {}): 
   }
 
   const preferred = options.modelFile ?? process.env[EMBEDDED_MODEL_FILE_ENV];
-  const modelPaths = findModelFiles(modelDir, preferred);
-  if (modelPaths.length === 0) {
+  // Rescanned on every use, not just at startup: a model downloaded
+  // through the Models dialog lands mid-session and must serve without an
+  // app restart. Loaded backends stay cached by id.
+  const discover = (): Map<string, string> => {
+    const found = new Map<string, string>();
+    for (const modelPath of findModelFiles(modelDir, preferred)) {
+      const id = modelIdFor(modelPath);
+      if (!found.has(id)) found.set(id, modelPath);
+    }
+    return found;
+  };
+  if (discover().size === 0) {
     log(
-      `embedded model: no .gguf in ${modelDir} (fetch with npm run models:fetch); ` +
-        'embedded tier unavailable',
+      `embedded model: no .gguf in ${modelDir} (fetch from the Models dialog or npm run models:fetch); ` +
+        'embedded tier unavailable until one lands',
     );
-    return idle([]);
   }
 
   // Models load lazily on first request for them: startup stays instant
   // and memory grows only with the models actually used.
-  const byId = new Map<string, string>();
-  for (const modelPath of modelPaths) {
-    const id = modelIdFor(modelPath);
-    if (!byId.has(id)) byId.set(id, modelPath);
-  }
-  const modelIds = [...byId.keys()];
   const backends = new Map<string, ChatBackend>();
   const loading = new Map<string, Promise<ChatBackend>>();
   const getBackend = (id: string): Promise<ChatBackend> => {
@@ -277,7 +280,7 @@ export async function startEmbeddedServer(options: EmbeddedServerOptions = {}): 
     if (ready) return Promise.resolve(ready);
     const inFlight = loading.get(id);
     if (inFlight) return inFlight;
-    const path = byId.get(id);
+    const path = discover().get(id);
     if (!path) return Promise.reject(new Error(`unknown model: ${id}`));
     const pending = loadLlama(path, { contextSize })
       .then((backend) => {
@@ -297,7 +300,12 @@ export async function startEmbeddedServer(options: EmbeddedServerOptions = {}): 
   };
 
   const server: Server = createServer((request, response) => {
-    void handleRequest(request, response, { modelIds, has: (id) => byId.has(id), getBackend }, log);
+    void handleRequest(
+      request,
+      response,
+      { listIds: () => [...discover().keys()], has: (id) => discover().has(id), getBackend },
+      log,
+    );
   });
   await new Promise<void>((resolve, reject) => {
     server.once('error', reject);
@@ -306,12 +314,13 @@ export async function startEmbeddedServer(options: EmbeddedServerOptions = {}): 
       resolve();
     });
   });
-  log(`embedded model: serving ${modelIds.join(', ')} on http://${host}:${port}`);
+  log(`embedded model: serving ${[...discover().keys()].join(', ')} on http://${host}:${port}`);
 
+  const snapshotIds = [...discover().keys()];
   return {
     port,
-    modelId: modelIds[0] as string,
-    modelIds,
+    modelId: snapshotIds[0] as string,
+    modelIds: snapshotIds,
     started: true,
     stop: () =>
       new Promise<void>((resolve) => {
@@ -321,7 +330,7 @@ export async function startEmbeddedServer(options: EmbeddedServerOptions = {}): 
 }
 
 interface ModelPool {
-  modelIds: string[];
+  listIds(): string[];
   has(id: string): boolean;
   getBackend(id: string): Promise<ChatBackend>;
 }
@@ -336,7 +345,7 @@ async function handleRequest(
     const url = new URL(request.url ?? '/', 'http://localhost');
 
     if (request.method === 'GET' && url.pathname === '/v1/models') {
-      sendJson(response, 200, { data: pool.modelIds.map((id) => ({ id })) });
+      sendJson(response, 200, { data: pool.listIds().map((id) => ({ id })) });
       return;
     }
 
@@ -359,7 +368,7 @@ async function handleRequest(
         return;
       }
       const requestedModel =
-        typeof body.model === 'string' && body.model !== '' ? body.model : (pool.modelIds[0] as string);
+        typeof body.model === 'string' && body.model !== '' ? body.model : (pool.listIds()[0] as string);
       if (!pool.has(requestedModel)) {
         sendJson(response, 400, { error: `unknown model: ${requestedModel}` });
         return;

@@ -24,14 +24,20 @@ tiers:
     cost_per_token: 0.0
     max_retries: 2
     providers:
-      # The models bundled with the desktop app: nothing to install, served
-      # by the app itself on loopback. First, so a fresh install works
-      # before any server is set up.
+      # The models bundled with the desktop app, plus anything the Models
+      # dialog downloads: nothing to install, served by the app itself on
+      # loopback. First, so a fresh install works before any server is set up.
       - name: embedded
         base_url: "http://127.0.0.1:11439"
         models:
           - qwen2.5-coder-0.5b-instruct-q4_0
           - smollm2-360m-instruct.q4_k_m
+          - qwen2.5-1.5b-instruct-q4_0
+          - llama-3.2-1b-instruct-q4_k_m
+          - llama-3.2-3b-instruct-q4_k_m
+          - gemma-2-2b-it-q4_k_m
+          - deepseek-r1-distill-qwen-1.5b-q4_k_m
+          - qwen2.5-coder-1.5b-instruct-q4_0
       - name: ollama
         base_url: "http://localhost:11434"
         models:

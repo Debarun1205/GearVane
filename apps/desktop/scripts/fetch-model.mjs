@@ -1,17 +1,19 @@
 #!/usr/bin/env node
 /**
- * Fetch the bundled local model for the desktop installers.
+ * Fetch the bundled local models for the desktop installers.
  *
- * The GGUF is deliberately not committed to git (400MB+): release builds
- * and local `dist` runs download it once into resources/models, and
- * electron-builder's extraResources carries it into the installer. The app
- * itself never downloads; without this file the embedded tier simply
+ * The set comes from src/models.json (entries flagged bundled), so the
+ * script, the Models dialog, and the installer payload can never drift
+ * apart. The GGUFs are deliberately not committed to git: release builds
+ * and local `dist` runs download them once into resources/models, and
+ * electron-builder's extraResources carries them into the installer. The
+ * app itself never downloads; without these files the embedded tier
  * reports unavailable.
  *
  * Usage: npm run models:fetch [-- --force]
  */
 
-import { createWriteStream, existsSync, mkdirSync, statSync } from 'node:fs';
+import { createWriteStream, existsSync, mkdirSync, readFileSync, statSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Readable } from 'node:stream';
@@ -19,18 +21,10 @@ import { finished } from 'node:stream/promises';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const MODELS_DIR = join(HERE, '..', 'resources', 'models');
-// The bundled set: a tiny coder for the local tier's job, plus a general
-// chat companion. ~670MB together; the installer carries both.
-const MODELS = [
-  {
-    file: 'qwen2.5-coder-0.5b-instruct-q4_0.gguf',
-    url: 'https://huggingface.co/Qwen/Qwen2.5-Coder-0.5B-Instruct-GGUF/resolve/main/qwen2.5-coder-0.5b-instruct-q4_0.gguf',
-  },
-  {
-    file: 'SmolLM2-360M-Instruct.Q4_K_M.gguf',
-    url: 'https://huggingface.co/QuantFactory/SmolLM2-360M-Instruct-GGUF/resolve/main/SmolLM2-360M-Instruct.Q4_K_M.gguf',
-  },
-];
+
+const catalog = JSON.parse(readFileSync(join(HERE, '..', 'src', 'models.json'), 'utf8'));
+const MODELS = catalog.filter((entry) => entry.bundled === true);
+if (MODELS.length === 0) throw new Error('models.json flags no bundled models');
 
 const force = process.argv.includes('--force');
 

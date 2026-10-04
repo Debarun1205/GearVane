@@ -39,6 +39,15 @@ downloads a model on its own. Point `GEARVANE_MODEL_DIR` elsewhere, or
 `GEARVANE_EMBEDDED_MODEL` at a different GGUF name, to run another model.
 The release workflow fetches automatically on tag builds.
 
+## Model catalog
+
+`src/models.json` is the single source for every model the app knows:
+the fetch script, the Models dialog, and the installer payload all read
+it, so they cannot drift apart. Two entries are flagged `bundled` and
+ship in the installer; the rest download on demand from the dialog.
+Sizes are pinned by `test/models-catalog.test.ts` — a re-quantized
+upstream file fails loudly instead of silently changing the installer.
+
 ## Windows
 
 ```bash

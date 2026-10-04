@@ -59,14 +59,23 @@ describe('startEmbeddedServer', () => {
     await server.stop();
   });
 
-  it('stays down with an empty model directory', async () => {
+  it('starts empty and serves models that land later', async () => {
+    // An empty dir no longer keeps the server down: the Models dialog
+    // downloads mid-session, and the server must already be listening.
     const server = await startEmbeddedServer({
       port: 11472,
       modelDir: setupDir(),
       onLog: () => {},
     });
-    expect(server.started).toBe(false);
-    await server.stop();
+    expect(server.started).toBe(true);
+    try {
+      const models = (await (await fetch('http://127.0.0.1:11472/v1/models')).json()) as {
+        data: unknown[];
+      };
+      expect(models.data).toEqual([]);
+    } finally {
+      await server.stop();
+    }
   });
 
   it('starts with a failing backend and reports the load error per request', async () => {
@@ -233,6 +242,31 @@ describe('startEmbeddedServer', () => {
       expect(loaded).toHaveLength(2);
       expect((await ask('a')).choices[0]?.message.content).toBe('from a.gguf');
       expect(loaded).toHaveLength(2);
+    } finally {
+      await server.stop();
+    }
+  });
+
+  it('lists a model downloaded mid-session without a restart', async () => {
+    const dir = setupDir(['a.gguf']);
+    const server = await startEmbeddedServer({
+      port: 11477,
+      modelDir: dir,
+      onLog: () => {},
+      loadLlama: () => Promise.resolve(stubBackend()),
+    });
+    expect(server.started).toBe(true);
+    try {
+      const base = 'http://127.0.0.1:11477';
+      const listed = async (): Promise<string[]> => {
+        const payload = (await (await fetch(`${base}/v1/models`)).json()) as {
+          data: Array<{ id: string }>;
+        };
+        return payload.data.map((entry) => entry.id);
+      };
+      expect(await listed()).toEqual(['a']);
+      writeFileSync(join(dir, 'b.gguf'), 'fake-gguf-bytes');
+      expect(await listed()).toEqual(['a', 'b']);
     } finally {
       await server.stop();
     }
