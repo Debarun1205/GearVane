@@ -28,12 +28,12 @@ export function defaultConfig(env: Record<string, string | undefined> = {}): Gea
         // Nothing here needs an API key.
         providers: [
           {
-            // The model bundled with the desktop app: nothing to install,
+            // The models bundled with the desktop app: nothing to install,
             // served by the app itself on loopback. First, so a fresh
             // install works before any server is set up.
             name: 'embedded',
             baseUrl: 'http://127.0.0.1:11439',
-            models: ['qwen2.5-coder-0.5b-instruct-q4_0'],
+            models: ['qwen2.5-coder-0.5b-instruct-q4_0', 'smollm2-360m-instruct.q4_k_m'],
           },
           {
             name: 'ollama',

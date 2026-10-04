@@ -21,9 +21,10 @@ What is **not** in the repository, and why:
 
 ## Bundled local model
 
-The desktop installer carries its own local model (Qwen2.5-Coder 0.5B,
-Q4, ~400MB), so a fresh install answers the local tier with nothing else
-to set up. The GGUF is **not** committed to git; fetch it before packaging:
+The desktop installer carries its own local models (Qwen2.5-Coder 0.5B
+for code and SmolLM2 360M for chat, ~670MB together), so a fresh install
+answers the local tier with nothing else to set up. The GGUFs are **not**
+committed to git; fetch them before packaging:
 
 ```bash
 cd apps/desktop

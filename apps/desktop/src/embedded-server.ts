@@ -3,8 +3,8 @@
  *
  * Ships the "no setup" promise: the desktop app answers its own local tier
  * without Ollama, LM Studio, or anything else installed. On startup the
- * main process loads a GGUF bundled beside the app through node-llama-cpp
- * and serves an OpenAI-compatible subset on 127.0.0.1:11439, so the
+ * main process loads the GGUFs bundled beside the app through
+ * node-llama-cpp and serves an OpenAI-compatible subset on 127.0.0.1:11439, so the
  * existing `embedded` provider entry, the router, health checks, the chat
  * view, and the IDE agent all work unchanged — it is just another endpoint.
  *
@@ -30,6 +30,9 @@ export const EMBEDDED_PORT = 11439;
 export const EMBEDDED_MODEL_ID = 'qwen2.5-coder-0.5b-instruct-q4_0';
 export const EMBEDDED_MODEL_URL =
   'https://huggingface.co/Qwen/Qwen2.5-Coder-0.5B-Instruct-GGUF/resolve/main/qwen2.5-coder-0.5b-instruct-q4_0.gguf';
+export const SMOL_MODEL_ID = 'smollm2-360m-instruct.q4_k_m';
+export const SMOL_MODEL_URL =
+  'https://huggingface.co/QuantFactory/SmolLM2-360M-Instruct-GGUF/resolve/main/SmolLM2-360M-Instruct.Q4_K_M.gguf';
 export const EMBEDDED_MODEL_DIR_ENV = 'GEARVANE_MODEL_DIR';
 export const EMBEDDED_MODEL_FILE_ENV = 'GEARVANE_EMBEDDED_MODEL';
 
@@ -73,36 +76,50 @@ export interface EmbeddedServerOptions {
 export interface EmbeddedServer {
   /** Port actually serving (the requested one; no fallback port). */
   port: number;
+  /** First model id; the full list is in modelIds. */
   modelId: string;
+  /** Every model id the server answers for. */
+  modelIds: string[];
   /** False when another server already answered on the port. */
   started: boolean;
   stop(): Promise<void>;
 }
 
 /**
- * Find a model file: the preferred name first, then any *.gguf. Power
- * users drop a different GGUF in the dir (or point GEARVANE_EMBEDDED_MODEL
+ * Find GGUF files: the preferred name first, then the rest alphabetically.
+ * Power users drop any GGUF in the dir (or point GEARVANE_EMBEDDED_MODEL
  * at it) and the server picks it up with no config change.
  */
-export function findModelFile(dir: string, preferred?: string): string | null {
+export function findModelFiles(dir: string, preferred?: string): string[] {
   let entries: string[] = [];
   try {
     entries = readdirSync(dir);
   } catch {
-    return null;
+    return [];
   }
   const gguf = entries.filter((name) => name.toLowerCase().endsWith('.gguf')).sort();
-  if (gguf.length === 0) return null;
+  if (gguf.length === 0) return [];
   if (preferred) {
     const match = gguf.find((name) => name === preferred);
-    if (match) return join(dir, match);
+    if (match) return [join(dir, match), ...gguf.filter((name) => name !== match).map((name) => join(dir, name))];
   }
-  return join(dir, gguf[0] as string);
+  return gguf.map((name) => join(dir, name));
+}
+
+/**
+ * Find a model file: the preferred name first, then any *.gguf. Kept for
+ * single-model callers; the server itself enumerates with findModelFiles.
+ */
+export function findModelFile(dir: string, preferred?: string): string | null {
+  return findModelFiles(dir, preferred)[0] ?? null;
 }
 
 function modelIdFor(path: string): string {
+  // Lowercased: quant repos mix cases (SmolLM2-360M-....Q4_K_M.gguf) and
+  // request ids from configs are lowercase; matching is exact.
   const base = path.split(/[\\/]/).pop() ?? path;
-  return base.toLowerCase().endsWith('.gguf') ? base.slice(0, -5) : base;
+  const stem = base.toLowerCase().endsWith('.gguf') ? base.slice(0, -5) : base;
+  return stem.toLowerCase();
 }
 
 async function portAnswers(host: string, port: number): Promise<boolean> {
@@ -214,46 +231,73 @@ export async function startEmbeddedServer(options: EmbeddedServerOptions = {}): 
   const port = options.port ?? EMBEDDED_PORT;
   const log = options.onLog ?? ((): void => {});
   const contextSize = options.contextSize ?? 4096;
+  const loadLlama = options.loadLlama ?? defaultLoadLlama;
+
+  const idle = (modelIds: string[]): EmbeddedServer => ({
+    port,
+    modelId: modelIds[0] ?? EMBEDDED_MODEL_ID,
+    modelIds,
+    started: false,
+    stop: () => Promise.resolve(),
+  });
 
   if (await portAnswers(host, port)) {
     log(`embedded model: ${host}:${port} already answers, leaving it alone`);
-    return {
-      port,
-      modelId: EMBEDDED_MODEL_ID,
-      started: false,
-      stop: () => Promise.resolve(),
-    };
+    return idle([]);
   }
 
   const modelDir = options.modelDir;
   if (!modelDir) {
     log('embedded model: no model directory configured, embedded tier unavailable');
-    return { port, modelId: EMBEDDED_MODEL_ID, started: false, stop: () => Promise.resolve() };
+    return idle([]);
   }
 
   const preferred = options.modelFile ?? process.env[EMBEDDED_MODEL_FILE_ENV];
-  const modelPath = findModelFile(modelDir, preferred);
-  if (!modelPath) {
+  const modelPaths = findModelFiles(modelDir, preferred);
+  if (modelPaths.length === 0) {
     log(
-      `embedded model: no .gguf in ${modelDir} (fetch one with npm run models:fetch); ` +
+      `embedded model: no .gguf in ${modelDir} (fetch with npm run models:fetch); ` +
         'embedded tier unavailable',
     );
-    return { port, modelId: EMBEDDED_MODEL_ID, started: false, stop: () => Promise.resolve() };
+    return idle([]);
   }
 
-  let backend: ChatBackend;
-  try {
-    backend = await (options.loadLlama ?? defaultLoadLlama)(modelPath, { contextSize });
-  } catch (error) {
-    // Wrong ABI, missing toolchain output, corrupt file: the app must boot
-    // anyway, on its other local providers.
-    log(`embedded model: backend failed to load (${describe(error)}), embedded tier unavailable`);
-    return { port, modelId: EMBEDDED_MODEL_ID, started: false, stop: () => Promise.resolve() };
+  // Models load lazily on first request for them: startup stays instant
+  // and memory grows only with the models actually used.
+  const byId = new Map<string, string>();
+  for (const modelPath of modelPaths) {
+    const id = modelIdFor(modelPath);
+    if (!byId.has(id)) byId.set(id, modelPath);
   }
+  const modelIds = [...byId.keys()];
+  const backends = new Map<string, ChatBackend>();
+  const loading = new Map<string, Promise<ChatBackend>>();
+  const getBackend = (id: string): Promise<ChatBackend> => {
+    const ready = backends.get(id);
+    if (ready) return Promise.resolve(ready);
+    const inFlight = loading.get(id);
+    if (inFlight) return inFlight;
+    const path = byId.get(id);
+    if (!path) return Promise.reject(new Error(`unknown model: ${id}`));
+    const pending = loadLlama(path, { contextSize })
+      .then((backend) => {
+        backends.set(id, backend);
+        loading.delete(id);
+        return backend;
+      })
+      .catch((error: unknown) => {
+        loading.delete(id);
+        // Keep the id listed: the file exists, so "unknown model" would
+        // lie. Requests fail fast with the load error instead, and the
+        // next request retries the load (a transient failure can clear).
+        throw error;
+      });
+    loading.set(id, pending);
+    return pending;
+  };
 
-  const modelId = backend.modelId;
   const server: Server = createServer((request, response) => {
-    void handleRequest(request, response, backend, modelId, log);
+    void handleRequest(request, response, { modelIds, has: (id) => byId.has(id), getBackend }, log);
   });
   await new Promise<void>((resolve, reject) => {
     server.once('error', reject);
@@ -262,11 +306,12 @@ export async function startEmbeddedServer(options: EmbeddedServerOptions = {}): 
       resolve();
     });
   });
-  log(`embedded model: serving ${modelId} on http://${host}:${port}`);
+  log(`embedded model: serving ${modelIds.join(', ')} on http://${host}:${port}`);
 
   return {
     port,
-    modelId,
+    modelId: modelIds[0] as string,
+    modelIds,
     started: true,
     stop: () =>
       new Promise<void>((resolve) => {
@@ -275,23 +320,29 @@ export async function startEmbeddedServer(options: EmbeddedServerOptions = {}): 
   };
 }
 
+interface ModelPool {
+  modelIds: string[];
+  has(id: string): boolean;
+  getBackend(id: string): Promise<ChatBackend>;
+}
+
 async function handleRequest(
   request: IncomingMessage,
   response: ServerResponse,
-  backend: ChatBackend,
-  modelId: string,
+  pool: ModelPool,
   log: (message: string) => void,
 ): Promise<void> {
   try {
     const url = new URL(request.url ?? '/', 'http://localhost');
 
     if (request.method === 'GET' && url.pathname === '/v1/models') {
-      sendJson(response, 200, { data: [{ id: modelId }] });
+      sendJson(response, 200, { data: pool.modelIds.map((id) => ({ id })) });
       return;
     }
 
     if (request.method === 'POST' && url.pathname === '/v1/chat/completions') {
       const body = (await readBody(request)) as {
+        model?: unknown;
         messages?: Array<{ role?: unknown; content?: unknown }>;
         temperature?: unknown;
         max_tokens?: unknown;
@@ -307,12 +358,23 @@ async function handleRequest(
         sendJson(response, 400, { error: 'messages must be a non-empty array' });
         return;
       }
+      const requestedModel =
+        typeof body.model === 'string' && body.model !== '' ? body.model : (pool.modelIds[0] as string);
+      if (!pool.has(requestedModel)) {
+        sendJson(response, 400, { error: `unknown model: ${requestedModel}` });
+        return;
+      }
+      let backend: ChatBackend;
+      try {
+        backend = await pool.getBackend(requestedModel);
+      } catch (error) {
+        // Load failure (wrong ABI, corrupt file): 500 with the cause, not
+        // 404 — the model file exists, it just cannot run.
+        sendJson(response, 500, { error: `model failed to load: ${describe(error)}` });
+        return;
+      }
       const temperature = typeof body.temperature === 'number' ? body.temperature : 0;
       const maxTokens = typeof body.max_tokens === 'number' ? body.max_tokens : 2048;
-      const requestedModel =
-        typeof (body as { model?: unknown }).model === 'string'
-          ? ((body as { model?: string }).model as string)
-          : modelId;
 
       if (body.stream === true) {
         response.writeHead(200, {
