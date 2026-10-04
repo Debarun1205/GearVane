@@ -25,7 +25,7 @@ export function defaultConfig(env: Record<string, string | undefined> = {}): Gea
     tiers: {
       local: {
         name: 'local',
-        description: 'Local models for simple tasks',
+        description: 'Local models for simple tasks (tiny/fast models, < 2GB)',
         // Every server speaks an OpenAI-compatible API except Ollama, which
         // has its own client. Model IDs are exemplars of what to pull, not
         // an inventory: the router takes the first healthy provider's first
@@ -42,21 +42,6 @@ export function defaultConfig(env: Record<string, string | undefined> = {}): Gea
             models: [
               'qwen2.5-coder-0.5b-instruct-q4_0',
               'smollm2-360m-instruct.q4_k_m',
-              'qwen2.5-1.5b-instruct-q4_0',
-              'llama-3.2-1b-instruct-q4_k_m',
-              'llama-3.2-3b-instruct-q4_k_m',
-              'gemma-2-2b-it-q4_k_m',
-              'deepseek-r1-distill-qwen-1.5b-q4_k_m',
-              'qwen2.5-coder-1.5b-instruct-q4_0',
-              'qwen2.5-coder-3b-instruct-q4_0',
-              'smollm2-1.7b-instruct.q4_k_m',
-              'qwen3-0.6b.q4_k_m',
-              'tinyllama-1.1b-chat-v1.0.q4_k_m',
-              'deepseek-coder-1.3b-instruct.q4_k_m',
-              'falcon3-3b-instruct-q4_k_m',
-              'phi-3-mini-4k-instruct-q4',
-              'qwen2.5-3b-instruct-q4_0',
-              'qwen2.5-0.5b-instruct-q4_0',
             ],
           },
           {
@@ -119,7 +104,7 @@ export function defaultConfig(env: Record<string, string | undefined> = {}): Gea
       },
       mid: {
         name: 'mid',
-        description: 'Mid-tier models for medium complexity',
+        description: 'Mid-tier models for medium complexity (2-6GB models)',
         // Hosted providers appear only with their key in the environment
         // (or the app vault), so a fresh install stays local-only while a
         // single pasted key unlocks its models. Eight hosted models total,
@@ -142,6 +127,19 @@ export function defaultConfig(env: Record<string, string | undefined> = {}): Gea
               'starcoder2-7b-q4_k_m',
               'qwen3-4b.q4_k_m',
               'starcoder2-3b-q4_k_m',
+              'qwen2.5-1.5b-instruct-q4_0',
+              'qwen2.5-coder-1.5b-instruct-q4_0',
+              'smollm2-1.7b-instruct.q4_k_m',
+              'falcon3-1b-instruct-q4_k_m',
+              'gemma-2-2b-it-q4_k_m',
+              'starcoder2-3b-q4_k_m',
+              'qwen2.5-coder-3b-instruct-q4_0',
+              'qwen2.5-3b-instruct-q4_0',
+              'llama-3.2-3b-instruct-q4_k_m',
+              'falcon3-3b-instruct-q4_k_m',
+              'phi-3-mini-4k-instruct-q4',
+              'qwen3-4b.q4_k_m',
+              'starcoder2-7b-q4_k_m',
             ],
           },
           ...(hasOpenRouter
@@ -199,7 +197,7 @@ export function defaultConfig(env: Record<string, string | undefined> = {}): Gea
       },
       frontier: {
         name: 'frontier',
-        description: 'Frontier models for hard tasks',
+        description: 'Frontier models for hard tasks (6GB+ models)',
         // Five models total, same key-gating as mid.
         providers: [
           ...(hasAnthropic
@@ -231,19 +229,26 @@ export function defaultConfig(env: Record<string, string | undefined> = {}): Gea
             : []),
           // Keyless frontier capability, last on purpose: hosted models
           // win when keys exist, and these catch everything otherwise.
-          // 8-16GB weights — the dialog says what each needs.
+          // 6GB+ weights — the dialog says what each needs.
           {
             name: 'embedded',
             baseUrl: 'http://127.0.0.1:11439',
             models: [
-              'qwen2.5-14b-instruct-q4_k_m',
-              'deepseek-r1-distill-qwen-14b-q4_k_m',
-              'mistral-nemo-instruct-2407-q4_k_m',
-              'falcon3-10b-instruct-q4_k_m',
-              'qwen2.5-coder-14b-instruct-q4_k_m',
               'qwen3-8b.q4_k_m',
+              'falcon3-10b-instruct-q4_k_m',
+              'mistral-nemo-instruct-2407-q4_k_m',
+              'qwen2.5-14b-instruct-q4_k_m',
+              'qwen2.5-coder-14b-instruct-q4_k_m',
+              'deepseek-r1-distill-qwen-14b-q4_k_m',
               'starcoder2-15b-q4_k_m',
               'phi-4-q4_k',
+              'qwen2.5-32b-instruct-q4_k_m',
+              'qwen2.5-coder-32b-instruct-q4_k_m',
+              'deepseek-r1-distill-qwen-32b-q4_k_m',
+              'mixtral-8x7b-instruct-q4_k_m',
+              'yi-1.5-34b-chat-q4_k_m',
+              'nemotron-3-ultra-q4_k_m',
+              'command-r-plus-q4_k_m',
             ],
           },
         ],

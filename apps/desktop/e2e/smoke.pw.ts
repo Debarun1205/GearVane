@@ -171,7 +171,7 @@ test('ide mounts the device-local workspace without host bridges', async ({ page
 });
 
 test('models dialog lists the catalog without host bridges', async ({ page }) => {
-  // No bridge, so no downloads: the eight catalog rows still render from
+  // No bridge, so no downloads: the catalog rows still render from
   // the bundled list, with the note saying where fetching works.
   const errors = trackErrors(page);
   await page.goto('/');
@@ -180,11 +180,11 @@ test('models dialog lists the catalog without host bridges', async ({ page }) =>
   await page.locator('#models-button').click();
   const dialog = page.locator('#models-dialog');
   await expect(dialog).toBeVisible();
-  // Thirty-five downloadable locals. Hosted groups are absent here by
+  // Fifty models in local tier. Hosted groups are absent here by
   // design: the static server answers an empty config, so mid and
   // frontier have no providers at all. Their grouping is pinned in unit
   // tests and the Electron spec, which run against real configs.
-  await expect(page.locator('#models-body [data-tier="local"] .health-row')).toHaveCount(35);
+  await expect(page.locator('#models-body [data-tier="local"] .health-row')).toHaveCount(50);
   await expect(page.locator('#models-body [data-tier="mid"]')).toHaveCount(0);
   await expect(page.locator('#models-body [data-tier="frontier"]')).toHaveCount(0);
   await expect(page.locator('#models-body')).toContainText('desktop app');

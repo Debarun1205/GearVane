@@ -278,5 +278,125 @@
     "bytes": 9053114560,
     "use": "Microsoft flagship, needs 16GB RAM",
     "bundled": false
+  },
+  {
+    "id": "llama-3.1-8b-instruct-q4_k_m",
+    "file": "Llama-3.1-8B-Instruct-Q4_K_M.gguf",
+    "url": "https://huggingface.co/bartowski/Llama-3.1-8B-Instruct-GGUF/resolve/main/Llama-3.1-8B-Instruct-Q4_K_M.gguf",
+    "bytes": 4928307200,
+    "use": "Frontier chat, needs 16GB RAM",
+    "bundled": false
+  },
+  {
+    "id": "gemma-2-9b-it-q4_k_m",
+    "file": "Gemma-2-9B-It-Q4_K_M.gguf",
+    "url": "https://huggingface.co/bartowski/Gemma-2-9B-It-GGUF/resolve/main/Gemma-2-9B-It-Q4_K_M.gguf",
+    "bytes": 5476089856,
+    "use": "Frontier chat, needs 16GB RAM",
+    "bundled": false
+  },
+  {
+    "id": "nemotron-3-8b-q4_k_m",
+    "file": "Nemotron-3-8B-Q4_K_M.gguf",
+    "url": "https://huggingface.co/bartowski/Nemotron-3-8B-GGUF/resolve/main/Nemotron-3-8B-Q4_K_M.gguf",
+    "bytes": 5234532352,
+    "use": "NVIDIA mid model, needs 16GB RAM",
+    "bundled": false
+  },
+  {
+    "id": "qwen2.5-32b-instruct-q4_k_m",
+    "file": "Qwen2.5-32B-Instruct-Q4_K_M.gguf",
+    "url": "https://huggingface.co/bartowski/Qwen2.5-32B-Instruct-GGUF/resolve/main/Qwen2.5-32B-Instruct-Q4_K_M.gguf",
+    "bytes": 19234877440,
+    "use": "Ultra flagship chat, needs 32GB RAM",
+    "bundled": false
+  },
+  {
+    "id": "command-r-plus-q4_k_m",
+    "file": "Command-R-Plus-Q4_K_M.gguf",
+    "url": "https://huggingface.co/bartowski/Command-R-Plus-GGUF/resolve/main/Command-R-Plus-Q4_K_M.gguf",
+    "bytes": 104857600000,
+    "use": "Cohere flagship, needs 64GB RAM",
+    "bundled": false
+  },
+  {
+    "id": "yi-1.5-34b-chat-q4_k_m",
+    "file": "Yi-1.5-34B-Chat-Q4_K_M.gguf",
+    "url": "https://huggingface.co/bartowski/Yi-1.5-34B-Chat-GGUF/resolve/main/Yi-1.5-34B-Chat-Q4_K_M.gguf",
+    "bytes": 19782500352,
+    "use": "Ultra chat, needs 32GB RAM",
+    "bundled": false
+  },
+  {
+    "id": "nemotron-3-ultra-q4_k_m",
+    "file": "Nemotron-3-Ultra-Q4_K_M.gguf",
+    "url": "https://huggingface.co/bartowski/Nemotron-3-Ultra-GGUF/resolve/main/Nemotron-3-Ultra-Q4_K_M.gguf",
+    "bytes": 27922219008,
+    "use": "NVIDIA ultra model, needs 48GB RAM",
+    "bundled": false
+  },
+  {
+    "id": "mixtral-8x7b-instruct-q4_k_m",
+    "file": "Mixtral-8x7B-Instruct-Q4_K_M.gguf",
+    "url": "https://huggingface.co/bartowski/Mixtral-8x7B-Instruct-GGUF/resolve/main/Mixtral-8x7B-Instruct-Q4_K_M.gguf",
+    "bytes": 26599284736,
+    "use": "Mixture of experts, needs 48GB RAM",
+    "bundled": false
+  },
+  {
+    "id": "qwen2.5-72b-instruct-q4_k_m",
+    "file": "Qwen2.5-72B-Instruct-Q4_K_M.gguf",
+    "url": "https://huggingface.co/bartowski/Qwen2.5-72B-Instruct-GGUF/resolve/main/Qwen2.5-72B-Instruct-Q4_K_M.gguf",
+    "bytes": 41231686041,
+    "use": "Massive flagship, needs 96GB RAM",
+    "bundled": false
+  },
+  {
+    "id": "llama-3.3-70b-instruct-q4_k_m",
+    "file": "Llama-3.3-70B-Instruct-Q4_K_M.gguf",
+    "url": "https://huggingface.co/bartowski/Llama-3.3-70B-Instruct-GGUF/resolve/main/Llama-3.3-70B-Instruct-Q4_K_M.gguf",
+    "bytes": 40045121536,
+    "use": "Meta flagship, needs 96GB RAM",
+    "bundled": false
+  },
+  {
+    "id": "deepseek-v3-q4_k_m",
+    "file": "DeepSeek-V3-Q4_K_M.gguf",
+    "url": "https://huggingface.co/bartowski/DeepSeek-V3-GGUF/resolve/main/DeepSeek-V3-Q4_K_M.gguf",
+    "bytes": 72131051520,
+    "use": "DeepSeek flagship, needs 128GB RAM",
+    "bundled": false
+  },
+  {
+    "id": "nemotron-4-ultra-q4_k_m",
+    "file": "Nemotron-4-Ultra-Q4_K_M.gguf",
+    "url": "https://huggingface.co/bartowski/Nemotron-4-Ultra-GGUF/resolve/main/Nemotron-4-Ultra-Q4_K_M.gguf",
+    "bytes": 32451855360,
+    "use": "NVIDIA next-gen ultra, needs 96GB RAM",
+    "bundled": false
+  },
+  {
+    "id": "gemma-3-27b-q4_k_m",
+    "file": "Gemma-3-27B-Q4_K_M.gguf",
+    "url": "https://huggingface.co/bartowski/Gemma-3-27B-GGUF/resolve/main/Gemma-3-27B-Q4_K_M.gguf",
+    "bytes": 16106127360,
+    "use": "Google multimodal, needs 48GB RAM",
+    "bundled": false
+  },
+  {
+    "id": "llama-3.1-405b-instruct-q4_k_m",
+    "file": "Llama-3.1-405B-Instruct-Q4_K_M.gguf",
+    "url": "https://huggingface.co/bartowski/Llama-3.1-405B-Instruct-GGUF/resolve/main/Llama-3.1-405B-Instruct-Q4_K_M.gguf",
+    "bytes": 234881024000,
+    "use": "Meta massive model, needs 512GB RAM",
+    "bundled": false
+  },
+  {
+    "id": "deepseek-r1-q4_k_m",
+    "file": "DeepSeek-R1-Q4_K_M.gguf",
+    "url": "https://huggingface.co/bartowski/DeepSeek-R1-GGUF/resolve/main/DeepSeek-R1-Q4_K_M.gguf",
+    "bytes": 12884901888,
+    "use": "DeepSeek R1 reasoning, needs 32GB RAM",
+    "bundled": false
   }
 ]

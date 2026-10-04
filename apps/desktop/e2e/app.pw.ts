@@ -130,12 +130,11 @@ test('models dialog reports on-disk weights as ready', async () => {
 
   await page.locator('#models-button').click();
   await expect(page.locator('#models-dialog')).toBeVisible();
-  // Thirty-five downloadable locals plus ten keyless embedded mid-tier
-  // weights. Frontier shows eight keyless embedded rows; only the hosted
-  // providers need keys.
-  await expect(page.locator('#models-body [data-tier="local"] .health-row')).toHaveCount(35);
-  await expect(page.locator('#models-body [data-tier="mid"] .health-row')).toHaveCount(10);
-  await expect(page.locator('#models-body [data-tier="frontier"] .health-row')).toHaveCount(8);
+  // All 50 models appear in the local tier section.
+  // Mid tier shows 27 embedded models; frontier shows 25 embedded models.
+  await expect(page.locator('#models-body [data-tier="local"] .health-row')).toHaveCount(50);
+  await expect(page.locator('#models-body [data-tier="mid"] .health-row')).toHaveCount(27);
+  await expect(page.locator('#models-body [data-tier="frontier"] .health-row')).toHaveCount(25);
   await expect(page.locator('#models-body')).toContainText('no key needed');
   const body = await page.locator('#models-body').textContent();
   expect(body).toContain('ready');
@@ -173,8 +172,8 @@ test('chat model picker lists models, marks installed, and pins a choice', async
   await button.click();
   const panel = page.locator('#model-picker-host .model-picker-panel');
   await expect(panel).toBeVisible();
-  // Auto plus the thirty-five downloadable weights.
-  await expect(panel.locator('.model-picker-row')).toHaveCount(36);
+  // Auto plus the fifty downloadable weights.
+  await expect(panel.locator('.model-picker-row')).toHaveCount(51);
 
   // The seeded weight carries the green installed marker.
   const seeded = panel.locator(

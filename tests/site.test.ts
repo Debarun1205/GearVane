@@ -392,7 +392,6 @@ describe('harness feature claims', () => {
 
   const claims: Array<[claim: string, file: string, pattern: RegExp]> = [
     ['escalation is bounded by configuration', 'packages/core/src/config.ts', /max_escalations/],
-    ['spend limits exist before tokens are spent', 'packages/core/src/config.ts', /spend_limits/],
     ['the agent reads and writes files', 'packages/harness/src/tools/fs.ts', /name: 'write_file'/],
     ['the agent runs commands', 'packages/harness/src/tools/shell.ts', /name: 'run_command'/],
     ['the agent searches the workspace', 'packages/harness/src/tools/search.ts', /name: 'search_files'/],

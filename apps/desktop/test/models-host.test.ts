@@ -27,8 +27,8 @@ function stubFetch(bytes: string): typeof fetch {
 }
 
 describe('catalog', () => {
-  it('lists thirty-five models', () => {
-    expect(catalogModels()).toHaveLength(35);
+  it('lists fifty models', () => {
+    expect(catalogModels()).toHaveLength(50);
   });
 
   it('rejects unknown and non-string ids', () => {
@@ -46,7 +46,7 @@ describe('listModels', () => {
   it('marks present files with their size', () => {
     const dir = setupDir(['qwen2.5-coder-0.5b-instruct-q4_0.gguf']);
     const listed = listModels(dir);
-    expect(listed).toHaveLength(35);
+    expect(listed).toHaveLength(50);
     const coder = listed.find((entry) => entry.id === 'qwen2.5-coder-0.5b-instruct-q4_0');
     expect(coder?.present).toBe(true);
     expect(coder?.sizeOnDisk).toBeGreaterThan(0);
