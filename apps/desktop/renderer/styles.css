@@ -1186,6 +1186,91 @@ html[data-bg='grid'] .ambience::after {
   margin-top: 1.35rem;
 }
 
+/* --- onboarding wizard ----------------------------------------------------- */
+
+.onboarding-steps {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  margin: 0.4rem 0 0.9rem;
+}
+
+.onboarding-step-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--border-strong);
+}
+
+.onboarding-step-dot.active {
+  background: var(--accent);
+}
+
+.onboarding-content {
+  min-height: 180px;
+}
+
+.onboarding-subhead {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0.9rem 0 0.45rem;
+}
+
+.onboarding-posture {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.6rem;
+}
+
+.onboarding-posture-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  text-align: left;
+  font: inherit;
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.65rem 0.75rem;
+  cursor: pointer;
+  color: var(--text);
+}
+
+.onboarding-posture-card:hover {
+  border-color: var(--accent);
+}
+
+.onboarding-posture-card.selected {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.onboarding-posture-card:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.onboarding-posture-name {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.onboarding-posture-vibe {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  line-height: 1.35;
+}
+
+.onboarding-model-host {
+  display: block;
+  margin-top: 0.5rem;
+}
+
+.onboarding-model-host .model-picker-button {
+  max-width: 100%;
+}
+
 /* Aurora drift, only for the aurora background and only when motion is on.
    The calm attribute neutralises animation wholesale further down. */
 @keyframes ambience-drift-a {

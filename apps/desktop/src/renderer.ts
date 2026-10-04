@@ -240,6 +240,11 @@ const els = {
   appearanceTitle: byId('appearance-title'),
   appearanceLede: byId('appearance-lede'),
   appearanceCancel: byId<HTMLButtonElement>('appearance-cancel'),
+  appearanceBack: byId<HTMLButtonElement>('appearance-back'),
+  appearanceNext: byId<HTMLButtonElement>('appearance-next'),
+  appearanceSave: byId<HTMLButtonElement>('appearance-save'),
+  onboardingSteps: byId('onboarding-steps'),
+  onboardingContent: byId('onboarding-content'),
 };
 
 function byId<T extends HTMLElement = HTMLElement>(id: string): T {
@@ -824,14 +829,53 @@ let pendingAppearance: Appearance = loadAppearance(appearanceStorage);
 let appearanceSnapshot: Appearance = { ...pendingAppearance };
 
 /**
- * Build the dialog's option buttons once.
+ * Routing posture chosen during onboarding.
+ *
+ * "local-first" is the default: local models for everyday work, hosted
+ * models when a task needs them. "local-only" keeps every run on the
+ * local tier — no hosted calls, no keys, fully offline.
+ */
+type Posture = 'local-first' | 'local-only';
+
+const POSTURE_STORAGE_KEY = 'gearvane.posture';
+
+function loadPosture(): Posture {
+  try {
+    return window.localStorage.getItem(POSTURE_STORAGE_KEY) === 'local-only'
+      ? 'local-only'
+      : 'local-first';
+  } catch {
+    return 'local-first';
+  }
+}
+
+let pendingPosture: Posture = loadPosture();
+
+function savePosture(): void {
+  try {
+    window.localStorage.setItem(POSTURE_STORAGE_KEY, pendingPosture);
+  } catch {
+    // Losing the posture only means the default next launch.
+  }
+}
+
+/** The onboarding steps: welcome, theme, environment. */
+const ONBOARDING_STEPS = ['welcome', 'theme', 'environment'] as const;
+type OnboardingStep = (typeof ONBOARDING_STEPS)[number];
+let onboardingStep: OnboardingStep = 'welcome';
+/** Settings mode edits the theme step directly, without the wizard chrome. */
+let appearanceMode: 'onboarding' | 'settings' = 'settings';
+
+/**
+ * Render the four appearance groups into a container.
  *
  * Everything is createElement and textContent: no template string is ever
- * parsed as HTML, so a preset name cannot inject markup.
+ * parsed as HTML, so a preset name cannot inject markup. The group ids
+ * match the static markup the smoke tests have always selected.
  */
-function wireAppearance(): void {
+function renderAppearanceGroups(container: HTMLElement): void {
   const makeOption = (
-    container: HTMLElement,
+    group: HTMLElement,
     kind: keyof Appearance,
     id: string,
     name: string,
@@ -877,20 +921,39 @@ function wireAppearance(): void {
     button.appendChild(why);
 
     button.addEventListener('click', () => previewAppearance(kind, id));
-    container.appendChild(button);
+    group.appendChild(button);
   };
 
-  const themes = byId('appearance-themes');
+  const group = (
+    id: string,
+    label: string,
+    className: string,
+  ): HTMLElement => {
+    const section = document.createElement('section');
+    section.className = 'appearance-group';
+    const heading = document.createElement('h3');
+    heading.textContent = label;
+    const options = document.createElement('div');
+    options.className = className;
+    options.id = id;
+    options.setAttribute('role', 'group');
+    options.setAttribute('aria-label', label);
+    section.append(heading, options);
+    container.appendChild(section);
+    return options;
+  };
+
+  const themes = group('appearance-themes', 'Theme', 'appearance-options');
   for (const theme of THEMES) {
     makeOption(themes, 'theme', theme.id, theme.name, theme.vibe);
   }
 
-  const backgrounds = byId('appearance-backgrounds');
+  const backgrounds = group('appearance-backgrounds', 'Background', 'appearance-options');
   for (const background of BACKGROUNDS) {
     makeOption(backgrounds, 'background', background.id, background.name, background.vibe);
   }
 
-  const accents = byId('appearance-accents');
+  const accents = group('appearance-accents', 'Accent', 'appearance-swatches');
   for (const accent of ACCENTS) {
     const button = document.createElement('button');
     button.type = 'button';
@@ -905,23 +968,190 @@ function wireAppearance(): void {
     accents.appendChild(button);
   }
 
-  const motions = byId('appearance-motion');
+  const motions = group('appearance-motion', 'Motion', 'appearance-options appearance-options-small');
   for (const motion of MOTIONS) {
     makeOption(motions, 'motion', motion.id, motion.name, motion.vibe);
   }
+}
 
-  // Save persists; Cancel and the Escape key both land here with any other
-  // returnValue, which reverts the live preview to the opening snapshot.
+/** The welcome step: what GearVane is, and what the wizard sets up. */
+function renderWelcomeStep(content: HTMLElement): void {
+  const intro = document.createElement('p');
+  intro.className = 'builder-help';
+  intro.textContent =
+    'GearVane runs models on this device and in your cloud accounts. ' +
+    'A few quick choices make it yours: a look, and how models run. ' +
+    'Everything can be changed later from the top bar.';
+  content.appendChild(intro);
+}
+
+/** The theme step: the four appearance groups, previewing live. */
+function renderThemeStep(content: HTMLElement): void {
+  renderAppearanceGroups(content);
+}
+
+/** The environment step: routing posture and the default model. */
+function renderEnvironmentStep(content: HTMLElement): void {
+  const postureLabel = document.createElement('h3');
+  postureLabel.className = 'onboarding-subhead';
+  postureLabel.textContent = 'How models run';
+  content.appendChild(postureLabel);
+
+  const postureGroup = document.createElement('div');
+  postureGroup.className = 'onboarding-posture';
+  for (const option of [
+    {
+      id: 'local-first',
+      name: 'Local first',
+      vibe: 'Free local models for everyday work; hosted models join in when a task needs them.',
+    },
+    {
+      id: 'local-only',
+      name: 'Local only',
+      vibe: 'Stay on local models. No hosted calls, no keys, fully offline.',
+    },
+  ] as const) {
+    const card = document.createElement('button');
+    card.type = 'button';
+    card.className = 'onboarding-posture-card';
+    card.dataset.posture = option.id;
+
+    const name = document.createElement('span');
+    name.className = 'onboarding-posture-name';
+    name.textContent = option.name;
+    const vibe = document.createElement('span');
+    vibe.className = 'onboarding-posture-vibe';
+    vibe.textContent = option.vibe;
+    card.append(name, vibe);
+
+    card.addEventListener('click', () => {
+      pendingPosture = option.id;
+      syncPostureCards();
+    });
+    postureGroup.appendChild(card);
+  }
+  content.appendChild(postureGroup);
+  syncPostureCards();
+
+  const modelLabel = document.createElement('h3');
+  modelLabel.className = 'onboarding-subhead';
+  modelLabel.textContent = 'What drives your requests';
+  content.appendChild(modelLabel);
+
+  const modelHelp = document.createElement('p');
+  modelHelp.className = 'builder-help';
+  modelHelp.textContent =
+    'Auto classifies each request and picks a tier. A specific model ' +
+    'always runs that model. You can change this any time from the ' +
+    'model menu in the top bar.';
+  content.appendChild(modelHelp);
+
+  const host = document.createElement('span');
+  host.className = 'onboarding-model-host';
+  content.appendChild(host);
+  void mountOnboardingPicker(host);
+}
+
+/**
+ * The onboarding model picker: Auto plus every downloadable weight.
+ *
+ * Deliberately without hosted rows — onboarding runs before the
+ * config resolves, and the default model is a local weight or Auto.
+ * Choosing here writes the same pin the header picker uses.
+ */
+async function mountOnboardingPicker(host: HTMLElement): Promise<void> {
+  const entries: ModelPickerEntry[] = [
+    { id: '', label: 'Auto', detail: 'classify the request, pick the tier' },
+    ...(await catalogEntries()),
+  ];
+  const instance = createModelPicker({
+    entries,
+    selected: modelPin,
+    autoLabel: 'Auto',
+    handlers: pickerHandlers,
+    onSelect: (id) => {
+      modelPin = id;
+      saveModelPin();
+    },
+  });
+  host.textContent = '';
+  host.append(instance.root);
+}
+
+/** Move the selected state onto the posture cards. */
+function syncPostureCards(): void {
+  const cards = Array.from(
+    els.onboardingContent.querySelectorAll<HTMLButtonElement>('[data-posture]'),
+  );
+  for (const card of cards) {
+    const selected = card.dataset.posture === pendingPosture;
+    card.classList.toggle('selected', selected);
+    card.setAttribute('aria-pressed', String(selected));
+  }
+}
+
+/** Render the current step and update the wizard chrome. */
+function renderStep(): void {
+  const wizard = appearanceMode === 'onboarding';
+  const isFirst = onboardingStep === 'welcome';
+  const isLast = onboardingStep === 'environment';
+
+  els.onboardingSteps.hidden = !wizard;
+  els.appearanceBack.hidden = !wizard || isFirst;
+  els.appearanceNext.hidden = !wizard || isLast;
+  els.appearanceSave.hidden = wizard ? !isLast : onboardingStep !== 'theme';
+
+  if (wizard) {
+    const dots = Array.from(els.onboardingSteps.querySelectorAll('.onboarding-step-dot'));
+    const index = ONBOARDING_STEPS.indexOf(onboardingStep);
+    dots.forEach((dot, i) => dot.classList.toggle('active', i === index));
+  }
+
+  const content = els.onboardingContent;
+  content.textContent = '';
+  if (onboardingStep === 'welcome') renderWelcomeStep(content);
+  else if (onboardingStep === 'theme') renderThemeStep(content);
+  else renderEnvironmentStep(content);
+
+  syncAppearanceButtons();
+}
+
+/**
+ * Build the dialog once and keep it fed from the stored look.
+ *
+ * Save persists; Cancel and the Escape key both land here with any other
+ * returnValue, which reverts the live preview to the opening snapshot.
+ */
+function wireAppearance(): void {
   els.appearanceDialog.addEventListener('close', () => {
     const saved = els.appearanceDialog.returnValue === 'save';
     if (saved) {
       saveAppearance(appearanceStorage, pendingAppearance);
       applyAppearance(document.documentElement, pendingAppearance);
+      savePosture();
     } else {
       applyAppearance(document.documentElement, appearanceSnapshot);
       pendingAppearance = { ...appearanceSnapshot };
     }
     window.dispatchEvent(new CustomEvent(APPEARANCE_EVENT));
+  });
+
+  els.appearanceBack.addEventListener('click', () => {
+    const index = ONBOARDING_STEPS.indexOf(onboardingStep);
+    const prev = ONBOARDING_STEPS[index - 1];
+    if (prev) {
+      onboardingStep = prev;
+      renderStep();
+    }
+  });
+
+  els.appearanceNext.addEventListener('click', () => {
+    const index = ONBOARDING_STEPS.indexOf(onboardingStep);
+    const next = ONBOARDING_STEPS[index + 1];
+    if (next) {
+      onboardingStep = next;
+      renderStep();
+    }
   });
 
   syncAppearanceButtons();
@@ -959,17 +1189,20 @@ function syncAppearanceButtons(): void {
  * preview the user never confirmed.
  */
 function openAppearance(mode: 'onboarding' | 'settings'): void {
+  appearanceMode = mode;
   pendingAppearance = loadAppearance(appearanceStorage);
   appearanceSnapshot = { ...pendingAppearance };
+  pendingPosture = loadPosture();
 
   if (mode === 'onboarding') {
+    onboardingStep = 'welcome';
     els.appearanceTitle.textContent = 'Make GearVane yours';
     els.appearanceLede.textContent =
-      'Pick a theme, a background, an accent, and a motion style. ' +
-      'Choices apply as you make them; only Save look keeps them. ' +
-      'You can change all of it any time from Look in the top bar.';
+      'A few quick choices to make GearVane yours. Everything can be ' +
+      'changed later from the top bar.';
     els.appearanceCancel.textContent = 'Skip for now';
   } else {
+    onboardingStep = 'theme';
     els.appearanceTitle.textContent = 'Appearance';
     els.appearanceLede.textContent =
       'Themes, background, accent, and motion. Changes apply instantly ' +
@@ -977,7 +1210,7 @@ function openAppearance(mode: 'onboarding' | 'settings'): void {
     els.appearanceCancel.textContent = 'Cancel';
   }
 
-  syncAppearanceButtons();
+  renderStep();
   els.appearanceDialog.returnValue = '';
   if (typeof els.appearanceDialog.showModal === 'function') {
     els.appearanceDialog.showModal();
@@ -1152,6 +1385,25 @@ const keyStorage: KeyStorage = {
   },
 };
 
+/**
+ * Apply the onboarding posture to a resolved config.
+ *
+ * "local-only" disables escalation, so every run stays on the local
+ * tier and retries local models instead of reaching for hosted ones.
+ * The config file is never rewritten — the posture is a device-local
+ * preference, like the look.
+ */
+function applyPosture(config: GearVaneConfig): GearVaneConfig {
+  if (loadPosture() !== 'local-only') return config;
+  return {
+    ...config,
+    router: {
+      ...config.router,
+      escalation: { ...config.router.escalation, enabled: false },
+    },
+  };
+}
+
 async function main(): Promise<void> {
   renderSamples();
 
@@ -1171,7 +1423,7 @@ async function main(): Promise<void> {
   }
 
   const { config, error, fromDefaults } = await resolveConfig();
-  activeConfig = config;
+  activeConfig = applyPosture(config);
   configFromDefaults = fromDefaults ?? false;
   state = { ...state, limits: config.safety.spendLimits };
   controller = buildController(config);

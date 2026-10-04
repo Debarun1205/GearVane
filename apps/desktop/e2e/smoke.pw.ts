@@ -54,6 +54,10 @@ test('onboarding previews live, saves once, and never returns', async ({ page })
   const dialog = page.locator('#appearance-dialog');
   await expect(dialog).toBeVisible();
 
+  // The wizard opens on the welcome step; the theme groups live on
+  // the second step.
+  await page.locator('#appearance-next').click();
+
   // Every option group is built.
   await expect(page.locator('#appearance-themes .appearance-option')).toHaveCount(5);
   await expect(page.locator('#appearance-backgrounds .appearance-option')).toHaveCount(4);
@@ -70,7 +74,8 @@ test('onboarding previews live, saves once, and never returns', async ({ page })
     await page.evaluate(() => localStorage.getItem('gearvane.appearance')),
   ).toBeNull();
 
-  // Save persists; the dialog closes.
+  // Advance to the environment step, then save: the dialog closes.
+  await page.locator('#appearance-next').click();
   await page.locator('#appearance-save').click();
   await expect(dialog).toBeHidden();
   expect(await bg(page)).toBe(previewed);

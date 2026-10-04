@@ -154,49 +154,23 @@
         them; nothing is kept until you save.
       </p>
 
-      <section class="appearance-group">
-        <h3 id="appearance-themes-label">Theme</h3>
-        <div
-          class="appearance-options"
-          id="appearance-themes"
-          role="group"
-          aria-labelledby="appearance-themes-label"
-        ></div>
-      </section>
+      <div id="onboarding-steps" class="onboarding-steps" hidden>
+        <span class="onboarding-step-dot"></span>
+        <span class="onboarding-step-dot"></span>
+        <span class="onboarding-step-dot"></span>
+      </div>
 
-      <section class="appearance-group">
-        <h3 id="appearance-backgrounds-label">Background</h3>
-        <div
-          class="appearance-options"
-          id="appearance-backgrounds"
-          role="group"
-          aria-labelledby="appearance-backgrounds-label"
-        ></div>
-      </section>
-
-      <section class="appearance-group">
-        <h3 id="appearance-accents-label">Accent</h3>
-        <div
-          class="appearance-swatches"
-          id="appearance-accents"
-          role="group"
-          aria-labelledby="appearance-accents-label"
-        ></div>
-      </section>
-
-      <section class="appearance-group">
-        <h3 id="appearance-motion-label">Motion</h3>
-        <div
-          class="appearance-options appearance-options-small"
-          id="appearance-motion"
-          role="group"
-          aria-labelledby="appearance-motion-label"
-        ></div>
-      </section>
+      <div id="onboarding-content" class="onboarding-content"></div>
 
       <form method="dialog" class="appearance-actions">
+        <button id="appearance-back" class="ghost-button" type="button" hidden>
+          Back
+        </button>
         <button id="appearance-cancel" class="ghost-button" type="submit" value="cancel">
           Cancel
+        </button>
+        <button id="appearance-next" class="send-button" type="button" hidden>
+          Next
         </button>
         <button id="appearance-save" class="send-button" type="submit" value="save">
           Save look
