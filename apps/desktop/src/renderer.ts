@@ -270,22 +270,11 @@ function saveModelPin(): void {
 }
 
 /**
- * Everything the picker lists: Auto, every downloadable weight, and
- * the hosted models the active config exposes.
- *
- * Downloadable rows carry a green marker when the weight is already
+ * The downloadable weights, with a green marker beside those already
  * on disk. In the bridgeless webview there is no model directory,
  * so rows are read-only and say so instead of promising a download.
  */
-async function pickerEntries(): Promise<ModelPickerEntry[]> {
-  const entries: ModelPickerEntry[] = [
-    {
-      id: '',
-      label: 'Auto',
-      detail: 'classify the request, pick the tier',
-    },
-  ];
-
+async function catalogEntries(): Promise<ModelPickerEntry[]> {
   const present = new Set<string>();
   if (bridge.models) {
     try {
@@ -298,23 +287,36 @@ async function pickerEntries(): Promise<ModelPickerEntry[]> {
     }
   }
 
-  for (const entry of MODEL_CATALOG as CatalogEntry[]) {
-    entries.push(
-      bridge.models
-        ? {
-            id: entry.id,
-            label: entry.id,
-            detail: `${entry.use} · ${formatMB(entry.bytes)}`,
-            present: present.has(entry.id),
-            download: { bytes: entry.bytes },
-          }
-        : {
-            id: entry.id,
-            label: entry.id,
-            detail: `${entry.use} · desktop app only`,
-          },
-    );
-  }
+  return (MODEL_CATALOG as CatalogEntry[]).map((entry) =>
+    bridge.models
+      ? {
+          id: entry.id,
+          label: entry.id,
+          detail: `${entry.use} · ${formatMB(entry.bytes)}`,
+          present: present.has(entry.id),
+          download: { bytes: entry.bytes },
+        }
+      : {
+          id: entry.id,
+          label: entry.id,
+          detail: `${entry.use} · desktop app only`,
+        },
+  );
+}
+
+/**
+ * Everything the chat picker lists: Auto, every downloadable weight,
+ * and the hosted models the active config exposes.
+ */
+async function pickerEntries(): Promise<ModelPickerEntry[]> {
+  const entries: ModelPickerEntry[] = [
+    {
+      id: '',
+      label: 'Auto',
+      detail: 'classify the request, pick the tier',
+    },
+    ...(await catalogEntries()),
+  ];
 
   const config = activeConfig;
   if (config) {
@@ -1318,6 +1320,19 @@ async function main(): Promise<void> {
             cancel: () => agent.cancel(),
             onStep: (handler) => agent.onStep(handler),
           },
+          modelPicker: bridge.models
+            ? {
+                catalog: () => catalogEntries(),
+                install: async (id) => {
+                  try {
+                    return (await bridge.models?.fetch(id))?.ok ?? false;
+                  } catch {
+                    return false;
+                  }
+                },
+                confirmInstall: (entry) => pickerHandlers.confirmInstall(entry),
+              }
+            : undefined,
         });
         ideHost.textContent = '';
         view.mount(ideHost);

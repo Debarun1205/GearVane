@@ -26,6 +26,8 @@ export interface ModelPickerEntry {
   present?: boolean;
   /** Set when the row can be downloaded; absent means it cannot. */
   download?: { bytes: number };
+  /** Catalog id to install, when the row id is qualified (provider/model). */
+  downloadId?: string;
 }
 
 /** Host-supplied actions the picker needs to run a selection. */

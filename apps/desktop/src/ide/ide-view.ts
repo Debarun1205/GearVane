@@ -28,6 +28,11 @@ import {
   type InlineModel,
 } from './inline-complete.js';
 import type { FsEntry } from './fs-store.js';
+import {
+  createModelPicker,
+  type ModelPicker,
+  type ModelPickerEntry,
+} from '../model-picker.js';
 
 /**
  * Filesystem access for the IDE.
@@ -96,6 +101,22 @@ export interface AgentBridge {
   onStep(handler: (step: AgentStep) => void): () => void;
 }
 
+/**
+ * Model picker wiring for the IDE agent pane.
+ *
+ * The host supplies the catalog (with on-disk markers) and the
+ * install actions, so the pane offers the same pick-then-run
+ * behaviour as the chat header without owning a model directory.
+ */
+export interface IdeModelPickerOptions {
+  /** Catalog entries with present markers and download sizes. */
+  catalog(): Promise<ModelPickerEntry[]>;
+  /** Install a weight by id; resolves true once it is on disk. */
+  install(id: string): Promise<boolean>;
+  /** Ask permission before a large download. */
+  confirmInstall(entry: ModelPickerEntry): Promise<boolean>;
+}
+
 export interface IdeViewOptions {
   workspaceRoot: string;
   /**
@@ -110,6 +131,8 @@ export interface IdeViewOptions {
    * configured, and ghost text stays off rather than failing per keystroke.
    */
   completion?: InlineModel;
+  /** Model picker for the agent pane. Absent keeps the old select. */
+  modelPicker?: IdeModelPickerOptions;
   /** Called when the agent touches a file, so the editor can reveal it. */
   onAgentFile?: (path: string) => void;
 }
@@ -744,12 +767,21 @@ export class IdeView {
     const modelLabel = document.createElement('label');
     modelLabel.className = 'ide-agent-mode-label';
     modelLabel.textContent = 'Model ';
-    const modelSelect = document.createElement('select');
-    modelSelect.className = 'ide-agent-mode';
-    modelSelect.setAttribute('aria-label', 'Agent model');
-    modelLabel.append(modelSelect);
+    // The picker replaces the old select when the host supplies one;
+    // the select stays for hosts without a model directory.
+    if (this.options.modelPicker) {
+      const host = document.createElement('span');
+      host.className = 'ide-model-picker-host';
+      modelLabel.append(host);
+      this.agentModelPickerHost = host;
+    } else {
+      const modelSelect = document.createElement('select');
+      modelSelect.className = 'ide-agent-mode';
+      modelSelect.setAttribute('aria-label', 'Agent model');
+      modelLabel.append(modelSelect);
+      this.agentModelSelect = modelSelect;
+    }
     pane.append(modelLabel);
-    this.agentModelSelect = modelSelect;
     void this.fillModelOptions();
 
     const row = document.createElement('div');
@@ -786,6 +818,10 @@ export class IdeView {
   private agentInput: HTMLTextAreaElement | undefined;
   private agentMode: HTMLSelectElement | undefined;
   private agentModelSelect: HTMLSelectElement | undefined;
+  private agentModelPickerHost: HTMLElement | undefined;
+  private agentModelPicker: ModelPicker | undefined;
+  /** Pinned model for agent runs; empty means Auto. */
+  private agentModelPin = '';
   private agentBuildButton: HTMLButtonElement | undefined;
   private agentStopButton: HTMLButtonElement | undefined;
   private agentLog: HTMLElement | undefined;
@@ -808,15 +844,18 @@ export class IdeView {
   }
 
   /**
-   * Fill the model dropdown from the configured providers.
+   * Fill the model picker from the configured providers.
    *
+   * Auto first, then every configured model. Local (embedded) models
+   * match a catalog entry, which adds the on-disk marker and the
+   * install gating, so picking a missing weight downloads it first.
    * Absent or empty means the loop falls back to the first configured
    * provider, so a failure here degrades to old behavior rather than
    * blocking the pane.
    */
   private async fillModelOptions(): Promise<void> {
+    const picker = this.agentModelPicker;
     const select = this.agentModelSelect;
-    if (!select) return;
 
     let models: IdeAgentModel[] = [];
     try {
@@ -825,21 +864,68 @@ export class IdeView {
       models = [];
     }
 
-    select.textContent = '';
-    if (models.length === 0) {
-      const option = document.createElement('option');
-      option.value = '';
-      option.textContent = 'Default model';
-      select.append(option);
+    if (select) {
+      select.textContent = '';
+      if (models.length === 0) {
+        const option = document.createElement('option');
+        option.value = '';
+        option.textContent = 'Default model';
+        select.append(option);
+      } else {
+        for (const entry of models) {
+          const option = document.createElement('option');
+          option.value = `${entry.provider}/${entry.model}`;
+          option.textContent = `${entry.provider}/${entry.model} (${entry.tier})`;
+          select.append(option);
+        }
+      }
       return;
     }
 
-    for (const entry of models) {
-      const option = document.createElement('option');
-      option.value = `${entry.provider}/${entry.model}`;
-      option.textContent = `${entry.provider}/${entry.model} (${entry.tier})`;
-      select.append(option);
+    if (!picker || !this.agentModelPickerHost) return;
+
+    const wiring = this.options.modelPicker;
+    if (!wiring) return;
+
+    let catalog: ModelPickerEntry[] = [];
+    try {
+      catalog = await wiring.catalog();
+    } catch {
+      catalog = [];
     }
+    const byModel = new Map(catalog.map((entry) => [entry.id, entry]));
+
+    const entries: ModelPickerEntry[] = [
+      { id: '', label: 'Auto', detail: 'classify the request, pick the tier' },
+    ];
+    for (const entry of models) {
+      const local = byModel.get(entry.model);
+      entries.push({
+        id: `${entry.provider}/${entry.model}`,
+        label: `${entry.provider}/${entry.model}`,
+        detail: entry.tier,
+        present: local?.present,
+        ...(local?.download
+          ? { download: local.download, downloadId: entry.model }
+          : {}),
+      });
+    }
+
+    picker.destroy();
+    this.agentModelPicker = createModelPicker({
+      entries,
+      selected: this.agentModelPin,
+      autoLabel: 'Auto',
+      handlers: {
+        install: (picked) => wiring.install(picked.downloadId ?? picked.id),
+        confirmInstall: (picked) => wiring.confirmInstall(picked),
+      },
+      onSelect: (id) => {
+        this.agentModelPin = id;
+      },
+    });
+    this.agentModelPickerHost.textContent = '';
+    this.agentModelPickerHost.append(this.agentModelPicker.root);
   }
 
   private async runAgentPrompt(): Promise<void> {
@@ -862,7 +948,7 @@ export class IdeView {
 
     try {
       const mode = this.agentMode?.value === 'ask' ? 'ask' : 'build';
-      const selectedModel = this.agentModelSelect?.value.trim() || undefined;
+      const selectedModel = this.agentModelPin || undefined;
       const response = await this.options.agent.run(prompt, { mode, model: selectedModel });
 
       if (!response.ok || !response.result) {
@@ -1135,6 +1221,7 @@ export class IdeView {
     this.agentUnsubscribe?.();
     this.ghostAbort?.abort();
     this.ghostRegistration?.dispose();
+    this.agentModelPicker?.destroy();
     window.removeEventListener(APPEARANCE_EVENT, this.onAppearance);
     this.terminal?.dispose();
     this.editor?.dispose();

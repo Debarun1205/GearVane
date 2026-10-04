@@ -706,6 +706,17 @@ html[data-bg='grid'] .ambience::after {
   padding: 0.25rem 0.4rem;
 }
 
+/* The picker host sits where the select did, inside the label. */
+.ide-model-picker-host {
+  display: inline-block;
+  margin-left: 0.4rem;
+  vertical-align: middle;
+}
+
+.ide-model-picker-host .model-picker-button {
+  max-width: 200px;
+}
+
 /* --- editor tabs --------------------------------------------------------- */
 
 .ide-tabbar {
