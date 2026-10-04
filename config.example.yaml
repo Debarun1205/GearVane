@@ -38,6 +38,24 @@ tiers:
           - gemma-2-2b-it-q4_k_m
           - deepseek-r1-distill-qwen-1.5b-q4_k_m
           - qwen2.5-coder-1.5b-instruct-q4_0
+          - qwen2.5-coder-3b-instruct-q4_0
+          - smollm2-1.7b-instruct.q4_k_m
+          - qwen3-0.6b.q4_k_m
+          - tinyllama-1.1b-chat-v1.0.q4_k_m
+          - deepseek-coder-1.3b-instruct.q4_k_m
+          - falcon3-3b-instruct-q4_k_m
+          - phi-3-mini-4k-instruct-q4
+          - qwen2.5-3b-instruct-q4_0
+          - qwen2.5-0.5b-instruct-q4_0
+          - qwen2.5-coder-3b-instruct-q4_0
+          - smollm2-1.7b-instruct.q4_k_m
+          - qwen3-0.6b.q4_k_m
+          - tinyllama-1.1b-chat-v1.0.q4_k_m
+          - deepseek-coder-1.3b-instruct.q4_k_m
+          - falcon3-3b-instruct-q4_k_m
+          - phi-3-mini-4k-instruct-q4
+          - qwen2.5-3b-instruct-q4_0
+          - qwen2.5-0.5b-instruct-q4_0
       - name: ollama
         base_url: "http://localhost:11434"
         models:

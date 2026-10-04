@@ -16,6 +16,29 @@ describe('default local tier', () => {
     expect(total).toBeGreaterThanOrEqual(10);
   });
 
+  it('wires eight mid and five frontier models when keys are present', () => {
+    const config = defaultConfig({
+      OPENROUTER_API_KEY: 'x',
+      MODEL_API_KEY: 'x',
+      DEEPSEEK_API_KEY: 'x',
+      GEMINI_API_KEY: 'x',
+      MISTRAL_API_KEY: 'x',
+      ANTHROPIC_API_KEY: 'x',
+      OPENAI_API_KEY: 'x',
+      XAI_API_KEY: 'x',
+    });
+    const mid = config.tiers.mid.providers.reduce((sum, p) => sum + p.models.length, 0);
+    const frontier = config.tiers.frontier.providers.reduce((sum, p) => sum + p.models.length, 0);
+    expect(mid).toBe(8);
+    expect(frontier).toBe(5);
+  });
+
+  it('stays local-only with no keys', () => {
+    const config = defaultConfig();
+    expect(config.tiers.mid.providers).toEqual([]);
+    expect(config.tiers.frontier.providers).toEqual([]);
+  });
+
   it('covers every local server the factory supports', () => {
     // llamacpp is a spelling alias for llama_cpp, not a second server.
     const expected = LOCAL_PROVIDER_NAMES.filter((name) => name !== 'llamacpp');

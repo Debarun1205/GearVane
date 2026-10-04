@@ -15,6 +15,11 @@ export function defaultConfig(env: Record<string, string | undefined> = {}): Gea
   const hasAnthropic = Boolean(env['ANTHROPIC_API_KEY']);
   const hasOpenRouter = Boolean(env['OPENROUTER_API_KEY']);
   const hasMeta = Boolean(env['MODEL_API_KEY']);
+  const hasDeepSeek = Boolean(env['DEEPSEEK_API_KEY']);
+  const hasGemini = Boolean(env['GEMINI_API_KEY']);
+  const hasMistral = Boolean(env['MISTRAL_API_KEY']);
+  const hasOpenAI = Boolean(env['OPENAI_API_KEY']);
+  const hasXai = Boolean(env['XAI_API_KEY']);
 
   return {
     tiers: {
@@ -43,6 +48,15 @@ export function defaultConfig(env: Record<string, string | undefined> = {}): Gea
               'gemma-2-2b-it-q4_k_m',
               'deepseek-r1-distill-qwen-1.5b-q4_k_m',
               'qwen2.5-coder-1.5b-instruct-q4_0',
+              'qwen2.5-coder-3b-instruct-q4_0',
+              'smollm2-1.7b-instruct.q4_k_m',
+              'qwen3-0.6b.q4_k_m',
+              'tinyllama-1.1b-chat-v1.0.q4_k_m',
+              'deepseek-coder-1.3b-instruct.q4_k_m',
+              'falcon3-3b-instruct-q4_k_m',
+              'phi-3-mini-4k-instruct-q4',
+              'qwen2.5-3b-instruct-q4_0',
+              'qwen2.5-0.5b-instruct-q4_0',
             ],
           },
           {
@@ -106,13 +120,20 @@ export function defaultConfig(env: Record<string, string | undefined> = {}): Gea
       mid: {
         name: 'mid',
         description: 'Mid-tier models for medium complexity',
+        // Hosted providers appear only with their key in the environment
+        // (or the app vault), so a fresh install stays local-only while a
+        // single pasted key unlocks its models. Eight models total.
         providers: [
           ...(hasOpenRouter
             ? [
                 {
                   name: 'openrouter',
                   apiKeyEnv: 'OPENROUTER_API_KEY',
-                  models: ['anthropic/claude-haiku-4-5', 'google/gemini-2.5-flash'],
+                  models: [
+                    'anthropic/claude-haiku-4-5',
+                    'google/gemini-2.5-flash',
+                    'openai/gpt-5-mini',
+                  ],
                 },
               ]
             : []),
@@ -125,6 +146,33 @@ export function defaultConfig(env: Record<string, string | undefined> = {}): Gea
                 },
               ]
             : []),
+          ...(hasDeepSeek
+            ? [
+                {
+                  name: 'deepseek',
+                  apiKeyEnv: 'DEEPSEEK_API_KEY',
+                  models: ['deepseek-v4-flash', 'deepseek-v4-pro'],
+                },
+              ]
+            : []),
+          ...(hasGemini
+            ? [
+                {
+                  name: 'gemini',
+                  apiKeyEnv: 'GEMINI_API_KEY',
+                  models: ['gemini-2.5-flash'],
+                },
+              ]
+            : []),
+          ...(hasMistral
+            ? [
+                {
+                  name: 'mistral',
+                  apiKeyEnv: 'MISTRAL_API_KEY',
+                  models: ['mistral-large-latest'],
+                },
+              ]
+            : []),
         ],
         maxRetries: 2,
         costPerToken: 0.0001,
@@ -132,15 +180,36 @@ export function defaultConfig(env: Record<string, string | undefined> = {}): Gea
       frontier: {
         name: 'frontier',
         description: 'Frontier models for hard tasks',
-        providers: hasAnthropic
-          ? [
-              {
-                name: 'anthropic',
-                apiKeyEnv: 'ANTHROPIC_API_KEY',
-                models: ['claude-opus-5', 'claude-sonnet-5', 'claude-haiku-4-5'],
-              },
-            ]
-          : [],
+        // Five models total, same key-gating as mid.
+        providers: [
+          ...(hasAnthropic
+            ? [
+                {
+                  name: 'anthropic',
+                  apiKeyEnv: 'ANTHROPIC_API_KEY',
+                  models: ['claude-opus-5', 'claude-sonnet-5', 'claude-haiku-4-5'],
+                },
+              ]
+            : []),
+          ...(hasOpenAI
+            ? [
+                {
+                  name: 'openai',
+                  apiKeyEnv: 'OPENAI_API_KEY',
+                  models: ['gpt-5'],
+                },
+              ]
+            : []),
+          ...(hasXai
+            ? [
+                {
+                  name: 'xai',
+                  apiKeyEnv: 'XAI_API_KEY',
+                  models: ['grok-4'],
+                },
+              ]
+            : []),
+        ],
         maxRetries: 3,
         costPerToken: 0.005,
       },

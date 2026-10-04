@@ -130,7 +130,13 @@ test('models dialog reports on-disk weights as ready', async () => {
 
   await page.locator('#models-button').click();
   await expect(page.locator('#models-dialog')).toBeVisible();
-  await expect(page.locator('#models-body .health-row')).toHaveCount(8);
+  // Seventeen downloadable locals. Mid and frontier are absent here by
+  // design: a fresh dev launch has no config file and no vault keys, so
+  // the key-gated tiers are empty. Their grouping is pinned in unit
+  // tests, which can set keys freely.
+  await expect(page.locator('#models-body [data-tier="local"] .health-row')).toHaveCount(17);
+  await expect(page.locator('#models-body [data-tier="mid"]')).toHaveCount(0);
+  await expect(page.locator('#models-body [data-tier="frontier"]')).toHaveCount(0);
   const body = await page.locator('#models-body').textContent();
   expect(body).toContain('ready');
 

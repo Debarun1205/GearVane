@@ -52,6 +52,7 @@ import type { BuilderBridge } from './builder-view.js';
 import type { TerminalBridge } from './ide/terminal.js';
 import type { AgentResult, AgentStep } from '@gearvane/harness';
 import { createWebBackend, type WebFsStorage } from './web-backend.js';
+import { hostedModelRows } from './hosted-models.js';
 import MODEL_CATALOG from './models.json';
 
 /** Capabilities the host may provide. Every one is optional. */
@@ -512,18 +513,27 @@ function formatMB(bytes: number): string {
   return `${Math.round(bytes / 1048576)} MB`;
 }
 
+function groupHeader(title: string, note: string): HTMLElement {
+  const header = document.createElement('h3');
+  header.className = 'models-group-title';
+  header.textContent = title;
+  header.title = note;
+  return header;
+}
+
 /**
- * Render the Models dialog from the static catalog, then layer live
- * status over it where the host bridge exists.
- *
- * Without a bridge (plain browser, Android webview) the rows still render
- * — the catalog is bundled — with a note that downloads need the desktop
- * app. Nothing here fetches a weight directly: listing and fetching run
- * in the main process, which writes where the embedded server serves.
+ * Render the Models dialog: local weights from the static catalog with
+ * live ready/download state, then the hosted mid and frontier rosters
+ * from the active config with vault key state.
  */
 async function showModels(): Promise<void> {
   const entries = MODEL_CATALOG as CatalogEntry[];
   els.modelsBody.textContent = '';
+
+  const localGroup = document.createElement('div');
+  localGroup.className = 'models-group';
+  localGroup.dataset.tier = 'local';
+  localGroup.append(groupHeader('Local — on this device', 'Downloaded weights served by the app itself'));
 
   let present = new Set<string>();
   if (bridge.models) {
@@ -537,7 +547,7 @@ async function showModels(): Promise<void> {
     const note = document.createElement('p');
     note.className = 'builder-help';
     note.textContent = 'Downloads need the desktop app; this list is what it offers.';
-    els.modelsBody.append(note);
+    localGroup.append(note);
   }
 
   for (const entry of entries) {
@@ -564,7 +574,46 @@ async function showModels(): Promise<void> {
     }
 
     row.append(name, action);
-    els.modelsBody.append(row);
+    localGroup.append(row);
+  }
+  els.modelsBody.append(localGroup);
+
+  // Hosted tiers come from the active config: what the user can actually
+  // route to, with vault key state beside each. Empty tiers (no keys in a
+  // defaults-derived config) render nothing.
+  const config = activeConfig;
+  if (config) {
+    type TierRows = ReturnType<typeof hostedModelRows>;
+    const byTier = new Map<'mid' | 'frontier', TierRows>();
+    for (const row of hostedModelRows(config, loadKeys(keyStorage))) {
+      const list = byTier.get(row.tier) ?? [];
+      list.push(row);
+      byTier.set(row.tier, list);
+    }
+    const titles = {
+      mid: 'Mid — hosted, needs keys',
+      frontier: 'Frontier — hosted, needs keys',
+    } as const;
+    for (const [tier, title] of Object.entries(titles)) {
+      const rows = byTier.get(tier as 'mid' | 'frontier') ?? [];
+      if (rows.length === 0) continue;
+      const group = document.createElement('div');
+      group.className = 'models-group';
+      group.dataset.tier = tier;
+      group.append(groupHeader(title, 'Keys live in the Keys dialog or the shell environment'));
+      for (const rowData of rows) {
+        const row = document.createElement('div');
+        row.className = 'health-row';
+        const name = document.createElement('span');
+        name.textContent = rowData.label;
+        const state = document.createElement('span');
+        state.textContent = rowData.keyed ? 'key saved' : 'needs key';
+        state.className = rowData.keyed ? 'health-status-healthy' : 'health-status-unknown';
+        row.append(name, state);
+        group.append(row);
+      }
+      els.modelsBody.append(group);
+    }
   }
 
   if (typeof els.modelsDialog.showModal === 'function') els.modelsDialog.showModal();

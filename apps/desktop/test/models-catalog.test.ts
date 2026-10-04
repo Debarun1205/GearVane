@@ -21,8 +21,8 @@ const ENTRIES = CATALOG as CatalogEntry[];
  * upstream file fails loudly instead of silently changing the installer.
  */
 describe('model catalog', () => {
-  it('lists eight models', () => {
-    expect(ENTRIES).toHaveLength(8);
+  it('lists seventeen models', () => {
+    expect(ENTRIES).toHaveLength(17);
   });
 
   it('keeps ids unique, lowercase, and matching their file stems', () => {
@@ -47,6 +47,15 @@ describe('model catalog', () => {
       'gemma-2-2b-it-q4_k_m': 1708582752,
       'deepseek-r1-distill-qwen-1.5b-q4_k_m': 1117320800,
       'qwen2.5-coder-1.5b-instruct-q4_0': 1066227264,
+      'qwen2.5-coder-3b-instruct-q4_0': 1997879744,
+      'smollm2-1.7b-instruct.q4_k_m': 1055609536,
+      'qwen3-0.6b.q4_k_m': 484220000,
+      'tinyllama-1.1b-chat-v1.0.q4_k_m': 668788096,
+      'deepseek-coder-1.3b-instruct.q4_k_m': 873582624,
+      'falcon3-3b-instruct-q4_k_m': 2005684448,
+      'phi-3-mini-4k-instruct-q4': 2393231072,
+      'qwen2.5-3b-instruct-q4_0': 1997879712,
+      'qwen2.5-0.5b-instruct-q4_0': 428730208,
     });
   });
 
