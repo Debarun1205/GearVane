@@ -23,7 +23,7 @@ from gearvane.deployment import (
 from gearvane.feedback import FeedbackEntry, FeedbackLoop, FeedbackStore
 from gearvane.health import HealthStatus, ModelHealthChecker
 from gearvane.logger import RoutingLogger
-from gearvane.plugin import PluginManager, PluginMetadata, GearVanePlugin
+from gearvane.plugin import GearVanePlugin, PluginManager, PluginMetadata
 from gearvane.router import ModelProvider, RoutingDecision
 from gearvane.safety import SafetyManager
 
