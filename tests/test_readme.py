@@ -25,7 +25,7 @@ class TestDocumentedCommandsExist:
 
     @pytest.mark.parametrize(
         "command",
-        ["waypoint route", "waypoint run", "waypoint safety spend", "waypoint deploy"],
+        ["gearvane route", "gearvane run", "gearvane safety spend", "gearvane deploy"],
     )
     def test_command_documented(self, command, readme):
         assert command in readme
@@ -36,7 +36,7 @@ class TestDocumentedCommandsExist:
 
     def test_python_cli_help_lists_them(self):
         help_text = subprocess.run(
-            [sys.executable, "-m", "waypoint", "--help"],
+            [sys.executable, "-m", "gearvane", "--help"],
             capture_output=True,
             text=True,
             timeout=120,
@@ -73,7 +73,7 @@ class TestDocumentedPathsExist:
             "apps/vscode-extension",
             "apps/app-core",
             "site",
-            "waypoint",
+            "gearvane",
             "SECURITY.md",
             "config.example.yaml",
             "requirements.txt",
@@ -93,7 +93,7 @@ class TestVersionsAgree:
         ts_version = _ts_version()
         match = re.search(
             r'__version__ = "([^"]+)"',
-            (PROJECT_ROOT / "waypoint" / "__init__.py").read_text(encoding="utf-8"),
+            (PROJECT_ROOT / "gearvane" / "__init__.py").read_text(encoding="utf-8"),
         )
         assert match is not None
         assert match.group(1) == ts_version

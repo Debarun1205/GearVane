@@ -3,7 +3,7 @@
  *
  * Kept in a plain data module rather than inline in the HTML so the same list
  * can be reused by the app and asserted by a test. The site loads this file
- * directly; the app imports the equivalent from @waypoint/app-core.
+ * directly; the app imports the equivalent from @gearvane/app-core.
  *
  * `tier` is the tier the shipped classifier produces. A test runs every prompt
  * through the real classifier and requires the tier to match, so the marketing

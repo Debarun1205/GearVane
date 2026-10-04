@@ -22,7 +22,7 @@ const NODE = process.execPath;
 let workspace: string;
 
 beforeEach(async () => {
-  workspace = await mkdtemp(join(tmpdir(), 'waypoint-cli-'));
+  workspace = await mkdtemp(join(tmpdir(), 'gearvane-cli-'));
 });
 
 interface Run {
@@ -51,8 +51,8 @@ async function run(...args: string[]): Promise<Run> {
 describe('help', () => {
   it('lists the new commands', async () => {
     const result = await run('--help');
-    expect(result.stdout).toContain('waypoint agent');
-    expect(result.stdout).toContain('waypoint build');
+    expect(result.stdout).toContain('gearvane agent');
+    expect(result.stdout).toContain('gearvane build');
   });
 
   it('has per-command help for agent', async () => {
@@ -234,7 +234,7 @@ describe('build', () => {
   });
 
   it('writes nothing outside --out', async () => {
-    const elsewhere = await mkdtemp(join(tmpdir(), 'waypoint-elsewhere-'));
+    const elsewhere = await mkdtemp(join(tmpdir(), 'gearvane-elsewhere-'));
     await writeFile(join(elsewhere, 'index.html'), 'UNTOUCHED', 'utf8');
 
     await run(
@@ -297,7 +297,7 @@ describe('agent dry run', () => {
   });
 
   it('confines itself to the given directory', async () => {
-    const inside = await mkdtemp(join(tmpdir(), 'waypoint-inside-'));
+    const inside = await mkdtemp(join(tmpdir(), 'gearvane-inside-'));
     const result = await run(
       'agent', '--task', 'x', '--dry-run', '--cwd', inside,
     );

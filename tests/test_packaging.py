@@ -33,7 +33,7 @@ class TestProjectMetadata:
 
     def test_version_matches_package(self):
         setup = (PROJECT_ROOT / "setup.py").read_text(encoding="utf-8")
-        init = (PROJECT_ROOT / "waypoint" / "__init__.py").read_text(encoding="utf-8")
+        init = (PROJECT_ROOT / "gearvane" / "__init__.py").read_text(encoding="utf-8")
         setup_version = re.search(r'version="([^"]+)"', setup).group(1)
         init_version = re.search(r'__version__ = "([^"]+)"', init).group(1)
         assert setup_version == init_version
@@ -180,9 +180,9 @@ class TestBuildArtifacts:
         wheel = next(built.glob("*.whl"))
         with zipfile.ZipFile(wheel) as archive:
             names = archive.namelist()
-        assert "waypoint/__init__.py" in names
-        assert "waypoint/cli.py" in names
-        assert "waypoint/providers.py" in names
+        assert "gearvane/__init__.py" in names
+        assert "gearvane/cli.py" in names
+        assert "gearvane/providers.py" in names
 
     def test_wheel_declares_console_script(self, built):
         import zipfile
@@ -191,7 +191,7 @@ class TestBuildArtifacts:
         with zipfile.ZipFile(wheel) as archive:
             entry_points = next(n for n in archive.namelist() if n.endswith("entry_points.txt"))
             content = archive.read(entry_points).decode()
-        assert "waypoint = waypoint.cli:main" in content
+        assert "gearvane = gearvane.cli:main" in content
 
     def test_wheel_ships_license(self, built):
         import zipfile
@@ -213,7 +213,7 @@ class TestSourceIsAscii:
     @pytest.mark.parametrize(
         "path",
         sorted(
-            list((PROJECT_ROOT / "waypoint").glob("*.py"))
+            list((PROJECT_ROOT / "gearvane").glob("*.py"))
             + list((PROJECT_ROOT / "tests").glob("*.py"))
         ),
         ids=lambda p: p.name,

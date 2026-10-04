@@ -1,7 +1,7 @@
 # Runtime dependencies
 #
 # The harness core is deliberately stdlib-only: providers use urllib and the
-# learned classifier is implemented directly, so installing Waypoint pulls in
+# learned classifier is implemented directly, so installing GearVane pulls in
 # no HTTP client and no ML framework.
 
 pyyaml>=6.0

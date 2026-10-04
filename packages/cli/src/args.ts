@@ -1,5 +1,5 @@
 /**
- * Argument parsing for the Waypoint CLI.
+ * Argument parsing for the GearVane CLI.
  *
  * Hand-rolled rather than pulling in a parser library, so the CLI installs
  * nothing beyond the core. Kept separate from the command implementations

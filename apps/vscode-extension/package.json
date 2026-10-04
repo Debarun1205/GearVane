@@ -1,9 +1,9 @@
 {
-  "name": "waypoint",
-  "displayName": "Waypoint",
+  "name": "gearvane",
+  "displayName": "GearVane",
   "description": "Route each task to the cheapest model tier that can do the job",
   "version": "0.3.0",
-  "publisher": "waypoint",
+  "publisher": "gearvane",
   "license": "MIT",
   "engines": {
     "vscode": "^1.85.0",
@@ -25,60 +25,60 @@
   "contributes": {
     "commands": [
       {
-        "command": "waypoint.routeSelection",
-        "title": "Waypoint: Route Selection",
-        "category": "Waypoint"
+        "command": "gearvane.routeSelection",
+        "title": "GearVane: Route Selection",
+        "category": "GearVane"
       },
       {
-        "command": "waypoint.explainSelection",
-        "title": "Waypoint: Explain Routing Decision",
-        "category": "Waypoint"
+        "command": "gearvane.explainSelection",
+        "title": "GearVane: Explain Routing Decision",
+        "category": "GearVane"
       },
       {
-        "command": "waypoint.ask",
-        "title": "Waypoint: Ask",
-        "category": "Waypoint"
+        "command": "gearvane.ask",
+        "title": "GearVane: Ask",
+        "category": "GearVane"
       },
       {
-        "command": "waypoint.agent",
-        "title": "Waypoint: Open Agent Panel",
-        "category": "Waypoint"
+        "command": "gearvane.agent",
+        "title": "GearVane: Open Agent Panel",
+        "category": "GearVane"
       },
       {
-        "command": "waypoint.health",
-        "title": "Waypoint: Check Model Health",
-        "category": "Waypoint"
+        "command": "gearvane.health",
+        "title": "GearVane: Check Model Health",
+        "category": "GearVane"
       },
       {
-        "command": "waypoint.spend",
-        "title": "Waypoint: Show Spend",
-        "category": "Waypoint"
+        "command": "gearvane.spend",
+        "title": "GearVane: Show Spend",
+        "category": "GearVane"
       },
       {
-        "command": "waypoint.showLog",
-        "title": "Waypoint: Show Routing Log",
-        "category": "Waypoint"
+        "command": "gearvane.showLog",
+        "title": "GearVane: Show Routing Log",
+        "category": "GearVane"
       },
       {
-        "command": "waypoint.pinModel",
-        "title": "Waypoint: Pin Model for Workspace",
-        "category": "Waypoint"
+        "command": "gearvane.pinModel",
+        "title": "GearVane: Pin Model for Workspace",
+        "category": "GearVane"
       },
       {
-        "command": "waypoint.clearPin",
-        "title": "Waypoint: Clear Pinned Model",
-        "category": "Waypoint"
+        "command": "gearvane.clearPin",
+        "title": "GearVane: Clear Pinned Model",
+        "category": "GearVane"
       }
     ],
     "configuration": {
-      "title": "Waypoint",
+      "title": "GearVane",
       "properties": {
-        "waypoint.configPath": {
+        "gearvane.configPath": {
           "type": "string",
           "default": "",
-          "description": "Path to a Waypoint config file. Leave empty to search upward."
+          "description": "Path to a GearVane config file. Leave empty to search upward."
         },
-        "waypoint.tier": {
+        "gearvane.tier": {
           "type": "string",
           "enum": [
             "auto",
@@ -89,22 +89,22 @@
           "default": "auto",
           "description": "Force a model tier, or leave on auto to classify each request."
         },
-        "waypoint.model": {
+        "gearvane.model": {
           "type": "string",
           "default": "",
           "description": "Pin a specific model, e.g. anthropic/claude-sonnet-4-20250514."
         },
-        "waypoint.includeSelectionInPrompt": {
+        "gearvane.includeSelectionInPrompt": {
           "type": "boolean",
           "default": true,
           "description": "Include the selected text when routing a task."
         },
-        "waypoint.maxTokens": {
+        "gearvane.maxTokens": {
           "type": "number",
           "default": 2048,
           "description": "Maximum tokens per request."
         },
-        "waypoint.showRoutingNotifications": {
+        "gearvane.showRoutingNotifications": {
           "type": "boolean",
           "default": true,
           "description": "Show a notification with the chosen tier for each request."
@@ -114,8 +114,8 @@
     "views": {
       "explorer": [
         {
-          "id": "waypoint.session",
-          "name": "Waypoint"
+          "id": "gearvane.session",
+          "name": "GearVane"
         }
       ]
     }
@@ -129,8 +129,8 @@
     "clean": "rm -rf dist out"
   },
   "dependencies": {
-    "@waypoint/core": "0.3.0",
-    "@waypoint/harness": "0.3.0"
+    "@gearvane/core": "0.3.0",
+    "@gearvane/harness": "0.3.0"
   },
   "devDependencies": {
     "@types/vscode": "^1.85.0",
@@ -138,7 +138,7 @@
   },
   "keybindings": [
     {
-      "command": "waypoint.agent",
+      "command": "gearvane.agent",
       "key": "ctrl+alt+w",
       "mac": "cmd+alt+w"
     }

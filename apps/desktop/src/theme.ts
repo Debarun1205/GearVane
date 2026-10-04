@@ -93,9 +93,9 @@ export interface AppearanceStorage {
   setItem(key: string, value: string): void;
 }
 
-export const APPEARANCE_STORAGE_KEY = 'waypoint.appearance';
-export const ONBOARDED_STORAGE_KEY = 'waypoint.onboarded';
-export const APPEARANCE_EVENT = 'waypoint:appearance';
+export const APPEARANCE_STORAGE_KEY = 'gearvane.appearance';
+export const ONBOARDED_STORAGE_KEY = 'gearvane.onboarded';
+export const APPEARANCE_EVENT = 'gearvane:appearance';
 
 /**
  * Theme presets.
@@ -255,7 +255,7 @@ export function resolveAppearance(raw: unknown): Appearance {
 function firstOf<T>(list: readonly T[]): T {
   const first = list[0];
   if (first === undefined) {
-    throw new Error('waypoint appearance presets are empty');
+    throw new Error('gearvane appearance presets are empty');
   }
   return first;
 }

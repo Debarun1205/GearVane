@@ -1,5 +1,5 @@
 /**
- * Shared types for the Waypoint core.
+ * Shared types for the GearVane core.
  *
  * These mirror the Python dataclasses so behaviour stays comparable across
  * the two implementations. Where Python was permissive with `Any` config
@@ -120,7 +120,7 @@ export interface LoggingConfig {
   feedbackFile?: string;
 }
 
-export interface WaypointConfig {
+export interface GearVaneConfig {
   tiers: Record<Tier, TierConfig>;
   router: RouterConfig;
   providers: ProviderRuntimeConfig;

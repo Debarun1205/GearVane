@@ -1,4 +1,4 @@
-"""Generate the Waypoint application icon.
+"""Generate the GearVane application icon.
 
 Written as a script rather than committing an opaque binary so the icon can
 be regenerated or tweaked: change the colours below and re-run.

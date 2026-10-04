@@ -77,7 +77,7 @@ class TierRouter:
             if not learned.weights.is_trained():
                 logger.info(
                     f"No trained model at {model_file}; using heuristics only. "
-                    f"Run 'waypoint train' once feedback has been recorded."
+                    f"Run 'gearvane train' once feedback has been recorded."
                 )
                 return heuristic
 

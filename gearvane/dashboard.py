@@ -1,4 +1,4 @@
-"""Web dashboard for monitoring Waypoint routing and costs."""
+"""Web dashboard for monitoring GearVane routing and costs."""
 
 import logging
 from datetime import datetime
@@ -17,7 +17,7 @@ DASHBOARD_HTML = """
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Waypoint Dashboard</title>
+    <title>GearVane Dashboard</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -104,7 +104,7 @@ DASHBOARD_HTML = """
     </style>
 </head>
 <body>
-    <h1>Waypoint Dashboard</h1>
+    <h1>GearVane Dashboard</h1>
     <p style="color: #64748b;">AI Harness Monitoring</p>
 
     <div class="grid">

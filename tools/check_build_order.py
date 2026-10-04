@@ -1,6 +1,6 @@
 """Check that every TypeScript workspace can be built from clean, in order.
 
-The desktop build failed in CI because it imports @waypoint/harness and the
+The desktop build failed in CI because it imports @gearvane/harness and the
 harness had not been built. This reproduces a clean checkout so the ordering
 dependency is checked locally rather than discovered on a runner.
 """
@@ -15,10 +15,10 @@ REPO = Path(__file__).resolve().parents[1]
 NPM = r"C:\Program Files\nodejs\npm.cmd"
 
 ORDER = [
-    "@waypoint/core",
-    "@waypoint/harness",
-    "waypoint-app",
-    "waypoint",
+    "@gearvane/core",
+    "@gearvane/harness",
+    "gearvane-app",
+    "gearvane",
 ]
 
 

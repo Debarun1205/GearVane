@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest';
 
 import { defaultConfig } from '../src/defaults.js';
 import { TierRouter } from '../src/router.js';
-import type { TaskContext, WaypointConfig } from '../src/types.js';
+import type { TaskContext, GearVaneConfig } from '../src/types.js';
 
-const config = (): WaypointConfig => {
+const config = (): GearVaneConfig => {
   const base = defaultConfig();
   return {
     ...base,

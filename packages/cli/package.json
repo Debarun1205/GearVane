@@ -1,11 +1,11 @@
 {
-  "name": "@waypoint/cli",
+  "name": "@gearvane/cli",
   "version": "0.3.0",
-  "description": "Waypoint command line interface",
+  "description": "GearVane command line interface",
   "license": "MIT",
   "type": "module",
   "bin": {
-    "waypoint": "./dist/bin.js"
+    "gearvane": "./dist/bin.js"
   },
   "files": ["dist"],
   "engines": {
@@ -19,7 +19,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@waypoint/core": "0.3.0",
-    "@waypoint/harness": "0.3.0"
+    "@gearvane/core": "0.3.0",
+    "@gearvane/harness": "0.3.0"
   }
 }

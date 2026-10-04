@@ -1,12 +1,12 @@
 /**
  * `feedback` and `train` commands for the TypeScript CLI.
  *
- * These mirror waypoint/cli.py's cmd_feedback and cmd_train line for line:
+ * These mirror gearvane/cli.py's cmd_feedback and cmd_train line for line:
  * same config keys, same human-readable output, same --json shapes, same
  * exit codes. tests/parity.test.ts runs both CLIs against one shared
  * feedback file, so any drift here is caught rather than documented.
  *
- * File I/O lives here, not in @waypoint/core, so the core bundle stays
+ * File I/O lives here, not in @gearvane/core, so the core bundle stays
  * loadable in a browser and an Android webview.
  */
 
@@ -23,8 +23,8 @@ import {
   type FeedbackStorage,
   type SerializedWeights,
   type Tier,
-  type WaypointConfig,
-} from '@waypoint/core';
+  type GearVaneConfig,
+} from '@gearvane/core';
 
 import { flagNumber, type ParsedArgs } from './args.js';
 
@@ -41,7 +41,7 @@ function isTier(value: string): value is Tier {
  * which reads config["logging"]["feedback_file"]; relative paths resolve
  * against the working directory on both sides.
  */
-export function feedbackFileFor(config: WaypointConfig): string {
+export function feedbackFileFor(config: GearVaneConfig): string {
   return config.logging.feedbackFile ?? 'feedback.jsonl';
 }
 
@@ -49,7 +49,7 @@ export function feedbackFileFor(config: WaypointConfig): string {
  * Where `train` reads entries from: learned_classifier.feedback_file first,
  * then logging.feedback_file. Mirrors Python's cmd_train fallback chain.
  */
-export function trainFeedbackFileFor(config: WaypointConfig): string {
+export function trainFeedbackFileFor(config: GearVaneConfig): string {
   return (
     config.learnedClassifier.feedbackFile ?? config.logging.feedbackFile ?? 'feedback.jsonl'
   );
@@ -80,7 +80,7 @@ export function fileFeedbackStorage(path: string): FeedbackStorage {
  * heuristics, exactly like the Python router's "using heuristics only"
  * path. A corrupt file must never break `route`.
  */
-export function loadLearnedModel(config: WaypointConfig): SerializedWeights | undefined {
+export function loadLearnedModel(config: GearVaneConfig): SerializedWeights | undefined {
   if (!config.learnedClassifier.enabled) return undefined;
   try {
     const parsed: unknown = JSON.parse(readFileSync(config.learnedClassifier.modelFile, 'utf8'));
@@ -91,7 +91,7 @@ export function loadLearnedModel(config: WaypointConfig): SerializedWeights | un
   }
 }
 
-export function cmdFeedback(config: WaypointConfig, json: boolean): number {
+export function cmdFeedback(config: GearVaneConfig, json: boolean): number {
   const loop = new FeedbackLoop(new FeedbackStore(fileFeedbackStorage(feedbackFileFor(config))));
   const stats = loop.store.get_stats();
 
@@ -129,7 +129,7 @@ export function cmdFeedback(config: WaypointConfig, json: boolean): number {
   return 0;
 }
 
-export function cmdTrain(args: ParsedArgs, config: WaypointConfig, json: boolean): number {
+export function cmdTrain(args: ParsedArgs, config: GearVaneConfig, json: boolean): number {
   const feedbackPath = trainFeedbackFileFor(config);
   const modelPath = config.learnedClassifier.modelFile;
 
@@ -205,7 +205,7 @@ export function cmdTrain(args: ParsedArgs, config: WaypointConfig, json: boolean
  * data. Storage failures are swallowed: feedback must never break a run.
  */
 export function recordRunFeedback(
-  config: WaypointConfig,
+  config: GearVaneConfig,
   taskId: string,
   description: string,
   result: { history?: Array<{ tier: Tier }>; tier?: Tier; success: boolean },

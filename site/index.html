@@ -3,14 +3,14 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Waypoint - the AI harness that routes each prompt to the cheapest model</title>
+    <title>GearVane - the AI harness that routes each prompt to the cheapest model</title>
     <meta
       name="description"
-      content="Waypoint is an AI harness: it classifies each request, runs it through a tool-using agent loop with budgets and approvals, and picks the cheapest model tier that can do the job. CLI, VS Code, desktop IDE, and Android."
+      content="GearVane is an AI harness: it classifies each request, runs it through a tool-using agent loop with budgets and approvals, and picks the cheapest model tier that can do the job. CLI, VS Code, desktop IDE, and Android."
     />
     <link
       rel="canonical"
-      href="https://debarun1205.github.io/Waypoint/"
+      href="https://debarun1205.github.io/GearVane/"
     />
     <link rel="stylesheet" href="./assets/styles.css" />
   </head>
@@ -22,7 +22,7 @@
       <div class="wrap header-inner">
         <a class="logo" href="#top">
           <span class="logo-mark" aria-hidden="true"></span>
-          <span>Waypoint</span>
+          <span>GearVane</span>
         </a>
         <nav aria-label="Main">
           <a href="#how">How it works</a>
@@ -35,7 +35,7 @@
           <a href="#faq">FAQ</a>
           <a
             class="button button-small"
-            href="https://github.com/Debarun1205/Waypoint"
+            href="https://github.com/Debarun1205/GearVane"
             rel="noopener"
             >GitHub</a
           >
@@ -50,7 +50,7 @@
           <p class="eyebrow">Open source AI harness, MIT licensed</p>
           <h1>Stop paying frontier prices for a typo fix.</h1>
           <p class="lede">
-            Waypoint is an AI harness: it classifies what you asked for, runs
+            GearVane is an AI harness: it classifies what you asked for, runs
             the task through a tool-using agent loop with budgets and
             approvals, and picks the cheapest model tier that can do the job,
             escalating only when a cheaper model fails.
@@ -171,7 +171,7 @@
         <div class="wrap">
           <h2>See it decide</h2>
           <p class="section-lede">
-            Real prompts, and the tier Waypoint picks for each. These are the
+            Real prompts, and the tier GearVane picks for each. These are the
             same examples shipped in the app.
           </p>
           <div class="demo-list" id="demo-list">
@@ -297,7 +297,7 @@
               <p>NSIS installer and a portable executable, x64.</p>
               <a
                 class="button button-small"
-                href="https://github.com/Debarun1205/Waypoint/releases/download/v0.3.0/Waypoint.Setup.0.3.0.exe"
+                href="https://github.com/Debarun1205/GearVane/releases/download/v0.3.0/GearVane.Setup.0.3.0.exe"
                 rel="noopener"
                 >Download .exe</a
               >
@@ -308,7 +308,7 @@
               <p>AppImage (x64) and .deb (x64 and arm64).</p>
               <a
                 class="button button-small"
-                href="https://github.com/Debarun1205/Waypoint/releases/download/v0.3.0/Waypoint-0.3.0.AppImage"
+                href="https://github.com/Debarun1205/GearVane/releases/download/v0.3.0/GearVane-0.3.0.AppImage"
                 rel="noopener"
                 >Download AppImage</a
               >
@@ -319,7 +319,7 @@
               <p>Separate .dmg for Intel and Apple Silicon.</p>
               <a
                 class="button button-small"
-                href="https://github.com/Debarun1205/Waypoint/releases/download/v0.3.0/Waypoint-0.3.0-arm64.dmg"
+                href="https://github.com/Debarun1205/GearVane/releases/download/v0.3.0/GearVane-0.3.0-arm64.dmg"
                 rel="noopener"
                 >Download .dmg</a
               >
@@ -335,7 +335,7 @@
               </p>
               <a
                 class="button button-small"
-                href="https://github.com/Debarun1205/Waypoint/releases/download/v0.3.0/app-debug.apk"
+                href="https://github.com/Debarun1205/GearVane/releases/download/v0.3.0/app-debug.apk"
                 rel="noopener"
                 >Download APK</a
               >
@@ -385,11 +385,11 @@
             </div>
 
             <div class="install-panel is-active" id="panel-npm" role="tabpanel" aria-labelledby="tab-npm">
-              <pre><code>git clone https://github.com/Debarun1205/Waypoint
-cd Waypoint
+              <pre><code>git clone https://github.com/Debarun1205/GearVane
+cd GearVane
 npm install
-npm run build --workspace @waypoint/core
-npm run build --workspace @waypoint/cli
+npm run build --workspace @gearvane/core
+npm run build --workspace @gearvane/cli
 node packages/cli/dist/bin.js route --task "fix a typo"</code></pre>
             </div>
 
@@ -398,7 +398,7 @@ node packages/cli/dist/bin.js route --task "fix a typo"</code></pre>
 source venv/bin/activate        # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 pip install -e .
-waypoint route --task "fix a typo"</code></pre>
+gearvane route --task "fix a typo"</code></pre>
             </div>
 
             <div class="install-panel" id="panel-vsix" role="tabpanel" aria-labelledby="tab-vsix" hidden>
@@ -406,7 +406,7 @@ waypoint route --task "fix a typo"</code></pre>
 npm install
 npm run build
 npx @vscode/vsce package
-code --install-extension waypoint-0.3.0.vsix</code></pre>
+code --install-extension gearvane-0.3.0.vsix</code></pre>
             </div>
           </div>
 
@@ -417,7 +417,7 @@ code --install-extension waypoint-0.3.0.vsix</code></pre>
             Signing needs certificates that deliberately do not live in this
             repository. To get past the macOS warning, right-click the app and
             choose Open, or run
-            <code>xattr -d com.apple.quarantine /Applications/Waypoint.app</code>.
+            <code>xattr -d com.apple.quarantine /Applications/GearVane.app</code>.
             On Windows, choose More info then Run anyway.
           </p>
         </div>
@@ -436,7 +436,7 @@ code --install-extension waypoint-0.3.0.vsix</code></pre>
               <div class="release-head">
                 <h3>
                   <a
-                    href="https://github.com/Debarun1205/Waypoint/releases/tag/v0.3.0"
+                    href="https://github.com/Debarun1205/GearVane/releases/tag/v0.3.0"
                     rel="noopener">v0.3.0</a
                   >
                 </h3>
@@ -485,12 +485,12 @@ code --install-extension waypoint-0.3.0.vsix</code></pre>
               <p class="release-links">
                 <a
                   class="button button-small"
-                  href="https://github.com/Debarun1205/Waypoint/releases/tag/v0.3.0"
+                  href="https://github.com/Debarun1205/GearVane/releases/tag/v0.3.0"
                   rel="noopener"
                   >Release notes and all 9 downloads</a
                 >
                 <a
-                  href="https://github.com/Debarun1205/Waypoint/compare/v0.3.0...HEAD"
+                  href="https://github.com/Debarun1205/GearVane/compare/v0.3.0...HEAD"
                   rel="noopener"
                   >Commits since this release</a
                 >
@@ -500,7 +500,7 @@ code --install-extension waypoint-0.3.0.vsix</code></pre>
               <div class="release-head">
                 <h3>
                   <a
-                    href="https://github.com/Debarun1205/Waypoint/releases/tag/v0.2.0"
+                    href="https://github.com/Debarun1205/GearVane/releases/tag/v0.2.0"
                     rel="noopener">v0.2.0</a
                   >
                 </h3>
@@ -543,12 +543,12 @@ code --install-extension waypoint-0.3.0.vsix</code></pre>
               <p class="release-links">
                 <a
                   class="button button-small"
-                  href="https://github.com/Debarun1205/Waypoint/releases/tag/v0.2.0"
+                  href="https://github.com/Debarun1205/GearVane/releases/tag/v0.2.0"
                   rel="noopener"
                   >Release notes and all 9 downloads</a
                 >
                 <a
-                  href="https://github.com/Debarun1205/Waypoint/compare/v0.2.0...HEAD"
+                  href="https://github.com/Debarun1205/GearVane/compare/v0.2.0...HEAD"
                   rel="noopener"
                   >Commits since this release</a
                 >
@@ -560,7 +560,7 @@ code --install-extension waypoint-0.3.0.vsix</code></pre>
             Work before v0.2.0 was developed on the default branch without
             tags, so there is no earlier version to install. The
             <a
-              href="https://github.com/Debarun1205/Waypoint/releases"
+              href="https://github.com/Debarun1205/GearVane/releases"
               rel="noopener"
               >full release list</a
             >
@@ -572,7 +572,7 @@ code --install-extension waypoint-0.3.0.vsix</code></pre>
       <!-- about -------------------------------------------------------------- -->
       <section class="section" id="about">
         <div class="wrap">
-          <h2>About Waypoint</h2>
+          <h2>About GearVane</h2>
           <p class="section-lede">
             What this project is, how it is put together, and what it is not.
           </p>
@@ -597,7 +597,7 @@ code --install-extension waypoint-0.3.0.vsix</code></pre>
               <p>
                 Teams buy a frontier model for everything by default, then
                 discover that most of the traffic is typo fixes and lint
-                cleanup. Waypoint makes the cheap path the default and makes the
+                cleanup. GearVane makes the cheap path the default and makes the
                 expensive path something you have to justify by watching it
                 fail first.
               </p>
@@ -660,7 +660,7 @@ code --install-extension waypoint-0.3.0.vsix</code></pre>
           <div class="hero-actions">
             <a
               class="button"
-              href="https://github.com/Debarun1205/Waypoint"
+              href="https://github.com/Debarun1205/GearVane"
               rel="noopener"
               >Read the source</a
             >
@@ -677,7 +677,7 @@ code --install-extension waypoint-0.3.0.vsix</code></pre>
           <details class="faq-item">
             <summary>What makes it a harness and not a chat app?</summary>
             <p>
-              A chat app hands your text to one model. Waypoint classifies
+              A chat app hands your text to one model. GearVane classifies
               the task, routes it to a tier, runs it through a tool loop
               that can read, write, search, and run commands, gates
               destructive operations behind approvals, checks the budget
@@ -689,7 +689,7 @@ code --install-extension waypoint-0.3.0.vsix</code></pre>
           <details class="faq-item">
             <summary>Do I need an API key?</summary>
             <p>
-              Not to start. Install Ollama, pull a coder model, and Waypoint
+              Not to start. Install Ollama, pull a coder model, and GearVane
               routes everything local with no key at all. Add a hosted key
               only if you want the mid and frontier tiers available.
             </p>
@@ -698,7 +698,7 @@ code --install-extension waypoint-0.3.0.vsix</code></pre>
           <details class="faq-item">
             <summary>Where are my keys stored?</summary>
             <p>
-              In your shell environment, and nowhere else. Waypoint reads
+              In your shell environment, and nowhere else. GearVane reads
               <code>ANTHROPIC_API_KEY</code> and similar variables, and never
               writes a credential to a config file, a log, or the dashboard.
               The desktop and Android apps additionally offer a Keys dialog
@@ -755,7 +755,7 @@ code --install-extension waypoint-0.3.0.vsix</code></pre>
               The harness ships gating for those operations, but by default it
               will not act on your repository. Anything gated requires an
               explicit approval, and a set of commands such as
-              <code>rm -rf</code> never run at all. Waypoint does not sandbox
+              <code>rm -rf</code> never run at all. GearVane does not sandbox
               execution, so treat approvals as you would treat running the
               command yourself.
             </p>
@@ -814,7 +814,7 @@ code --install-extension waypoint-0.3.0.vsix</code></pre>
         <div class="wrap cta">
           <h2>Try it on one real task</h2>
           <p>
-            Install a local model, run a typo fix through Waypoint, and watch
+            Install a local model, run a typo fix through GearVane, and watch
             it stay on the free tier. Then try something hard and see it
             escalate.
           </p>
@@ -822,7 +822,7 @@ code --install-extension waypoint-0.3.0.vsix</code></pre>
             <a class="button" href="#download">Download</a>
             <a
               class="button button-ghost"
-              href="https://github.com/Debarun1205/Waypoint"
+              href="https://github.com/Debarun1205/GearVane"
               rel="noopener"
               >Read the source</a
             >
@@ -833,9 +833,9 @@ code --install-extension waypoint-0.3.0.vsix</code></pre>
 
     <footer class="site-footer">
       <div class="wrap footer-inner">
-        <p>Waypoint is open source under the MIT licence.</p>
+        <p>GearVane is open source under the MIT licence.</p>
         <nav aria-label="Footer">
-          <a href="https://github.com/Debarun1205/Waypoint" rel="noopener"
+          <a href="https://github.com/Debarun1205/GearVane" rel="noopener"
             >GitHub</a
           >
           <a href="./SECURITY.md">Security</a>

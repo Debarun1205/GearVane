@@ -18,7 +18,7 @@
  * treated as untrusted on write.
  */
 
-import type { ConversationMessage } from '@waypoint/core';
+import type { ConversationMessage } from '@gearvane/core';
 
 /** Storage the session store writes through. */
 export interface SessionStorage {
@@ -252,7 +252,7 @@ export class SessionStore {
     private readonly storage: SessionStorage,
     options: SessionStoreOptions = {},
   ) {
-    this.namespace = options.namespace ?? 'waypoint.session.';
+    this.namespace = options.namespace ?? 'gearvane.session.';
     this.maxSessions = options.maxSessions ?? 20;
     this.shouldRedact = options.redact ?? true;
     this.now = options.now ?? (() => Date.now());

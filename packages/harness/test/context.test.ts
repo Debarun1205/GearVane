@@ -1,4 +1,4 @@
-import type { ConversationMessage } from '@waypoint/core';
+import type { ConversationMessage } from '@gearvane/core';
 import { describe, expect, it } from 'vitest';
 
 import {

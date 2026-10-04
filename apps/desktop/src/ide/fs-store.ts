@@ -15,7 +15,7 @@
 import { mkdir, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { dirname, join, relative, sep } from 'node:path';
 
-import { Workspace } from '@waypoint/harness';
+import { Workspace } from '@gearvane/harness';
 
 export interface FsEntry {
   name: string;

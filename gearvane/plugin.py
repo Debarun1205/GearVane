@@ -19,8 +19,8 @@ class PluginMetadata:
     hooks: List[str] = field(default_factory=list)
 
 
-class WaypointPlugin(ABC):
-    """Base class for Waypoint plugins."""
+class GearVanePlugin(ABC):
+    """Base class for GearVane plugins."""
 
     metadata: PluginMetadata
 
@@ -55,10 +55,10 @@ class PluginManager:
     """Manages plugin lifecycle and hooks."""
 
     def __init__(self):
-        self._plugins: Dict[str, WaypointPlugin] = {}
-        self._hooks: Dict[str, List[WaypointPlugin]] = {}
+        self._plugins: Dict[str, GearVanePlugin] = {}
+        self._hooks: Dict[str, List[GearVanePlugin]] = {}
 
-    def register(self, plugin_class: Type[WaypointPlugin], config: Dict[str, Any]) -> bool:
+    def register(self, plugin_class: Type[GearVanePlugin], config: Dict[str, Any]) -> bool:
         """Register and initialize a plugin."""
         try:
             plugin = plugin_class()
@@ -110,7 +110,7 @@ class PluginManager:
             except Exception as e:
                 logger.error(f"Plugin {plugin.metadata.name} hook {hook_name} failed: {e}")
 
-    def get_plugin(self, name: str) -> Optional[WaypointPlugin]:
+    def get_plugin(self, name: str) -> Optional[GearVanePlugin]:
         """Get a plugin by name."""
         return self._plugins.get(name)
 
@@ -126,8 +126,8 @@ class PluginManager:
             for name, obj in inspect.getmembers(module):
                 if (
                     inspect.isclass(obj)
-                    and issubclass(obj, WaypointPlugin)
-                    and obj is not WaypointPlugin
+                    and issubclass(obj, GearVanePlugin)
+                    and obj is not GearVanePlugin
                 ):
                     return self.register(obj, config)
             logger.error(f"No plugin class found in {module_path}")

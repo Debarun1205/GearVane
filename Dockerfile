@@ -1,7 +1,7 @@
-# Waypoint container image.
+# GearVane container image.
 #
-# Build:  docker build -t waypoint .
-# Run:    docker run --rm waypoint route --task "Fix a typo"
+# Build:  docker build -t gearvane .
+# Run:    docker run --rm gearvane route --task "Fix a typo"
 #
 # The package is installed non-editable, so the image contains a real
 # installation rather than a link back to the source tree.
@@ -22,7 +22,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Then the package metadata, so a version bump rebuilds only this layer.
 COPY setup.py setup.cfg README.md LICENSE ./
-COPY waypoint ./waypoint
+COPY gearvane ./gearvane
 
 RUN pip install --no-cache-dir .
 
@@ -32,11 +32,11 @@ VOLUME ["/app/artifacts"]
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    WAYPOINT_ARTIFACTS=/app/artifacts
+    GEARVANE_ARTIFACTS=/app/artifacts
 
 # Fail the container healthcheck if the CLI is broken.
 HEALTHCHECK --interval=60s --timeout=15s --retries=3 \
-    CMD waypoint --help > /dev/null || exit 1
+    CMD gearvane --help > /dev/null || exit 1
 
-ENTRYPOINT ["waypoint"]
+ENTRYPOINT ["gearvane"]
 CMD ["--help"]

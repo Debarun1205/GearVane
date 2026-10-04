@@ -23,7 +23,7 @@ const TS_CLI = join(REPO, 'packages', 'cli', 'dist', 'bin.js');
 const EXAMPLE_CONFIG = join(REPO, 'config.example.yaml');
 
 /**
- * Locate the Python interpreter that has waypoint installed.
+ * Locate the Python interpreter that has gearvane installed.
  *
  * Prefers the project virtualenv, because a bare "python" on PATH is often a
  * different install without the package, which makes the parity test fail for
@@ -39,7 +39,7 @@ function findPython(): string | null {
 
   for (const candidate of candidates) {
     try {
-      execFileSync(candidate, ['-c', 'import waypoint'], {
+      execFileSync(candidate, ['-c', 'import gearvane'], {
         cwd: REPO,
         stdio: 'ignore',
         timeout: 30_000,
@@ -76,7 +76,7 @@ const PROMPTS: Array<{ task: string; files: string[] }> = [
 ];
 
 function routeWithPython(task: string, files: string[]): { tier: string; model: string } {
-  const args = ['-m', 'waypoint', 'route', '--task', task, '--json'];
+  const args = ['-m', 'gearvane', 'route', '--task', task, '--json'];
   if (files.length > 0) args.push('--files', ...files);
 
   const stdout = execFileSync(PYTHON as string, args, {
@@ -137,7 +137,7 @@ describe('both engines find the same config', () => {
   );
 
   it.skipIf(!PYTHON || !tsAvailable)('agree on --version', () => {
-    const pythonVersion = execFileSync(PYTHON as string, ['-m', 'waypoint', '--version'], {
+    const pythonVersion = execFileSync(PYTHON as string, ['-m', 'gearvane', '--version'], {
       cwd: REPO,
       encoding: 'utf8',
       timeout: 60_000,
@@ -162,7 +162,7 @@ describe('both engines read the same feedback file', () => {
     // same config file both CLIs discover in the working directory. The two
     // `feedback --json` outputs must agree key for key, which is what makes
     // `train` on one side learn from `run` on the other.
-    const dir = mkdtempSync(join(tmpdir(), 'waypoint-parity-feedback-'));
+    const dir = mkdtempSync(join(tmpdir(), 'gearvane-parity-feedback-'));
     const feedbackPath = join(dir, 'feedback.jsonl').replace(/\\/g, '/');
     const configPath = join(dir, 'config.yaml');
 
@@ -199,7 +199,7 @@ describe('both engines read the same feedback file', () => {
     const pythonStats = JSON.parse(
       execFileSync(
         PYTHON as string,
-        ['-m', 'waypoint', '--config', configPath, 'feedback', '--json'],
+        ['-m', 'gearvane', '--config', configPath, 'feedback', '--json'],
         {
           cwd: REPO,
           encoding: 'utf8',

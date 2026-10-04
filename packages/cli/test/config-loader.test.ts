@@ -11,7 +11,7 @@ let originalCwd: string;
 
 beforeEach(() => {
   originalCwd = process.cwd();
-  workspace = mkdtempSync(join(tmpdir(), 'waypoint-cli-'));
+  workspace = mkdtempSync(join(tmpdir(), 'gearvane-cli-'));
   process.chdir(workspace);
 });
 
@@ -30,13 +30,13 @@ describe('loadConfig', () => {
   });
 
   it('finds a config in the working directory', () => {
-    writeFileSync(join(workspace, 'waypoint.yaml'), 'router:\n  default_tier: local\n');
+    writeFileSync(join(workspace, 'gearvane.yaml'), 'router:\n  default_tier: local\n');
     const result = loadConfig();
     expect(result.config.router.defaultTier).toBe('local');
   });
 
   it('finds a config in an ancestor directory', () => {
-    writeFileSync(join(workspace, 'waypoint.yaml'), 'router:\n  default_tier: local\n');
+    writeFileSync(join(workspace, 'gearvane.yaml'), 'router:\n  default_tier: local\n');
     const nested = join(workspace, 'a', 'b');
     mkdirSync(nested, { recursive: true });
     process.chdir(nested);
@@ -46,7 +46,7 @@ describe('loadConfig', () => {
   });
 
   it('parses JSON configs', () => {
-    const path = join(workspace, 'waypoint.config.json');
+    const path = join(workspace, 'gearvane.config.json');
     writeFileSync(path, JSON.stringify({ router: { default_tier: 'frontier' } }));
     const result = loadConfig(path);
     expect(result.config.router.defaultTier).toBe('frontier');
@@ -79,7 +79,7 @@ describe('loadConfig', () => {
   });
 
   it('never returns a config carrying a credential', () => {
-    const path = join(workspace, 'waypoint.yaml');
+    const path = join(workspace, 'gearvane.yaml');
     writeFileSync(
       path,
       [

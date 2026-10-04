@@ -11,7 +11,7 @@ import yaml
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 CONFIG_PATH = PROJECT_ROOT / "config.example.yaml"
-PACKAGE_DIR = PROJECT_ROOT / "waypoint"
+PACKAGE_DIR = PROJECT_ROOT / "gearvane"
 
 
 @pytest.fixture(scope="module")
@@ -82,7 +82,7 @@ class TestShippedConfigShape:
         # factory knows (minus the llamacpp spelling alias) must be
         # represented with at least one model, or `health --offline` and
         # `models` see a smaller world than the code supports.
-        from waypoint.providers import LOCAL_PROVIDER_NAMES
+        from gearvane.providers import LOCAL_PROVIDER_NAMES
 
         configured = [p["name"] for p in config["tiers"]["local"]["providers"]]
         for name in LOCAL_PROVIDER_NAMES:

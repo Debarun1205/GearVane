@@ -1,4 +1,4 @@
-# Waypoint
+# GearVane
 
 Route each prompt to the cheapest model tier that can actually do the job.
 
@@ -32,7 +32,7 @@ instead of guessing.
 | Desktop app | `apps/desktop` | Windows, Linux, macOS, Android |
 | VS Code extension | `apps/vscode-extension` | VS Code and forks |
 | Website | `site` | any static host |
-| Python engine | `waypoint/` | reference implementation |
+| Python engine | `gearvane/` | reference implementation |
 
 Two engines exist because Android cannot bundle a Python runtime. The
 TypeScript port is what the CLI, app, and extension use; the Python package
@@ -66,10 +66,10 @@ Pick a local model and nothing leaves your machine:
 ollama pull qwen2.5-coder
 
 # Ask something trivial, and watch it stay on the free tier
-waypoint route --task "Fix the typo in README.md" --files README.md
+gearvane route --task "Fix the typo in README.md" --files README.md
 
 # Ask something hard, and watch it escalate
-waypoint run --task "Investigate a race condition in the cache writer under load"
+gearvane run --task "Investigate a race condition in the cache writer under load"
 ```
 
 ## Install
@@ -77,19 +77,19 @@ waypoint run --task "Investigate a race condition in the cache writer under load
 ### The app
 
 Download a build for your platform from the
-[v0.3.0 release](https://github.com/Debarun1205/Waypoint/releases/tag/v0.3.0):
+[v0.3.0 release](https://github.com/Debarun1205/GearVane/releases/tag/v0.3.0):
 
 | Platform | File | Size |
 |----------|------|------|
-| Windows x64 (installer) | `Waypoint.Setup.0.3.0.exe` | 93 MB |
-| Windows x64 (portable) | `Waypoint.0.3.0.exe` | 93 MB |
-| macOS Intel | `Waypoint-0.3.0.dmg` | 118 MB |
-| macOS Apple Silicon | `Waypoint-0.3.0-arm64.dmg` | 113 MB |
-| Linux x64 (AppImage) | `Waypoint-0.3.0.AppImage` | 123 MB |
-| Linux x64 (deb) | `waypoint-app_0.3.0_amd64.deb` | 83 MB |
-| Linux arm64 (deb) | `waypoint-app_0.3.0_arm64.deb` | 78 MB |
+| Windows x64 (installer) | `GearVane.Setup.0.3.0.exe` | 93 MB |
+| Windows x64 (portable) | `GearVane.0.3.0.exe` | 93 MB |
+| macOS Intel | `GearVane-0.3.0.dmg` | 118 MB |
+| macOS Apple Silicon | `GearVane-0.3.0-arm64.dmg` | 113 MB |
+| Linux x64 (AppImage) | `GearVane-0.3.0.AppImage` | 123 MB |
+| Linux x64 (deb) | `gearvane-app_0.3.0_amd64.deb` | 83 MB |
+| Linux arm64 (deb) | `gearvane-app_0.3.0_arm64.deb` | 78 MB |
 | Android (debug APK) | `app-debug.apk` | 5.1 MB |
-| VS Code | `waypoint-0.3.0.vsix` | 16 KB |
+| VS Code | `gearvane-0.3.0.vsix` | 16 KB |
 
 Linux notes: the AppImage is x64 only, because arm64 AppImages cannot be
 cross-built reliably on an x64 runner. The `.deb` covers both architectures.
@@ -109,17 +109,17 @@ SmartScreen will warn on first launch. See
 cd apps/vscode-extension
 npm install && npm run build
 npx @vscode/vsce package
-code --install-extension waypoint-0.3.0.vsix
+code --install-extension gearvane-0.3.0.vsix
 ```
 
 ### The CLI
 
 ```bash
-git clone https://github.com/Debarun1205/Waypoint
-cd Waypoint
+git clone https://github.com/Debarun1205/GearVane
+cd GearVane
 npm install
-npm run build --workspace @waypoint/core
-npm run build --workspace @waypoint/cli
+npm run build --workspace @gearvane/core
+npm run build --workspace @gearvane/cli
 node packages/cli/dist/bin.js --help
 ```
 
@@ -129,7 +129,7 @@ node packages/cli/dist/bin.js --help
 python -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
 pip install -e .
-waypoint --help
+gearvane --help
 ```
 
 ## Commands
@@ -138,23 +138,23 @@ Both CLIs implement the same commands:
 
 | Command | Purpose |
 |---------|---------|
-| `waypoint route` | Show which tier would handle a prompt, without spending anything |
-| `waypoint run` | Execute a prompt; `--stream` for token-by-token output |
-| `waypoint health` | Probe every configured model against its real endpoint |
-| `waypoint models` | List local models and which providers are running |
-| `waypoint cost` | Cost and spend breakdown by tier and model |
-| `waypoint stats` | Routing statistics for the session |
-| `waypoint safety` | `spend`, `pending`, or `check --command "..."` |
-| `waypoint approve` | Approve a gated operation |
-| `waypoint deploy` | Run a deployment through the approval gate |
-| `waypoint train` | Train the learned classifier from recorded outcomes |
-| `waypoint dashboard` | Generate the HTML monitoring dashboard (Python) |
+| `gearvane route` | Show which tier would handle a prompt, without spending anything |
+| `gearvane run` | Execute a prompt; `--stream` for token-by-token output |
+| `gearvane health` | Probe every configured model against its real endpoint |
+| `gearvane models` | List local models and which providers are running |
+| `gearvane cost` | Cost and spend breakdown by tier and model |
+| `gearvane stats` | Routing statistics for the session |
+| `gearvane safety` | `spend`, `pending`, or `check --command "..."` |
+| `gearvane approve` | Approve a gated operation |
+| `gearvane deploy` | Run a deployment through the approval gate |
+| `gearvane train` | Train the learned classifier from recorded outcomes |
+| `gearvane dashboard` | Generate the HTML monitoring dashboard (Python) |
 
 Add `--json` to any command for machine-readable output.
 
 ## Configure
 
-Both engines look for `waypoint.yaml` (or `config.yaml`, or a `.json`
+Both engines look for `gearvane.yaml` (or `config.yaml`, or a `.json`
 variant) in the working directory, then each parent directory, then your home
 directory. Failing that they use built-in defaults, so nothing needs setting
 up to try it.
@@ -206,7 +206,7 @@ than by the original guess.
 
 Once you have recorded outcomes you can train the learned classifier, which
 refines the choice but always defers to the heuristic on disagreement. See
-`waypoint train`.
+`gearvane train`.
 
 ## Cost control
 
@@ -214,7 +214,7 @@ Budget is checked **before** tokens are spent, using the tier's
 `cost_per_token`. A task that cannot fit the limit never reaches a provider.
 
 ```bash
-waypoint safety spend
+gearvane safety spend
 # Session: $2.31 / $7.69 remaining
 ```
 
@@ -224,13 +224,13 @@ Commands pass through an allowlist. Anything not permitted needs approval,
 and some never run at all:
 
 ```bash
-waypoint safety check --command "git push origin main"
+gearvane safety check --command "git push origin main"
 # pending  git_push  Operation 'git_push' requires approval
 
-waypoint deploy github push        # refuses until approved
+gearvane deploy github push        # refuses until approved
 ```
 
-Waypoint **does not sandbox** execution. It gates commands and relies on
+GearVane **does not sandbox** execution. It gates commands and relies on
 your host environment for isolation.
 
 ## Development

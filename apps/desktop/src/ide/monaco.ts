@@ -107,7 +107,7 @@ export function applyMonacoTheme(): void {
   const border = cssColor('--border', '#24304a');
   const input = cssColor('--bg-input', '#0f1729');
 
-  monaco.editor.defineTheme('waypoint', {
+  monaco.editor.defineTheme('gearvane', {
     base: 'vs-dark',
     inherit: true,
     rules: [],

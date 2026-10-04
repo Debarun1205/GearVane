@@ -18,11 +18,11 @@ import {
   spendFraction,
   type Action,
   type AppState,
-} from '@waypoint/app-core';
+} from '@gearvane/app-core';
 import {
   defaultConfig,
-  type WaypointConfig,
-} from '@waypoint/core';
+  type GearVaneConfig,
+} from '@gearvane/core';
 import {
   ACCENTS,
   APPEARANCE_EVENT,
@@ -50,13 +50,13 @@ import {
 // entry point. It is loaded on demand below, and only where the bridge exists.
 import type { BuilderBridge } from './builder-view.js';
 import type { TerminalBridge } from './ide/terminal.js';
-import type { AgentResult, AgentStep } from '@waypoint/harness';
+import type { AgentResult, AgentStep } from '@gearvane/harness';
 import { createWebBackend, type WebFsStorage } from './web-backend.js';
 
 /** Capabilities the host may provide. Every one is optional. */
 interface HostBridge {
   appInfo?(): Promise<{ platform?: string; version?: string }>;
-  readConfig?(): Promise<{ config: WaypointConfig; path: string | null; error: string | null }>;
+  readConfig?(): Promise<{ config: GearVaneConfig; path: string | null; error: string | null }>;
   on?(channel: 'config:error', handler: (payload: string) => void): () => void;
 
   /**
@@ -114,11 +114,11 @@ interface IdeFsBridge {
 
 declare global {
   interface Window {
-    waypoint?: HostBridge;
+    gearvane?: HostBridge;
   }
 }
 
-const bridge: HostBridge = window.waypoint ?? {};
+const bridge: HostBridge = window.gearvane ?? {};
 
 /**
  * localStorage through a never-throwing wrapper.
@@ -154,7 +154,7 @@ let activeTaskId: string | null = null;
 // The config the controller runs on, and whether it is built-in defaults.
 // Keys can reshape defaults (toggling hosted tiers on) but never a host
 // or served config, which the user owns.
-let activeConfig: WaypointConfig | undefined;
+let activeConfig: GearVaneConfig | undefined;
 let configFromDefaults = false;
 
 /**
@@ -165,7 +165,7 @@ let configFromDefaults = false;
  * defaultConfig only lists a hosted provider when its key is present.
  * Health probes inherit the same keys through the controller.
  */
-function buildController(config: WaypointConfig): AppController {
+function buildController(config: GearVaneConfig): AppController {
   return new AppController({ config, env: readEnv() });
 }
 
@@ -288,7 +288,7 @@ function renderMessage(message: AppState['messages'][number]): HTMLElement {
 
   const role = document.createElement('div');
   role.className = 'message-role';
-  role.textContent = message.role === 'user' ? 'You' : 'Waypoint';
+  role.textContent = message.role === 'user' ? 'You' : 'GearVane';
   wrapper.appendChild(role);
 
   const body = document.createElement('div');
@@ -631,7 +631,7 @@ function openAppearance(mode: 'onboarding' | 'settings'): void {
   appearanceSnapshot = { ...pendingAppearance };
 
   if (mode === 'onboarding') {
-    els.appearanceTitle.textContent = 'Make Waypoint yours';
+    els.appearanceTitle.textContent = 'Make GearVane yours';
     els.appearanceLede.textContent =
       'Pick a theme, a background, an accent, and a motion style. ' +
       'Choices apply as you make them; only Save look keeps them. ' +
@@ -718,7 +718,7 @@ function wireKeys(): void {
 // --- wiring -----------------------------------------------------------------
 
 async function resolveConfig(): Promise<{
-  config: WaypointConfig;
+  config: GearVaneConfig;
   error: string | null;
   /** True when the config is built-in defaults, which keys can reshape. */
   fromDefaults?: boolean;
@@ -739,9 +739,9 @@ async function resolveConfig(): Promise<{
   // Plain browser (for example the Android webview): try a config served
   // alongside the page, then fall back to defaults.
   try {
-    const response = await fetch('./waypoint.config.json');
+    const response = await fetch('./gearvane.config.json');
     if (response.ok) {
-      const { parseConfig } = await import('@waypoint/core');
+      const { parseConfig } = await import('@gearvane/core');
       return { config: parseConfig(await response.text(), 'json'), error: null };
     }
   } catch {
@@ -1047,7 +1047,7 @@ async function main(): Promise<void> {
           // A fresh view for a fresh folder: models from the old workspace
           // must not survive the switch. The pending root rides through the
           // reload in session storage, which dies with the tab.
-          sessionStorage.setItem('waypoint.ide.pendingRoot', root);
+          sessionStorage.setItem('gearvane.ide.pendingRoot', root);
           window.location.reload();
         }
       })();
@@ -1055,9 +1055,9 @@ async function main(): Promise<void> {
 
     wireIdeDialogButtons();
 
-    const pending = sessionStorage.getItem('waypoint.ide.pendingRoot');
+    const pending = sessionStorage.getItem('gearvane.ide.pendingRoot');
     if (pending) {
-      sessionStorage.removeItem('waypoint.ide.pendingRoot');
+      sessionStorage.removeItem('gearvane.ide.pendingRoot');
       mounted = await mountIde(pending);
     } else {
       const stored = storedWorkspaceRoot();
@@ -1083,7 +1083,7 @@ async function main(): Promise<void> {
   /** Last workspace, so the IDE opens where the user left it. */
   function storedWorkspaceRoot(): string | null {
     try {
-      return localStorage.getItem('waypoint.ide.root');
+      return localStorage.getItem('gearvane.ide.root');
     } catch {
       return null;
     }
@@ -1091,7 +1091,7 @@ async function main(): Promise<void> {
 
   function rememberWorkspaceRoot(root: string): void {
     try {
-      localStorage.setItem('waypoint.ide.root', root);
+      localStorage.setItem('gearvane.ide.root', root);
     } catch {
       // Private-mode storage failure must not break the mount.
     }

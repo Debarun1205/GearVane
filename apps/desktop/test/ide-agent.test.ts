@@ -355,13 +355,13 @@ describe('the renderer gates the IDE on all three bridges', () => {
   });
 
   it('remembers the workspace between launches', () => {
-    expect(renderer).toMatch(/waypoint\.ide\.root/);
+    expect(renderer).toMatch(/gearvane\.ide\.root/);
     expect(renderer).toMatch(/rememberWorkspaceRoot/);
   });
 
   it('reloads rather than reusing models when switching folders', () => {
     // Models from the old workspace must not survive the switch.
-    expect(renderer).toMatch(/waypoint\.ide\.pendingRoot/);
+    expect(renderer).toMatch(/gearvane\.ide\.pendingRoot/);
     expect(renderer).toMatch(/window\.location\.reload\(\)/);
   });
 });
@@ -448,7 +448,7 @@ describe('snapshot and diff', () => {
   let root: string;
 
   beforeEach(async () => {
-    root = await mkdtemp(join(tmpdir(), 'waypoint-ide-diff-'));
+    root = await mkdtemp(join(tmpdir(), 'gearvane-ide-diff-'));
     await writeFile(join(root, 'keep.ts'), 'const a = 1;\n');
     await writeFile(join(root, 'change.ts'), 'const b = 1;\n');
   });
@@ -490,7 +490,7 @@ describe('runIdeAgent model selection', () => {
   let root: string;
 
   beforeEach(async () => {
-    root = await mkdtemp(join(tmpdir(), 'waypoint-ide-model-'));
+    root = await mkdtemp(join(tmpdir(), 'gearvane-ide-model-'));
   });
 
   const config = {

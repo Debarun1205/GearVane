@@ -11,7 +11,7 @@
  * that concatenates strings is how a scaffold becomes a script injection.
  */
 
-import type { TemplateParam } from '@waypoint/harness';
+import type { TemplateParam } from '@gearvane/harness';
 
 export interface BuilderBridge {
   templates(): Promise<TemplateSummary[]>;

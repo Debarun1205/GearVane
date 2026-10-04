@@ -3,7 +3,7 @@ import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import { TaskClassifier } from '@waypoint/core';
+import { TaskClassifier } from '@gearvane/core';
 
 const REPO = join(import.meta.dirname, '..');
 const SITE = join(REPO, 'site');
@@ -66,7 +66,7 @@ describe('sections', () => {
     ['harness', 'Inside the harness'],
     ['download', 'Download'],
     ['versions', 'Version history'],
-    ['about', 'About Waypoint'],
+    ['about', 'About GearVane'],
     ['faq', 'FAQ'],
   ])('has the %s section', (id, heading) => {
     expect(html).toMatch(new RegExp(`id="${id}"`));
@@ -129,7 +129,7 @@ describe('version history', () => {
   it('links the release notes for every version it lists', () => {
     for (const version of ['0.2.0', '0.3.0']) {
       expect(html).toContain(
-        `https://github.com/Debarun1205/Waypoint/releases/tag/v${version}`,
+        `https://github.com/Debarun1205/GearVane/releases/tag/v${version}`,
       );
     }
   });
@@ -174,7 +174,7 @@ describe('downloads', () => {
     // had to find the right file themselves. Now each card resolves to an
     // actual artifact on a versioned tag.
     const assetLinks = html.match(
-      /href="https:\/\/github\.com\/Debarun1205\/Waypoint\/releases\/download\/v[\d.]+\/[^"]+"/g,
+      /href="https:\/\/github\.com\/Debarun1205\/GearVane\/releases\/download\/v[\d.]+\/[^"]+"/g,
     ) ?? [];
 
     expect(assetLinks.length).toBeGreaterThanOrEqual(4);
@@ -188,13 +188,13 @@ describe('downloads', () => {
     // The exact asset names from the v0.3.0 release. If a future release
     // renames one of these, this test is what should notice.
     const published = [
-      'Waypoint.Setup.0.3.0.exe',
-      'Waypoint.0.3.0.exe',
-      'Waypoint-0.3.0.dmg',
-      'Waypoint-0.3.0-arm64.dmg',
-      'Waypoint-0.3.0.AppImage',
-      'waypoint-app_0.3.0_amd64.deb',
-      'waypoint-app_0.3.0_arm64.deb',
+      'GearVane.Setup.0.3.0.exe',
+      'GearVane.0.3.0.exe',
+      'GearVane-0.3.0.dmg',
+      'GearVane-0.3.0-arm64.dmg',
+      'GearVane-0.3.0.AppImage',
+      'gearvane-app_0.3.0_amd64.deb',
+      'gearvane-app_0.3.0_arm64.deb',
       'app-debug.apk',
     ];
 
@@ -250,13 +250,13 @@ describe('downloads', () => {
   });
 
   it('does not claim a canonical URL the project does not control', () => {
-    // Regression: the canonical pointed at waypoint.dev, a domain this
+    // Regression: the canonical pointed at gearvane.dev, a domain this
     // project does not own. Search engines would have been told to index a
     // URL that is not the site being served.
     const canonical = html.match(/rel="canonical"\s+href="([^"]+)"/)?.[1];
     expect(canonical).toBeDefined();
-    expect(canonical).not.toMatch(/waypoint\.dev/);
-    expect(canonical).toMatch(/^https:\/\/debarun1205\.github\.io\/Waypoint\/?$/);
+    expect(canonical).not.toMatch(/gearvane\.dev/);
+    expect(canonical).toMatch(/^https:\/\/debarun1205\.github\.io\/GearVane\/?$/);
   });
 });
 
@@ -402,12 +402,12 @@ describe('harness feature claims', () => {
     ['the IDE has Ask and Build modes', 'apps/desktop/src/ide/ide-view.ts', /=== 'ask' \? 'ask' : 'build'/],
     ['the IDE reviews changes as a side-by-side diff', 'apps/desktop/src/ide/ide-view.ts', /side-by-side diff/],
     ['ghost text is registered', 'apps/desktop/src/ide/ide-view.ts', /registerGhostText/],
-    ['the CLI can scaffold a project', 'packages/cli/src/harness-commands.ts', /waypoint build/],
+    ['the CLI can scaffold a project', 'packages/cli/src/harness-commands.ts', /gearvane build/],
     ['the CLI gates operations behind approval', 'packages/cli/src/bin.ts', /case 'approve'/],
     ['the CLI probes model health', 'packages/cli/src/bin.ts', /case 'health'/],
     ['the app surfaces health too', 'apps/desktop/src/renderer.ts', /showHealth/],
     ['feedback retrains the learned classifier', 'packages/core/src/defaults.ts', /learned_model\.json/],
-    ['training runs from recorded feedback', 'waypoint/learned_classifier.py', /train_from_feedback/],
+    ['training runs from recorded feedback', 'gearvane/learned_classifier.py', /train_from_feedback/],
     ['the app wires first-run onboarding', 'apps/desktop/src/renderer.ts', /openAppearance\('onboarding'\)/],
     ['the look is stored on the device', 'apps/desktop/src/renderer.ts', /appearanceStorage/],
   ];

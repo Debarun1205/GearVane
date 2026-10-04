@@ -1,5 +1,5 @@
 /**
- * Waypoint core: tier routing, escalation, provider clients, cost control.
+ * GearVane core: tier routing, escalation, provider clients, cost control.
  *
  * Runs unchanged in Node, a browser, an Electron renderer, and an Android
  * webview. The only host capability it needs is `fetch`, which all of them

@@ -2,14 +2,14 @@
 
 import pytest
 
-from waypoint.providers import (
+from gearvane.providers import (
     AnthropicClient,
     OllamaClient,
     OpenAICompatClient,
     ProviderError,
     ProviderFactory,
 )
-from waypoint.router import ModelProvider
+from gearvane.router import ModelProvider
 
 
 class TestOllamaClient:

@@ -1,7 +1,7 @@
 """Tests for CLI argument parsing and dispatch.
 
 Covers a regression where subparser options collided with the parser's own
-"command" dest, so "waypoint safety spend" printed help instead of running.
+"command" dest, so "gearvane safety spend" printed help instead of running.
 """
 
 import subprocess
@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from waypoint.cli import build_parser
+from gearvane.cli import build_parser
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
@@ -18,7 +18,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 def run_cli(*args, expect_success=True):
     """Invoke the CLI in a subprocess and return the result."""
     return subprocess.run(
-        [sys.executable, "-m", "waypoint", *args],
+        [sys.executable, "-m", "gearvane", *args],
         cwd=PROJECT_ROOT,
         capture_output=True,
         text=True,
@@ -207,7 +207,7 @@ class TestEndToEndCommands:
         assert output.exists()
         content = output.read_text()
         assert "<html" in content
-        assert "Waypoint" in content
+        assert "GearVane" in content
 
     def test_train_without_feedback_fails_cleanly(self, tmp_path):
         result = run_cli("train", "--config", str(tmp_path / "nope.yaml"))
@@ -216,7 +216,7 @@ class TestEndToEndCommands:
         assert "Traceback" not in result.stderr
 
     def test_global_config_before_subcommand_dispatches(self, tmp_path):
-        # Regression: `waypoint --config f.yaml feedback` printed help and
+        # Regression: `gearvane --config f.yaml feedback` printed help and
         # exited 1, because dispatch only inspected sys.argv[1].
         import json
 

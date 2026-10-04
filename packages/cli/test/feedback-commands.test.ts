@@ -15,7 +15,7 @@ const DIST = join(REPO_ROOT, 'packages', 'cli', 'dist', 'bin.js');
  * Run the CLI with an explicit working directory.
  *
  * Mirrors cli.test.ts: the built output when dist exists, tsx from source
- * otherwise. Set WAYPOINT_CLI_FROM_SOURCE=1 to force the source path.
+ * otherwise. Set GEARVANE_CLI_FROM_SOURCE=1 to force the source path.
  *
  * Each test gets a fresh temp dir so feedback and model files never touch
  * the repo root, where a stray feedback.jsonl would pollute every later
@@ -26,7 +26,7 @@ function runIn(
   args: string[],
 ): { stdout: string; stderr: string; code: number } {
   const command =
-    existsSync(DIST) && !process.env.WAYPOINT_CLI_FROM_SOURCE
+    existsSync(DIST) && !process.env.GEARVANE_CLI_FROM_SOURCE
       ? ['node', DIST, ...args]
       : ['npx', 'tsx', ENTRY, ...args];
 
@@ -49,10 +49,10 @@ function runIn(
 }
 
 function setup(): { dir: string; config: string; feedback: string; model: string } {
-  const dir = mkdtempSync(join(tmpdir(), 'waypoint-feedback-'));
+  const dir = mkdtempSync(join(tmpdir(), 'gearvane-feedback-'));
   const feedback = join(dir, 'feedback.jsonl');
   const model = join(dir, 'learned_model.json');
-  const config = join(dir, 'waypoint.config.json');
+  const config = join(dir, 'gearvane.config.json');
   writeFileSync(
     config,
     JSON.stringify({

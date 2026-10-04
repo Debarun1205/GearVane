@@ -1,9 +1,9 @@
-"""OpenCode plugin entry point for Waypoint.
+"""OpenCode plugin entry point for GearVane.
 
 The document recommended integrating as an OpenCode plugin or provider shim
 rather than forking, to avoid tracking upstream changes. This module provides
 the plugin surface: a factory that builds a configured router, plus adapters
-that translate between OpenCode's request/response shape and Waypoint's.
+that translate between OpenCode's request/response shape and GearVane's.
 
 OpenCode's plugin contract is kept loose on purpose. If the host's hook names
 differ by version, the exports below still let a host call the harness
@@ -22,15 +22,15 @@ from .router import TierRouter
 logger = logging.getLogger(__name__)
 
 DEFAULT_CONFIG_FILENAMES = (
-    "waypoint.config.yaml",
-    "waypoint.yaml",
+    "gearvane.config.yaml",
+    "gearvane.yaml",
     "config.yaml",
-    ".waypoint/config.yaml",
+    ".gearvane/config.yaml",
 )
 
 
 def find_config(start_dir: Optional[str] = None) -> Optional[Path]:
-    """Walk up from start_dir looking for a Waypoint config file."""
+    """Walk up from start_dir looking for a GearVane config file."""
     current = Path(start_dir or os.getcwd()).resolve()
 
     for directory in [current, *current.parents]:
@@ -49,7 +49,7 @@ def load_yaml_config(path: Optional[str] = None) -> Dict[str, Any]:
     resolved: Optional[Path] = Path(path) if path else find_config()
 
     if resolved is None or not resolved.is_file():
-        logger.warning("No Waypoint config found; using built-in defaults")
+        logger.warning("No GearVane config found; using built-in defaults")
         return {}
 
     with open(resolved) as handle:
@@ -59,18 +59,18 @@ def load_yaml_config(path: Optional[str] = None) -> Dict[str, Any]:
         logger.warning(f"Ignoring {resolved}: not a YAML mapping")
         return {}
 
-    logger.info(f"Loaded Waypoint config from {resolved}")
+    logger.info(f"Loaded GearVane config from {resolved}")
     return config
 
 
-class WaypointPlugin:
+class GearVanePlugin:
     """OpenCode integration surface.
 
     Exposed both as a class for direct use and through the module-level
     hook functions at the bottom of this file.
     """
 
-    name = "waypoint"
+    name = "gearvane"
     version = "0.1.0"
 
     def __init__(self, config_path: Optional[str] = None, config: Optional[Dict[str, Any]] = None):
@@ -97,12 +97,12 @@ class WaypointPlugin:
 
     def on_start(self, **_kwargs) -> bool:
         """Called when the host starts."""
-        logger.info(f"Waypoint plugin {self.version} ready")
+        logger.info(f"GearVane plugin {self.version} ready")
         return True
 
     def on_stop(self, **_kwargs) -> None:
         """Called when the host shuts down."""
-        logger.info("Waypoint plugin stopping")
+        logger.info("GearVane plugin stopping")
 
     # -- classification -------------------------------------------------------
 
@@ -182,14 +182,14 @@ class WaypointPlugin:
 
 # Module-level singleton so a host can call the functions directly without
 # managing an instance.
-_plugin: Optional[WaypointPlugin] = None
+_plugin: Optional[GearVanePlugin] = None
 
 
-def get_plugin(config_path: Optional[str] = None) -> WaypointPlugin:
+def get_plugin(config_path: Optional[str] = None) -> GearVanePlugin:
     """Return the shared plugin instance, creating it on first use."""
     global _plugin
     if _plugin is None:
-        _plugin = WaypointPlugin(config_path=config_path)
+        _plugin = GearVanePlugin(config_path=config_path)
     return _plugin
 
 

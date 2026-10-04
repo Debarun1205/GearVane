@@ -1,8 +1,8 @@
 {
-  "name": "waypoint-monorepo",
+  "name": "gearvane-monorepo",
   "version": "0.3.0",
   "private": true,
-  "description": "Waypoint: route each task to the cheapest model tier that can do the job",
+  "description": "GearVane: route each task to the cheapest model tier that can do the job",
   "license": "MIT",
   "type": "module",
   "workspaces": [

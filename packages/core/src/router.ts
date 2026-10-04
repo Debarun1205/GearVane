@@ -12,7 +12,7 @@ import type {
   TaskContext,
   Tier,
   TierConfig,
-  WaypointConfig,
+  GearVaneConfig,
 } from './types.js';
 
 export type TierOrder = readonly Tier[];
@@ -51,7 +51,7 @@ export class TierRouter {
   private readonly defaultTier: Tier;
   private readonly manualOverride: string | null;
 
-  constructor(config: WaypointConfig, options: RouterOptions = {}) {
+  constructor(config: GearVaneConfig, options: RouterOptions = {}) {
     const heuristics: TaskClassifierOptions = config.router.heuristics ?? {};
     const heuristic = new TaskClassifier({ ...heuristics });
 

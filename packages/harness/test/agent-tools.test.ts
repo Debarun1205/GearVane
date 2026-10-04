@@ -27,7 +27,7 @@ let ctx: ToolContext;
 let registry: ToolRegistry;
 
 beforeEach(async () => {
-  root = await mkdtemp(join(tmpdir(), 'waypoint-agent-build-'));
+  root = await mkdtemp(join(tmpdir(), 'gearvane-agent-build-'));
 
   // Same pattern as builder.test.ts: the write half needs a real filesystem.
   const { installNodeFileSystem } = await import('../src/builder/node-fs.js');

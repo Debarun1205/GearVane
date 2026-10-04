@@ -1,9 +1,9 @@
 """Check every workflow builds workspaces in a valid order.
 
-The desktop app imports @waypoint/harness, and TypeScript resolves that
+The desktop app imports @gearvane/harness, and TypeScript resolves that
 through package exports, so the harness's dist must exist before the desktop
 is built or typechecked. Two CI jobs missed that step and failed with
-'Cannot find module @waypoint/harness'. A third caught it.
+'Cannot find module @gearvane/harness'. A third caught it.
 
 Dependencies are read from the source rather than hardcoded. A hand-written
 map goes stale the moment a package adds or drops an import, and a stale map
@@ -21,7 +21,7 @@ WORKFLOWS = REPO / ".github" / "workflows"
 # Steps that resolve imports, so they need every dependency built.
 RESOLVING = re.compile(r"\b(build|typecheck)\b")
 BUILD_COMMAND = re.compile(r"--workspace\s+(@?[\w./-]+)")
-IMPORT = re.compile(r"""from ['"](@waypoint/[\w-]+)""")
+IMPORT = re.compile(r"""from ['"](@gearvane/[\w-]+)""")
 
 
 def workspace_dependencies() -> dict[str, set[str]]:

@@ -2,8 +2,8 @@
 
 import pytest
 
-from waypoint.orchestrator import Orchestrator
-from waypoint.providers import Completion, ProviderError, Usage
+from gearvane.orchestrator import Orchestrator
+from gearvane.providers import Completion, ProviderError, Usage
 
 
 def make_config(per_task=5.0, per_session=50.0, max_retries=0, retry_delay=0.0):

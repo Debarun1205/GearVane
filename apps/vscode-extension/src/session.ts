@@ -1,5 +1,5 @@
 /**
- * Session state shown in the Waypoint sidebar view.
+ * Session state shown in the GearVane sidebar view.
  *
  * Kept separate from the extension's command handlers so the view tree has
  * no dependency on the vscode module and can be unit tested.

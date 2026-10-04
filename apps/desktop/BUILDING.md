@@ -34,8 +34,8 @@ npm run dist:win       # or dist:linux / dist
 `extraResources` copies `resources/models` beside the app, where the main
 process serves it on loopback. Without the file the embedded tier reports
 unavailable and the other local providers carry on — the app never
-downloads a model on its own. Point `WAYPOINT_MODEL_DIR` elsewhere, or
-`WAYPOINT_EMBEDDED_MODEL` at a different GGUF name, to run another model.
+downloads a model on its own. Point `GEARVANE_MODEL_DIR` elsewhere, or
+`GEARVANE_EMBEDDED_MODEL` at a different GGUF name, to run another model.
 The release workflow fetches automatically on tag builds.
 
 ## Windows
@@ -94,14 +94,14 @@ Output: `android/app/build/outputs/apk/debug/app-debug.apk`.
 A release APK needs a keystore:
 
 ```bash
-keytool -genkey -v -keystore waypoint.keystore -alias waypoint \
+keytool -genkey -v -keystore gearvane.keystore -alias gearvane \
   -keyalg RSA -keysize 2048 -validity 10000
 
 # then set in ~/.gradle/gradle.properties
-WAYPOINT_STORE_FILE=waypoint.keystore
-WAYPOINT_STORE_PASSWORD=...
-WAYPOINT_KEY_ALIAS=waypoint
-WAYPOINT_KEY_PASSWORD=...
+GEARVANE_STORE_FILE=gearvane.keystore
+GEARVANE_STORE_PASSWORD=...
+GEARVANE_KEY_ALIAS=gearvane
+GEARVANE_KEY_PASSWORD=...
 ```
 
 Never commit a keystore or a signing password.

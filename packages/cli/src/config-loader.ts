@@ -6,8 +6,8 @@ import {
   ConfigError,
   defaultConfig,
   parseConfig,
-  type WaypointConfig,
-} from '@waypoint/core';
+  type GearVaneConfig,
+} from '@gearvane/core';
 
 /**
  * Searched in order when no config path is given.
@@ -18,16 +18,16 @@ import {
  * of which file they happened to find.
  */
 const CONFIG_FILENAMES = [
-  'waypoint.config.json',
-  'waypoint.config.yaml',
-  'waypoint.yaml',
+  'gearvane.config.json',
+  'gearvane.config.yaml',
+  'gearvane.yaml',
   'config.yaml',
   'config.example.yaml',
-  '.waypoint/config.yaml',
+  '.gearvane/config.yaml',
 ];
 
 export interface LoadResult {
-  config: WaypointConfig;
+  config: GearVaneConfig;
   /** Where the config came from, or null when built-in defaults were used. */
   path: string | null;
   /** Human-readable note about a fallback, for stderr. */
@@ -100,7 +100,7 @@ function searchPaths(): string[] {
   return paths;
 }
 
-function readConfigFile(path: string, format?: 'yaml' | 'json'): WaypointConfig {
+function readConfigFile(path: string, format?: 'yaml' | 'json'): GearVaneConfig {
   const text = readFileSync(path, 'utf8');
 
   // An empty file is a valid config that overrides nothing.

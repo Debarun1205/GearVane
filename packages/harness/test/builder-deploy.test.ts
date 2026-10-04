@@ -30,7 +30,7 @@ let root: string;
 let workspace: Workspace;
 
 beforeEach(async () => {
-  root = await mkdtemp(join(tmpdir(), 'waypoint-deploy-'));
+  root = await mkdtemp(join(tmpdir(), 'gearvane-deploy-'));
   workspace = new Workspace(root);
 
   const { installNodeFileSystem } = await import('../src/builder/node-fs.js');

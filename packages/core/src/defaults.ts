@@ -1,4 +1,4 @@
-import type { WaypointConfig } from './types.js';
+import type { GearVaneConfig } from './types.js';
 
 /**
  * Built-in default configuration.
@@ -11,7 +11,7 @@ import type { WaypointConfig } from './types.js';
 /**
  * @param env Used only to detect which keys are present, never to embed them.
  */
-export function defaultConfig(env: Record<string, string | undefined> = {}): WaypointConfig {
+export function defaultConfig(env: Record<string, string | undefined> = {}): GearVaneConfig {
   const hasAnthropic = Boolean(env['ANTHROPIC_API_KEY']);
   const hasOpenRouter = Boolean(env['OPENROUTER_API_KEY']);
   const hasMeta = Boolean(env['MODEL_API_KEY']);
@@ -223,7 +223,7 @@ export function defaultConfig(env: Record<string, string | undefined> = {}): Way
     logging: {
       enabled: true,
       level: 'INFO',
-      file: 'waypoint.log',
+      file: 'gearvane.log',
       logRoutingDecisions: true,
       logEscalations: true,
       logCosts: true,

@@ -30,8 +30,8 @@ export const EMBEDDED_PORT = 11439;
 export const EMBEDDED_MODEL_ID = 'qwen2.5-coder-0.5b-instruct-q4_0';
 export const EMBEDDED_MODEL_URL =
   'https://huggingface.co/Qwen/Qwen2.5-Coder-0.5B-Instruct-GGUF/resolve/main/qwen2.5-coder-0.5b-instruct-q4_0.gguf';
-export const EMBEDDED_MODEL_DIR_ENV = 'WAYPOINT_MODEL_DIR';
-export const EMBEDDED_MODEL_FILE_ENV = 'WAYPOINT_EMBEDDED_MODEL';
+export const EMBEDDED_MODEL_DIR_ENV = 'GEARVANE_MODEL_DIR';
+export const EMBEDDED_MODEL_FILE_ENV = 'GEARVANE_EMBEDDED_MODEL';
 
 export interface ChatMessage {
   role: string;
@@ -81,7 +81,7 @@ export interface EmbeddedServer {
 
 /**
  * Find a model file: the preferred name first, then any *.gguf. Power
- * users drop a different GGUF in the dir (or point WAYPOINT_EMBEDDED_MODEL
+ * users drop a different GGUF in the dir (or point GEARVANE_EMBEDDED_MODEL
  * at it) and the server picks it up with no config change.
  */
 export function findModelFile(dir: string, preferred?: string): string | null {

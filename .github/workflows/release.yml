@@ -40,10 +40,10 @@ jobs:
         # The harness is needed because the desktop app imports it for the
         # builder, and package exports means it must be built first.
         run: |
-          npm run build --workspace @waypoint/core
-          npm run build --workspace @waypoint/harness
-          npm run build --workspace @waypoint/app-core
-          npm run build --workspace waypoint-app
+          npm run build --workspace @gearvane/core
+          npm run build --workspace @gearvane/harness
+          npm run build --workspace @gearvane/app-core
+          npm run build --workspace gearvane-app
 
       - name: Fetch the bundled local model
         # The GGUF is gitignored (400MB+); the installer carries it via
@@ -58,7 +58,7 @@ jobs:
       - name: Collect artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: waypoint-${{ matrix.platform }}
+          name: gearvane-${{ matrix.platform }}
           path: |
             apps/desktop/release/*.exe
             apps/desktop/release/*.dmg
@@ -102,10 +102,10 @@ jobs:
         # The harness is needed because the desktop app imports it for the
         # builder, and package exports means it must be built first.
         run: |
-          npm run build --workspace @waypoint/core
-          npm run build --workspace @waypoint/harness
-          npm run build --workspace @waypoint/app-core
-          npm run build --workspace waypoint-app
+          npm run build --workspace @gearvane/core
+          npm run build --workspace @gearvane/harness
+          npm run build --workspace @gearvane/app-core
+          npm run build --workspace gearvane-app
 
       - name: Create the native Android project
         working-directory: apps/desktop
@@ -124,7 +124,7 @@ jobs:
       - name: Collect the APK
         uses: actions/upload-artifact@v4
         with:
-          name: waypoint-android
+          name: gearvane-android
           path: apps/desktop/android/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
 
@@ -145,9 +145,9 @@ jobs:
         # The extension imports the harness for the agent panel, and package
         # exports means it must be built first.
         run: |
-          npm run build --workspace @waypoint/core
-          npm run build --workspace @waypoint/harness
-          npm run build --workspace waypoint
+          npm run build --workspace @gearvane/core
+          npm run build --workspace @gearvane/harness
+          npm run build --workspace gearvane
 
       - name: Package the extension
         working-directory: apps/vscode-extension
@@ -156,7 +156,7 @@ jobs:
       - name: Collect the VSIX
         uses: actions/upload-artifact@v4
         with:
-          name: waypoint-vscode
+          name: gearvane-vscode
           path: apps/vscode-extension/*.vsix
           if-no-files-found: error
 
@@ -213,7 +213,7 @@ jobs:
             SmartScreen will warn on first launch.
 
             - macOS: right-click the app and choose Open, or
-              `xattr -d com.apple.quarantine /Applications/Waypoint.app`
+              `xattr -d com.apple.quarantine /Applications/GearVane.app`
             - Windows: choose More info then Run anyway
 
             ## Linux AppImage is x64 only

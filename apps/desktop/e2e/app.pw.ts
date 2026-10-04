@@ -28,7 +28,7 @@ let app: ElectronApplication | null = null;
 test.beforeEach(async () => {
   // Fresh profile per test: onboarding state must be deterministic, and no
   // run may inherit another run's localStorage.
-  const userData = await mkdtemp(join(tmpdir(), 'waypoint-e2e-'));
+  const userData = await mkdtemp(join(tmpdir(), 'gearvane-e2e-'));
   app = await electron.launch({
     args: [
       MAIN,
@@ -65,17 +65,17 @@ test('boots chat with onboarding, then opens the IDE', async () => {
   // bridge never existed in a shipped build and the IDE could not mount.
   await expect(page.locator('#transcript')).toBeVisible();
   await expect
-    .poll(() => page.evaluate(() => 'waypoint' in globalThis))
+    .poll(() => page.evaluate(() => 'gearvane' in globalThis))
     .toBe(true);
   await expect(page.locator('#appearance-dialog')).toBeVisible();
-  await expect(page.locator('#appearance-title')).toHaveText('Make Waypoint yours');
+  await expect(page.locator('#appearance-title')).toHaveText('Make GearVane yours');
   await page.locator('#appearance-cancel').click();
 
   // Give the IDE a workspace: with none stored, the IDE button opens a
   // native folder dialog - correct product behaviour, but no web
   // automation can drive a native dialog, so the root is seeded instead.
   const workspace = join(HERE, 'fixture-workspace');
-  await page.evaluate((root) => localStorage.setItem('waypoint.ide.root', root), workspace);
+  await page.evaluate((root) => localStorage.setItem('gearvane.ide.root', root), workspace);
 
   // The IDE toggle exists only where all three bridges do - inside the
   // desktop app that is exactly where it must exist.

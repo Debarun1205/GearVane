@@ -20,7 +20,7 @@ const corePkg = JSON.parse(read(REPO, 'packages', 'core', 'package.json')) as {
   name: string;
   version: string;
 };
-const pyInit = read(REPO, 'waypoint', '__init__.py');
+const pyInit = read(REPO, 'gearvane', '__init__.py');
 
 describe('repository layout', () => {
   it.each([
@@ -29,7 +29,7 @@ describe('repository layout', () => {
     ['apps/desktop', 'desktop app'],
     ['apps/vscode-extension', 'VS Code extension'],
     ['site', 'website'],
-    ['waypoint', 'Python engine'],
+    ['gearvane', 'Python engine'],
   ])('has %s', (dir) => {
     expect(existsSync(join(REPO, dir))).toBe(true);
   });
@@ -70,11 +70,11 @@ describe('versions agree', () => {
 
 describe('commands in the README exist', () => {
   it.each([
-    'waypoint route',
-    'waypoint run',
-    'waypoint safety spend',
-    'waypoint safety check',
-    'waypoint deploy',
+    'gearvane route',
+    'gearvane run',
+    'gearvane safety spend',
+    'gearvane safety check',
+    'gearvane deploy',
   ])('documents %s', (command) => {
     expect(readme).toContain(command);
   });
@@ -151,7 +151,7 @@ describe('no credentials or placeholders', () => {
   });
 
   it('links the releases page for downloads', () => {
-    expect(readme).toContain('github.com/Debarun1205/Waypoint/releases');
+    expect(readme).toContain('github.com/Debarun1205/GearVane/releases');
   });
 });
 

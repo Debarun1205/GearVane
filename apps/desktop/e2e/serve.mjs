@@ -4,9 +4,9 @@
  * Serves the built renderer directory exactly as a dumb host would, with two
  * deliberate choices:
  *
- * - No host bridge. `window.waypoint` is absent, so the page takes the plain
+ * - No host bridge. `window.gearvane` is absent, so the page takes the plain
  *   browser path it takes inside the Android webview.
- * - `/waypoint.config.json` answers with `{}`, which `parseConfig` normalises
+ * - `/gearvane.config.json` answers with `{}`, which `parseConfig` normalises
  *   to full defaults. The renderer probes for this file when there is no
  *   bridge; answering with a 404 would inject an environment artefact into
  *   the console-error assertions rather than test the renderer.
@@ -37,7 +37,7 @@ const server = createServer(async (request, response) => {
   try {
     const url = new URL(request.url ?? '/', 'http://127.0.0.1');
 
-    if (url.pathname === '/waypoint.config.json') {
+    if (url.pathname === '/gearvane.config.json') {
       response.writeHead(200, { 'content-type': types['.json'] });
       response.end(emptyConfig);
       return;

@@ -45,7 +45,7 @@ export interface KeyStorage {
   removeItem(key: string): void;
 }
 
-const STORAGE_KEY = 'waypoint.keys';
+const STORAGE_KEY = 'gearvane.keys';
 
 /**
  * Keep only known key variables with non-empty string values, trimmed.

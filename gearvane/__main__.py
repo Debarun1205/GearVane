@@ -1,4 +1,4 @@
-"""Entry point for python -m waypoint."""
+"""Entry point for python -m gearvane."""
 
 from .cli import main
 

@@ -13,7 +13,7 @@ import {
 } from '../src/learned-classifier.js';
 import { TaskClassifier } from '../src/classifier.js';
 import type { ProviderClient } from '../src/providers.js';
-import type { TaskContext, Tier, WaypointConfig } from '../src/types.js';
+import type { TaskContext, Tier, GearVaneConfig } from '../src/types.js';
 
 // ---------------------------------------------------------------------------
 // feature extraction
@@ -271,7 +271,7 @@ describe('HybridClassifier', () => {
 // health
 // ---------------------------------------------------------------------------
 
-function healthConfig(): WaypointConfig {
+function healthConfig(): GearVaneConfig {
   const config = defaultConfig();
   config.tiers.local!.providers = [
     { name: 'ollama', models: ['a', 'b'], baseUrl: 'http://localhost:11434' },

@@ -61,7 +61,7 @@ describe('workspace build order is declared correctly', () => {
       'src',
       'builder-host.ts',
     );
-    expect(harnessImports).toContain("from '@waypoint/harness'");
+    expect(harnessImports).toContain("from '@gearvane/harness'");
 
     // tools/check_workflow_order.py reads the imports from source and asserts
     // each workflow step builds what it needs. It is a tool rather than a test
@@ -74,10 +74,10 @@ describe('workspace build order is declared correctly', () => {
     // false failures that teach people to ignore the checker. The pattern is
     // matched loosely, since asserting on the checker's own regex text would
     // be asserting on trivia.
-    expect(source).toContain('@waypoint/');
+    expect(source).toContain('@gearvane/');
     expect(source).toMatch(/rglob\(/);
     expect(source).toMatch(/dependencies: dict\[str, set\[str\]\] = \{\}/);
-    expect(source).not.toMatch(/^\s*"@waypoint\/\w+":\s*\{/m);
+    expect(source).not.toMatch(/^\s*"@gearvane\/\w+":\s*\{/m);
   });
 });
 

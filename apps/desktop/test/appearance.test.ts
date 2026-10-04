@@ -315,7 +315,7 @@ describe('wiring', () => {
     expect(terminal).toContain('APPEARANCE_EVENT');
     expect(monaco).toContain('applyMonacoTheme');
     expect(monaco).toContain('defineTheme');
-    expect(view).toContain("theme: 'waypoint'");
+    expect(view).toContain("theme: 'gearvane'");
     expect(view).toContain('APPEARANCE_EVENT');
   });
 

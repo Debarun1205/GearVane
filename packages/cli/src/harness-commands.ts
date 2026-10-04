@@ -28,8 +28,8 @@ import {
   type Completion,
   type CompleteOptions,
   type ToolDefinition,
-  type WaypointConfig,
-} from '@waypoint/core';
+  type GearVaneConfig,
+} from '@gearvane/core';
 import {
   TEMPLATES,
   ToolRegistry,
@@ -46,7 +46,7 @@ import {
   type AgentResult,
   type AgentStep,
   type Tool,
-} from '@waypoint/harness';
+} from '@gearvane/harness';
 
 import { flagBool, flagNumber, flagString, type ParsedArgs } from './args.js';
 import { loadConfig } from './config-loader.js';
@@ -68,10 +68,10 @@ function speaksTools(client: object): boolean {
 /* agent                                                                */
 /* ------------------------------------------------------------------ */
 
-export const AGENT_HELP = `waypoint agent - run the agent loop over your project
+export const AGENT_HELP = `gearvane agent - run the agent loop over your project
 
 Usage:
-  waypoint agent --task "<what you want done>" [options]
+  gearvane agent --task "<what you want done>" [options]
 
 Options:
   --cwd <dir>            Project directory to work in (default: current)
@@ -156,7 +156,7 @@ export async function cmdAgent(args: ParsedArgs, json: boolean, useColor: boolea
 }
 
 function buildToolkit(
-  config: WaypointConfig,
+  config: GearVaneConfig,
   allowShell: boolean,
   autoApprove: boolean,
 ): Tool[] {
@@ -220,7 +220,7 @@ interface ModelChoice {
  * expensive path, and picking a tier here would either silently override the
  * user's configuration or duplicate logic that belongs in core.
  */
-function resolveModel(config: WaypointConfig): ModelChoice {
+function resolveModel(config: GearVaneConfig): ModelChoice {
   const factory = new ProviderFactory({
     env: process.env as Record<string, string | undefined>,
     timeoutMs: config.providers.timeoutSeconds * 1000,
@@ -297,11 +297,11 @@ function reportAgent(result: AgentResult, json: boolean, useColor: boolean): num
 /* build                                                                */
 /* ------------------------------------------------------------------ */
 
-export const BUILD_HELP = `waypoint build - scaffold a project from a template
+export const BUILD_HELP = `gearvane build - scaffold a project from a template
 
 Usage:
-  waypoint build --list
-  waypoint build --template <id> --name "<project name>" [options]
+  gearvane build --list
+  gearvane build --template <id> --name "<project name>" [options]
 
 Options:
   --template <id>   Template to use
@@ -432,15 +432,15 @@ function listTemplates(json: boolean): number {
 /* session                                                              */
 /* ------------------------------------------------------------------ */
 
-export const SESSION_HELP = `waypoint session - list, show, and clear agent sessions
+export const SESSION_HELP = `gearvane session - list, show, and clear agent sessions
 
 Usage:
-  waypoint session list [--json]
-  waypoint session show <id> [--json]
-  waypoint session delete <id>
-  waypoint session clear
+  gearvane session list [--json]
+  gearvane session show <id> [--json]
+  gearvane session delete <id>
+  gearvane session clear
 
-Sessions live in .waypoint/ under the workspace. Credential-shaped text is
+Sessions live in .gearvane/ under the workspace. Credential-shaped text is
 stripped before anything is written. That is a useful default and not a
 guarantee: a key in an unusual format will not be caught.`;
 

@@ -142,7 +142,7 @@ describe('corrupt and partial files', () => {
   it('discards a file that is not JSON', async () => {
     const { sessions, storage } = store();
     await sessions.save(state());
-    await storage.set('waypoint.session.s1', '{ truncated');
+    await storage.set('gearvane.session.s1', '{ truncated');
 
     const result = await sessions.load('s1');
     expect(result.status).toBe('corrupt');
@@ -151,7 +151,7 @@ describe('corrupt and partial files', () => {
 
   it('discards a file that is not an object', async () => {
     const { sessions, storage } = store();
-    await storage.set('waypoint.session.s1', '"just a string"');
+    await storage.set('gearvane.session.s1', '"just a string"');
 
     expect((await sessions.load('s1')).status).toBe('corrupt');
   });
@@ -161,7 +161,7 @@ describe('corrupt and partial files', () => {
     // run would be confined to nothing, or to whatever happened to be current.
     const { sessions, storage } = store();
     await storage.set(
-      'waypoint.session.s1',
+      'gearvane.session.s1',
       JSON.stringify({ version: 1, id: 's1', task: 'x', messages: [] }),
     );
 
@@ -173,7 +173,7 @@ describe('corrupt and partial files', () => {
   it('discards a session with no task', async () => {
     const { sessions, storage } = store();
     await storage.set(
-      'waypoint.session.s1',
+      'gearvane.session.s1',
       JSON.stringify({ version: 1, id: 's1', workspaceRoot: '/p', messages: [] }),
     );
 
@@ -183,7 +183,7 @@ describe('corrupt and partial files', () => {
   it('does not throw from list when a file is corrupt', async () => {
     const { sessions, storage } = store();
     await sessions.save(state({ id: 'good' }));
-    await storage.set('waypoint.session.bad', 'not json at all');
+    await storage.set('gearvane.session.bad', 'not json at all');
 
     const listed = await sessions.list();
     expect(listed.map((s) => s.id)).toEqual(['good']);
@@ -192,7 +192,7 @@ describe('corrupt and partial files', () => {
   it('skips malformed messages rather than failing the session', async () => {
     const { sessions, storage } = store();
     await storage.set(
-      'waypoint.session.s1',
+      'gearvane.session.s1',
       JSON.stringify({
         version: SESSION_VERSION,
         id: 's1',
@@ -218,7 +218,7 @@ describe('corrupt and partial files', () => {
     // Keeping it would produce a request the provider rejects.
     const { sessions, storage } = store();
     await storage.set(
-      'waypoint.session.s1',
+      'gearvane.session.s1',
       JSON.stringify({
         version: SESSION_VERSION,
         id: 's1',
@@ -237,7 +237,7 @@ describe('corrupt and partial files', () => {
   it('reports a versioned file as migrated', async () => {
     const { sessions, storage } = store();
     await storage.set(
-      'waypoint.session.s1',
+      'gearvane.session.s1',
       JSON.stringify({
         version: 0,
         id: 's1',
@@ -256,7 +256,7 @@ describe('corrupt and partial files', () => {
   it('drops unknown fields rather than rejecting the file', async () => {
     const { sessions, storage } = store();
     await storage.set(
-      'waypoint.session.s1',
+      'gearvane.session.s1',
       JSON.stringify({
         version: SESSION_VERSION,
         id: 's1',
@@ -330,7 +330,7 @@ describe('secrets never reach storage', () => {
       }),
     );
 
-    const raw = (await storage.get('waypoint.session.s1')) ?? '';
+    const raw = (await storage.get('gearvane.session.s1')) ?? '';
     expect(raw).not.toContain('abc123def456ghi789jkl012');
     expect(raw).toContain('[redacted]');
   });
@@ -345,7 +345,7 @@ describe('secrets never reach storage', () => {
       }),
     );
 
-    const raw = (await storage.get('waypoint.session.s1')) ?? '';
+    const raw = (await storage.get('gearvane.session.s1')) ?? '';
     expect(raw).not.toContain('abcdefghijklmnopqrst');
   });
 
@@ -397,7 +397,7 @@ describe('secrets never reach storage', () => {
       state({ messages: [{ role: 'user', content: 'sk-abcdefghijklmnopqrstuvwx' }] }),
     );
 
-    const raw = (await storage.get('waypoint.session.s1')) ?? '';
+    const raw = (await storage.get('gearvane.session.s1')) ?? '';
     expect(raw).toContain('sk-abcdefghijklmnopqrstuvwx');
   });
 });

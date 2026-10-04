@@ -6,7 +6,7 @@
  * subscribes and re-renders; it does not own the state.
  */
 
-import type { ExecutionResult, Tier } from '@waypoint/core';
+import type { ExecutionResult, Tier } from '@gearvane/core';
 
 export type MessageRole = 'user' | 'assistant' | 'system';
 

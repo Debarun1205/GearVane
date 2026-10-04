@@ -13,7 +13,7 @@ import {
   transcriptText,
   type AppState,
 } from '../src/conversation.js';
-import type { ExecutionResult } from '@waypoint/core';
+import type { ExecutionResult } from '@gearvane/core';
 
 const result = (overrides: Partial<ExecutionResult> = {}): ExecutionResult => ({
   taskId: 't1',

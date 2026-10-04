@@ -33,9 +33,9 @@ ENV/
 *.swo
 *~
 
-# Waypoint
+# GearVane
 config.yaml
-waypoint.log
+gearvane.log
 *.log
 
 # Runtime artifacts

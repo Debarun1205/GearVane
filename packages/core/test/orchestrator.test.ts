@@ -3,9 +3,9 @@ import { describe, expect, it, vi } from 'vitest';
 import { defaultConfig } from '../src/defaults.js';
 import { Orchestrator, SpendTracker } from '../src/orchestrator.js';
 import { ProviderError } from '../src/providers.js';
-import type { Completion, ProviderConfig, WaypointConfig } from '../src/types.js';
+import type { Completion, ProviderConfig, GearVaneConfig } from '../src/types.js';
 
-const cfg = (overrides: Partial<WaypointConfig> = {}): WaypointConfig => {
+const cfg = (overrides: Partial<GearVaneConfig> = {}): GearVaneConfig => {
   const base = defaultConfig();
   return {
     ...base,

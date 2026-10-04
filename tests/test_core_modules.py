@@ -8,10 +8,10 @@ import json
 
 import pytest
 
-from waypoint.classifier import Tier
-from waypoint.cost import AlertLevel, CostTracker
-from waypoint.dashboard import DashboardGenerator
-from waypoint.deployment import (
+from gearvane.classifier import Tier
+from gearvane.cost import AlertLevel, CostTracker
+from gearvane.dashboard import DashboardGenerator
+from gearvane.deployment import (
     CloudflareDeployer,
     DeploymentManager,
     DeployResult,
@@ -20,12 +20,12 @@ from waypoint.deployment import (
     GitHubDeployer,
     VercelDeployer,
 )
-from waypoint.feedback import FeedbackEntry, FeedbackLoop, FeedbackStore
-from waypoint.health import HealthStatus, ModelHealthChecker
-from waypoint.logger import RoutingLogger
-from waypoint.plugin import PluginManager, PluginMetadata, WaypointPlugin
-from waypoint.router import ModelProvider, RoutingDecision
-from waypoint.safety import SafetyManager
+from gearvane.feedback import FeedbackEntry, FeedbackLoop, FeedbackStore
+from gearvane.health import HealthStatus, ModelHealthChecker
+from gearvane.logger import RoutingLogger
+from gearvane.plugin import PluginManager, PluginMetadata, GearVanePlugin
+from gearvane.router import ModelProvider, RoutingDecision
+from gearvane.safety import SafetyManager
 
 # --------------------------------------------------------------------------
 # cost
@@ -381,7 +381,7 @@ class TestDashboard:
     def test_generates_html(self):
         html = self.make_dashboard().generate()
         assert "<html" in html
-        assert "Waypoint Dashboard" in html
+        assert "GearVane Dashboard" in html
 
     def test_no_unreplaced_placeholders(self):
         html = self.make_dashboard().generate()
@@ -535,7 +535,7 @@ class TestDeploymentGating:
 # --------------------------------------------------------------------------
 
 
-class DummyPlugin(WaypointPlugin):
+class DummyPlugin(GearVanePlugin):
     name = "dummy"
 
     def __init__(self):
@@ -628,7 +628,7 @@ class TestPluginManager:
 
 class TestStreamingEvents:
     def test_event_serializes(self):
-        from waypoint.streaming import StreamEvent, StreamEventType
+        from gearvane.streaming import StreamEvent, StreamEventType
 
         event = StreamEvent(type=StreamEventType.TOKEN, data={"token": "hi"})
         payload = event.to_dict()
@@ -636,7 +636,7 @@ class TestStreamingEvents:
         assert json.loads(event.to_json())["data"]["token"] == "hi"
 
     def test_buffer_dispatches_to_handler(self):
-        from waypoint.streaming import StreamBuffer, StreamEvent, StreamEventType
+        from gearvane.streaming import StreamBuffer, StreamEvent, StreamEventType
 
         received = []
         buffer = StreamBuffer()
@@ -645,7 +645,7 @@ class TestStreamingEvents:
         assert len(received) == 1
 
     def test_buffer_respects_max_size(self):
-        from waypoint.streaming import StreamBuffer, StreamEvent, StreamEventType
+        from gearvane.streaming import StreamBuffer, StreamEvent, StreamEventType
 
         buffer = StreamBuffer(buffer_size=3)
         for _ in range(10):
@@ -653,7 +653,7 @@ class TestStreamingEvents:
         assert len(buffer.get_recent(100)) == 3
 
     def test_buffer_handler_exception_is_contained(self):
-        from waypoint.streaming import StreamBuffer, StreamEvent, StreamEventType
+        from gearvane.streaming import StreamBuffer, StreamEvent, StreamEventType
 
         buffer = StreamBuffer()
 
@@ -664,7 +664,7 @@ class TestStreamingEvents:
         buffer.emit(StreamEvent(type=StreamEventType.TOKEN, data="x"))
 
     def test_buffer_clear(self):
-        from waypoint.streaming import StreamBuffer, StreamEvent, StreamEventType
+        from gearvane.streaming import StreamBuffer, StreamEvent, StreamEventType
 
         buffer = StreamBuffer()
         buffer.emit(StreamEvent(type=StreamEventType.TOKEN, data="x"))

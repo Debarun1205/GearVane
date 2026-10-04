@@ -111,4 +111,4 @@ const api = {
   },
 };
 
-contextBridge.exposeInMainWorld('waypoint', api);
+contextBridge.exposeInMainWorld('gearvane', api);

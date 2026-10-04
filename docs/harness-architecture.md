@@ -1,6 +1,6 @@
 # Harness architecture
 
-The intent for Waypoint is a complete AI harness: an agent that reads a task,
+The intent for GearVane is a complete AI harness: an agent that reads a task,
 decides which tools it needs, runs them, observes the results, and keeps going
 until the task is done or it is genuinely stuck.
 
@@ -9,7 +9,7 @@ is honest about what does not exist yet.
 
 ## What exists today
 
-Waypoint is currently a **routing engine**. It classifies a task into a tier,
+GearVane is currently a **routing engine**. It classifies a task into a tier,
 runs the cheapest model that plausibly works, escalates on real failure, and
 tracks spend. That is real, tested infrastructure, and it is the layer a
 multi-model harness needs most and usually gets wrong.
@@ -69,7 +69,7 @@ tested rather than assumed:
 
 ## Layering
 
-New code goes in `packages/harness`, which depends on `@waypoint/core` and
+New code goes in `packages/harness`, which depends on `@gearvane/core` and
 does not get folded into it. Core stays the routing layer so the Python parity
 test keeps comparing like with like.
 

@@ -1,8 +1,8 @@
 /**
  * Electron main process.
  *
- * The window is a thin shell: all routing logic lives in @waypoint/core and
- * @waypoint/app-core, which also run in the Android build. Keeping the main
+ * The window is a thin shell: all routing logic lives in @gearvane/core and
+ * @gearvane/app-core, which also run in the Android build. Keeping the main
  * process small means the renderer and the mobile webview share the same
  * behaviour.
  */
@@ -13,7 +13,7 @@ import { homedir, platform } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { parseConfig, defaultConfig, type WaypointConfig } from '@waypoint/core';
+import { parseConfig, defaultConfig, type GearVaneConfig } from '@gearvane/core';
 
 import { registerBuilderHandlers } from './builder-host.js';
 import { EMBEDDED_MODEL_DIR_ENV, startEmbeddedServer } from './embedded-server.js';
@@ -25,9 +25,9 @@ const HERE = fileURLToPath(new URL('.', import.meta.url));
 const RENDERER_DIR = join(HERE, '..', 'renderer');
 
 const CONFIG_NAMES = [
-  'waypoint.config.json',
-  'waypoint.config.yaml',
-  'waypoint.yaml',
+  'gearvane.config.json',
+  'gearvane.config.yaml',
+  'gearvane.yaml',
   'config.yaml',
 ];
 
@@ -47,7 +47,7 @@ function isDevelopment(): boolean {
 export function findConfigPath(): string | null {
   const roots = isDevelopment()
     ? [join(HERE, '..', '..', '..')]
-    : [process.resourcesPath, app.getAppPath(), join(homedir(), '.waypoint')];
+    : [process.resourcesPath, app.getAppPath(), join(homedir(), '.gearvane')];
 
   for (const root of roots) {
     for (const name of CONFIG_NAMES) {
@@ -59,7 +59,7 @@ export function findConfigPath(): string | null {
   return null;
 }
 
-export function loadConfigFile(): { config: WaypointConfig; path: string | null; error?: string } {
+export function loadConfigFile(): { config: GearVaneConfig; path: string | null; error?: string } {
   const path = findConfigPath();
   if (!path) return { config: defaultConfig(process.env), path: null };
 
@@ -85,7 +85,7 @@ function createWindow(): BrowserWindow {
     height: 780,
     minWidth: 480,
     minHeight: 480,
-    title: 'Waypoint',
+    title: 'GearVane',
     backgroundColor: '#0b1120',
     webPreferences: {
       preload: join(HERE, 'preload.cjs'),
@@ -146,7 +146,7 @@ function describePlatform(): Record<string, string> {
  * Where the bundled GGUF lives.
  *
  * Packaged builds carry resources/models via extraResources; development
- * uses the same path under the package root. WAYPOINT_MODEL_DIR overrides
+ * uses the same path under the package root. GEARVANE_MODEL_DIR overrides
  * both. A missing directory is fine: the embedded server reports itself
  * unavailable and the other local providers carry on.
  */
@@ -167,10 +167,10 @@ app.whenReady().then(() => {
   // an unloadable native module only logs, never stops the app booting.
   void startEmbeddedServer({
     modelDir: findModelDir() ?? undefined,
-    onLog: (message) => console.log(`[waypoint] ${message}`),
+    onLog: (message) => console.log(`[gearvane] ${message}`),
   }).catch((startupError: unknown) => {
     console.log(
-      `[waypoint] embedded model failed to start: ${startupError instanceof Error ? startupError.message : String(startupError)}`,
+      `[gearvane] embedded model failed to start: ${startupError instanceof Error ? startupError.message : String(startupError)}`,
     );
   });
 

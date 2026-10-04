@@ -32,7 +32,7 @@ let root: string;
 let workspace: Workspace;
 
 beforeEach(async () => {
-  root = await mkdtemp(join(tmpdir(), 'waypoint-build-'));
+  root = await mkdtemp(join(tmpdir(), 'gearvane-build-'));
   workspace = new Workspace(root);
 
   // Writes go through an injected filesystem so this module bundles for a

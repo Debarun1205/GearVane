@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { defaultConfig, type Completion, type WaypointConfig } from '@waypoint/core';
+import { defaultConfig, type Completion, type GearVaneConfig } from '@gearvane/core';
 
 import { AppController } from '../src/controller.js';
 
@@ -27,7 +27,7 @@ class FakeClient {
   }
 }
 
-const config = (): WaypointConfig => {
+const config = (): GearVaneConfig => {
   const base = defaultConfig();
   return {
     ...base,

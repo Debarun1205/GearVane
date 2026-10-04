@@ -15,11 +15,11 @@ import {
   type RoutingDecision,
   type SpendStatus,
   type TaskContext,
-  type WaypointConfig,
-} from '@waypoint/core';
+  type GearVaneConfig,
+} from '@gearvane/core';
 
 export interface ControllerOptions {
-  config: WaypointConfig;
+  config: GearVaneConfig;
   /** Supplies API keys. Defaults to the ambient environment. */
   env?: Record<string, string | undefined>;
   /** Injected for tests. */

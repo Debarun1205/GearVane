@@ -64,7 +64,7 @@ let root: string;
 let registry: ToolRegistry;
 
 beforeEach(async () => {
-  const base = await mkdtemp(join(tmpdir(), 'waypoint-agent-'));
+  const base = await mkdtemp(join(tmpdir(), 'gearvane-agent-'));
   root = join(base, 'project');
   await mkdir(root, { recursive: true });
   await writeFile(join(root, 'a.txt'), 'alpha\nbeta\ngamma\n');

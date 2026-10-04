@@ -19,7 +19,7 @@
  * cost throughput on every request.
  */
 
-import type { ConversationMessage } from '@waypoint/core';
+import type { ConversationMessage } from '@gearvane/core';
 
 /** Characters per token. The commonly cited rule of thumb for English text. */
 export const CHARS_PER_TOKEN = 4;

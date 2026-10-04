@@ -2,7 +2,7 @@
 
 import pytest
 
-from waypoint.retry import (
+from gearvane.retry import (
     CircuitBreaker,
     Retryable,
     RetryConfig,

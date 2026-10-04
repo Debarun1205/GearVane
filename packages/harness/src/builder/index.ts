@@ -1,5 +1,5 @@
 /**
- * The Waypoint app builder.
+ * The GearVane app builder.
  *
  * A **template engine with parameters**, plus the two agent tools that let a
  * model drive it from a prompt. The engine is shared by the CLI, the VS Code

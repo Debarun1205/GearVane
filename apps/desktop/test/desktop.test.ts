@@ -79,13 +79,13 @@ describe('desktop manifest', () => {
   });
 
   it('has an app id and a product name', () => {
-    expect(manifest.build.appId).toBe('dev.waypoint.app');
-    expect(manifest.productName).toBe('Waypoint');
+    expect(manifest.build.appId).toBe('dev.gearvane.app');
+    expect(manifest.productName).toBe('GearVane');
   });
 
   it('depends on the shared packages rather than duplicating them', () => {
-    expect(manifest.dependencies['@waypoint/core']).toBeDefined();
-    expect(manifest.dependencies['@waypoint/app-core']).toBeDefined();
+    expect(manifest.dependencies['@gearvane/core']).toBeDefined();
+    expect(manifest.dependencies['@gearvane/app-core']).toBeDefined();
   });
 
   it('declares the IDE dependencies instead of relying on hoisting', () => {
@@ -169,7 +169,7 @@ describe('renderer', () => {
   it('does not assume the Electron bridge exists', () => {
     // The same file runs in a plain browser for the Android build.
     const source = read(APP, 'src', 'renderer.ts');
-    expect(source).toMatch(/window\.waypoint \?\? \{\}/);
+    expect(source).toMatch(/window\.gearvane \?\? \{\}/);
   });
 
   it('never reads process.env in the renderer', () => {

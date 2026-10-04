@@ -39,9 +39,9 @@ import {
   type AgentResult,
   type AgentStep,
   type Tool,
-} from '@waypoint/harness';
+} from '@gearvane/harness';
 
-import { SafetyManager, type WaypointConfig } from '@waypoint/core';
+import { SafetyManager, type GearVaneConfig } from '@gearvane/core';
 
 /** Messages from the webview to the extension. */
 interface Inbound {
@@ -74,7 +74,7 @@ export class AgentPanel {
 
   constructor(
     private readonly extensionUri: vscode.Uri,
-    private readonly getConfig: () => WaypointConfig,
+    private readonly getConfig: () => GearVaneConfig,
     private readonly workspaceRoot: () => string | undefined,
   ) {}
 
@@ -86,8 +86,8 @@ export class AgentPanel {
     }
 
     this.panel = vscode.window.createWebviewPanel(
-      'waypoint.agent',
-      'Waypoint Agent',
+      'gearvane.agent',
+      'GearVane Agent',
       vscode.ViewColumn.Beside,
       {
         enableScripts: true,
@@ -259,10 +259,10 @@ export class AgentPanel {
    * not routing at all.
    */
   private async resolveModel(): Promise<{
-    model?: import('@waypoint/harness').AgentModel;
+    model?: import('@gearvane/harness').AgentModel;
     providerName?: string;
   }> {
-    const { ProviderFactory } = await import('@waypoint/core');
+    const { ProviderFactory } = await import('@gearvane/core');
 
     const factory = new ProviderFactory({
       env: process.env as Record<string, string | undefined>,

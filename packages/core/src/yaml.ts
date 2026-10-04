@@ -1,7 +1,7 @@
 /**
  * Minimal YAML subset parser, dependency-free.
  *
- * Supports the shapes a Waypoint config actually uses: nested mappings,
+ * Supports the shapes a GearVane config actually uses: nested mappings,
  * block and inline sequences, scalars, quoted strings, comments, and empty
  * values. Anchors, multi-document streams, flow mappings beyond simple
  * inline sequences, and block scalars are intentionally unsupported and

@@ -15,7 +15,7 @@
 import { ipcMain } from 'electron';
 import { stat } from 'node:fs/promises';
 
-import { ProviderFactory, type WaypointConfig } from '@waypoint/core';
+import { ProviderFactory, type GearVaneConfig } from '@gearvane/core';
 import {
   ToolRegistry,
   Workspace,
@@ -30,7 +30,7 @@ import {
   type AgentResult,
   type AgentStep,
   type Tool,
-} from '@waypoint/harness';
+} from '@gearvane/harness';
 
 import { listFiles, readTextFile } from './ide/fs-store.js';
 import { sanitizeKeys } from './keys.js';
@@ -93,7 +93,7 @@ export interface IdeModel {
   tier: string;
 }
 
-export function listIdeModels(tiers: WaypointConfig['tiers']): IdeModel[] {
+export function listIdeModels(tiers: GearVaneConfig['tiers']): IdeModel[] {
   const out: IdeModel[] = [];
   for (const [tierName, tier] of Object.entries(tiers)) {
     for (const provider of tier.providers) {
@@ -227,7 +227,7 @@ let active: AbortController | undefined;
  */
 export function resolveIdeModel(
   env: Record<string, string | undefined>,
-  tiers: WaypointConfig['tiers'],
+  tiers: GearVaneConfig['tiers'],
   wanted?: unknown,
 ): { client?: AgentModel; provider?: string; model?: string; reason?: string } {
   if (wanted !== undefined && wanted !== null && typeof wanted !== 'string') {
@@ -241,7 +241,7 @@ export function resolveIdeModel(
   // otherwise a bare model name takes the first match in tier order.
   // Matching is exact: guessing across near-misses would run spend on the
   // wrong model.
-  const candidates: Array<{ provider: WaypointConfig['tiers']['local']['providers'][number]; model: string }> = [];
+  const candidates: Array<{ provider: GearVaneConfig['tiers']['local']['providers'][number]; model: string }> = [];
   for (const tier of Object.values(tiers)) {
     for (const provider of tier.providers) {
       for (const model of provider.models) {
@@ -300,7 +300,7 @@ export function resolveIdeModel(
 
 export async function runIdeAgent(
   request: AgentRunRequest,
-  config: WaypointConfig,
+  config: GearVaneConfig,
   env: Record<string, string | undefined>,
   onStep: (step: AgentStep) => void,
   signal: AbortSignal,
@@ -378,7 +378,7 @@ export async function runIdeAgent(
   return { ok: true, result, changed, provider: model.provider, model: model.model };
 }
 
-export function registerIdeAgentHandlers(loadConfig: () => WaypointConfig): void {
+export function registerIdeAgentHandlers(loadConfig: () => GearVaneConfig): void {
   ipcMain.handle('agent:models', () => listIdeModels(loadConfig().tiers));
 
   ipcMain.handle('agent:run', async (event, request: AgentRunRequest) => {

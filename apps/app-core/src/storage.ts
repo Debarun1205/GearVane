@@ -50,7 +50,7 @@ export class SafeStore implements KeyValueStore {
       if (!storage) return null;
 
       // Probe: a quota error only surfaces on write in some browsers.
-      const probe = '__waypoint_probe__';
+      const probe = '__gearvane_probe__';
       storage.setItem(probe, '1');
       storage.removeItem(probe);
       return storage as unknown as KeyValueStore;
@@ -117,7 +117,7 @@ export interface StoredMessage {
 }
 
 export class ConversationStore {
-  static readonly KEY = 'waypoint.conversations';
+  static readonly KEY = 'gearvane.conversations';
   static readonly MAX_ENTRIES = 50;
   static readonly MAX_MESSAGE_CHARS = 20_000;
 

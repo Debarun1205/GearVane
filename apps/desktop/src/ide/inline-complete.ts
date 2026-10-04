@@ -15,7 +15,7 @@
  * than offering a hosted option that would be unpleasant to actually use.
  */
 
-import type { WaypointConfig } from '@waypoint/core';
+import type { GearVaneConfig } from '@gearvane/core';
 
 /** A local server the editor can ask for completions. */
 export interface InlineModel {
@@ -46,7 +46,7 @@ const LOCAL_GENERATE_SERVERS = new Set(['ollama']);
  * Returns undefined when there is nothing to ask, and the caller disables
  * ghost text rather than failing per keystroke.
  */
-export function resolveInlineModel(config: WaypointConfig): InlineModel | undefined {
+export function resolveInlineModel(config: GearVaneConfig): InlineModel | undefined {
   const providers = config.tiers?.local?.providers ?? [];
   for (const provider of providers) {
     const name = provider.name.toLowerCase().trim();

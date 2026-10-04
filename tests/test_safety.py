@@ -1,6 +1,6 @@
 """Tests for the safety module."""
 
-from waypoint.safety import ApprovalStatus, SafetyManager
+from gearvane.safety import ApprovalStatus, SafetyManager
 
 
 class TestSafetyManager:

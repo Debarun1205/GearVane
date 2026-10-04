@@ -13,7 +13,7 @@
 
 import { dialog, ipcMain } from 'electron';
 
-import { Workspace, searchFilesTool } from '@waypoint/harness';
+import { Workspace, searchFilesTool } from '@gearvane/harness';
 
 import { listFiles, readTextFile, removeFile, writeTextFile } from './ide/fs-store.js';
 

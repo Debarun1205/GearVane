@@ -6,7 +6,7 @@ ROOT = Path(__file__).parent
 README = (ROOT / "README.md").read_text(encoding="utf-8")
 
 setup(
-    name="waypoint",
+    name="gearvane",
     version="0.3.0",
     description="Open-source AI harness with intelligent task routing",
     long_description=README,
@@ -37,7 +37,7 @@ setup(
     },
     entry_points={
         "console_scripts": [
-            "waypoint=waypoint.cli:main",
+            "gearvane=gearvane.cli:main",
         ],
     },
     classifiers=[

@@ -11,7 +11,7 @@ import {
   resolveInlineModel,
   shouldComplete,
 } from '../src/ide/inline-complete.js';
-import type { WaypointConfig } from '@waypoint/core';
+import type { GearVaneConfig } from '@gearvane/core';
 
 /**
  * Inline completion tests.
@@ -24,18 +24,18 @@ import type { WaypointConfig } from '@waypoint/core';
 
 function configWithLocal(
   providers: Array<{ name: string; models: string[]; baseUrl?: string }>,
-): WaypointConfig {
+): GearVaneConfig {
   return {
     tiers: {
       local: {
         name: 'local',
         description: '',
-        providers: providers as WaypointConfig['tiers']['local']['providers'],
+        providers: providers as GearVaneConfig['tiers']['local']['providers'],
         maxRetries: 2,
         costPerToken: 0,
       },
     },
-  } as WaypointConfig;
+  } as GearVaneConfig;
 }
 
 describe('resolveInlineModel', () => {
@@ -87,7 +87,7 @@ describe('resolveInlineModel', () => {
           costPerToken: 0.0001,
         },
       },
-    } as unknown as WaypointConfig;
+    } as unknown as GearVaneConfig;
     expect(resolveInlineModel(config)).toBeUndefined();
   });
 

@@ -1,5 +1,5 @@
 {
-  "name": "@waypoint/harness",
+  "name": "@gearvane/harness",
   "version": "0.3.0",
   "description": "Agent loop, tool execution, and workspace containment",
   "license": "MIT",
@@ -29,6 +29,6 @@
     "clean": "tsc --build tsconfig.json --clean && rm -rf dist"
   },
   "dependencies": {
-    "@waypoint/core": "0.3.0"
+    "@gearvane/core": "0.3.0"
   }
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { TaskClassifier } from '@waypoint/core';
+import { TaskClassifier } from '@gearvane/core';
 
 import { SAMPLE_PROMPTS, sampleById, samplesByTier } from '../src/samples.js';
 

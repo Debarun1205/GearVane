@@ -2,7 +2,7 @@ import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { SafetyManager, type ApprovalRequest, type SafetyConfig } from '@waypoint/core';
+import { SafetyManager, type ApprovalRequest, type SafetyConfig } from '@gearvane/core';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { Workspace } from '../src/workspace/containment.js';
@@ -32,7 +32,7 @@ let root: string;
 let ctx: ToolContext;
 
 beforeEach(async () => {
-  root = await mkdtemp(join(tmpdir(), 'waypoint-shell-'));
+  root = await mkdtemp(join(tmpdir(), 'gearvane-shell-'));
   ctx = { workspace: new Workspace(root), maxReadBytes: 256 * 1024 };
 });
 
@@ -215,7 +215,7 @@ describe('environment isolation', () => {
   it('does not leak provider keys to the child', async () => {
     // A build script that prints its environment would otherwise hand the
     // credentials to anything reading the output.
-    const marker = 'WAYPOINT_FAKE_SECRET_KEY';
+    const marker = 'GEARVANE_FAKE_SECRET_KEY';
     process.env[marker] = 'super-secret-value';
     try {
       const result = await run(`node -e "console.log(process.env.${marker})"`);
@@ -240,7 +240,7 @@ describe('environment isolation', () => {
   });
 
   it('opts into the full environment when asked', async () => {
-    const marker = 'WAYPOINT_INHERIT_TEST';
+    const marker = 'GEARVANE_INHERIT_TEST';
     process.env[marker] = 'inherited';
     try {
       const result = await run(`node -e "console.log(process.env.${marker})"`, {

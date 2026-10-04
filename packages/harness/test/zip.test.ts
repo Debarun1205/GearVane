@@ -155,7 +155,7 @@ describe('a real extractor agrees', () => {
   it('extracts an archive we produced', async () => {
     extractor = await extractProbe();
 
-    const base = await mkdtemp(join(tmpdir(), 'waypoint-zip-'));
+    const base = await mkdtemp(join(tmpdir(), 'gearvane-zip-'));
     const zipPath = join(base, 'out.zip');
     const outDir = join(base, 'out');
 
@@ -183,7 +183,7 @@ describe('a real extractor agrees', () => {
       },
     });
 
-    const base = await mkdtemp(join(tmpdir(), 'waypoint-zip-scaffold-'));
+    const base = await mkdtemp(join(tmpdir(), 'gearvane-zip-scaffold-'));
     const zipPath = join(base, 'site.zip');
     const outDir = join(base, 'out');
 
@@ -206,7 +206,7 @@ describe('a real extractor agrees', () => {
 async function extractProbe(): Promise<'unzip' | 'powershell' | null> {
   if (extractor !== undefined) return extractor;
 
-  const base = await mkdtemp(join(tmpdir(), 'waypoint-zip-probe-'));
+  const base = await mkdtemp(join(tmpdir(), 'gearvane-zip-probe-'));
   const probe = join(base, 'probe.zip');
   await writeFile(probe, createZip([{ path: 'probe.txt', contents: 'ok' }]));
 

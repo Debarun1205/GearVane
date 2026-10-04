@@ -32,7 +32,7 @@ class RoutingLogger:
         self.config = config or {}
         self.enabled = self.config.get("enabled", True)
         self.level = self.config.get("level", "INFO")
-        self.log_file = self.config.get("file", "waypoint.log")
+        self.log_file = self.config.get("file", "gearvane.log")
         self.log_decisions = self.config.get("log_routing_decisions", True)
         self.log_escalations = self.config.get("log_escalations", True)
         self.log_costs = self.config.get("log_costs", True)
@@ -80,7 +80,7 @@ class RoutingLogger:
         )
         self._entries.append(entry)
 
-        logger = logging.getLogger("waypoint.router")
+        logger = logging.getLogger("gearvane.router")
         logger.info(
             f"Route: task={task_id} tier={entry.tier} "
             f"model={entry.model} confidence={entry.confidence} "
@@ -110,7 +110,7 @@ class RoutingLogger:
                     entry.metadata.update(metadata)
                 break
 
-        logger = logging.getLogger("waypoint.outcome")
+        logger = logging.getLogger("gearvane.outcome")
         status = "SUCCESS" if success else "FAILURE"
         logger.info(
             f"Outcome: task={task_id} status={status} "
@@ -122,7 +122,7 @@ class RoutingLogger:
         if not self.enabled or not self.log_escalations:
             return
 
-        logger = logging.getLogger("waypoint.escalation")
+        logger = logging.getLogger("gearvane.escalation")
         logger.warning(f"Escalation: task={task_id} {from_tier} -> {to_tier} ({reason})")
 
     def get_stats(self) -> Dict[str, Any]:

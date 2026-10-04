@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { defaultConfig } from '@waypoint/core';
+import { defaultConfig } from '@gearvane/core';
 
 import {
   WEB_WORKSPACE_ROOT,
@@ -12,7 +12,7 @@ import {
 
 function memoryStorage(initial?: string): WebFsStorage & { data: Map<string, string> } {
   const data = new Map<string, string>();
-  if (initial !== undefined) data.set('waypoint.webfs.v1', initial);
+  if (initial !== undefined) data.set('gearvane.webfs.v1', initial);
   return {
     data,
     getItem: (key) => data.get(key) ?? null,

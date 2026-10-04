@@ -1,6 +1,6 @@
 """Tests for the task classifier."""
 
-from waypoint.classifier import TaskClassifier, TaskContext, Tier
+from gearvane.classifier import TaskClassifier, TaskContext, Tier
 
 
 class TestTaskClassifier:

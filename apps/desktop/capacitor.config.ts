@@ -5,8 +5,8 @@ import type { CapacitorConfig } from '@capacitor/cli';
  * mobile app and the desktop app run identical JavaScript.
  */
 const config: CapacitorConfig = {
-  appId: 'dev.waypoint.app',
-  appName: 'Waypoint',
+  appId: 'dev.gearvane.app',
+  appName: 'GearVane',
   webDir: 'renderer',
 
   // The renderer is served from disk, so there is no dev server to point at.

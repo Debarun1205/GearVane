@@ -1,5 +1,5 @@
 import { parseYaml, YamlError } from './yaml.js';
-import type { WaypointConfig } from './types.js';
+import type { GearVaneConfig } from './types.js';
 
 /**
  * Loads and validates configuration.
@@ -27,7 +27,7 @@ const TIER_NAMES = ['local', 'mid', 'frontier'] as const;
 export function parseConfig(
   text: string,
   format: 'yaml' | 'json' = 'yaml',
-): WaypointConfig {
+): GearVaneConfig {
   let raw: unknown;
   if (format === 'json') {
     try {
@@ -52,7 +52,7 @@ export function parseConfig(
 
   const config = raw as Record<string, unknown>;
 
-  const tiers: WaypointConfig['tiers'] = {
+  const tiers: GearVaneConfig['tiers'] = {
     local: emptyTier(),
     mid: emptyTier(),
     frontier: emptyTier(),
@@ -163,7 +163,7 @@ export function parseConfig(
     logging: {
       enabled: bool(rawLogging['enabled'], true),
       level: str(rawLogging['level'], 'INFO'),
-      file: str(rawLogging['file'], 'waypoint.log'),
+      file: str(rawLogging['file'], 'gearvane.log'),
       logRoutingDecisions: bool(
         rawLogging['log_routing_decisions'] ?? rawLogging['logRoutingDecisions'],
         true,
@@ -178,9 +178,9 @@ export function parseConfig(
   };
 }
 
-function normaliseProviders(value: unknown): WaypointConfig['tiers']['local']['providers'] {
+function normaliseProviders(value: unknown): GearVaneConfig['tiers']['local']['providers'] {
   if (!Array.isArray(value)) return [];
-  const providers: WaypointConfig['tiers']['local']['providers'] = [];
+  const providers: GearVaneConfig['tiers']['local']['providers'] = [];
 
   for (const entry of value) {
     if (!entry || typeof entry !== 'object') continue;
@@ -188,7 +188,7 @@ function normaliseProviders(value: unknown): WaypointConfig['tiers']['local']['p
     const name = str(record['name'], '');
     if (!name) continue;
 
-    const provider: WaypointConfig['tiers']['local']['providers'][number] = {
+    const provider: GearVaneConfig['tiers']['local']['providers'][number] = {
       name,
       models: strArray(record['models']),
     };
@@ -213,10 +213,10 @@ function normaliseProviders(value: unknown): WaypointConfig['tiers']['local']['p
 
 function normaliseHeuristics(
   value: unknown,
-): WaypointConfig['router']['heuristics'] {
+): GearVaneConfig['router']['heuristics'] {
   if (!value || typeof value !== 'object') return {};
   const record = value as Record<string, unknown>;
-  const out: NonNullable<WaypointConfig['router']['heuristics']> = {};
+  const out: NonNullable<GearVaneConfig['router']['heuristics']> = {};
 
   const simple = record['simple_keywords'] ?? record['simpleKeywords'];
   if (simple) out.simpleKeywords = strArray(simple);
@@ -233,7 +233,7 @@ function normaliseHeuristics(
   return out;
 }
 
-function emptyTier(): WaypointConfig['tiers']['local'] {
+function emptyTier(): GearVaneConfig['tiers']['local'] {
   return { name: 'local', description: '', providers: [], maxRetries: 2, costPerToken: 0 };
 }
 

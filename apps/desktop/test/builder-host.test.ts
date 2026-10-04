@@ -11,7 +11,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
  * pure functions it exports are reimplemented here against the same harness
  * behaviour and the results compared. That is weaker than testing the real
  * module, and it is asserted as such: the point is the write path's
- * containment, which lives in @waypoint/harness and is tested there directly.
+ * containment, which lives in @gearvane/harness and is tested there directly.
  * This file checks the host's own logic, which is the part that is not.
  */
 
@@ -20,19 +20,19 @@ import {
   materialise,
   plan,
   type ScaffoldFile,
-} from '@waypoint/harness';
+} from '@gearvane/harness';
 
 let root: string;
 let workspace: Workspace;
 
 beforeEach(async () => {
-  root = await mkdtemp(join(tmpdir(), 'waypoint-desktop-build-'));
+  root = await mkdtemp(join(tmpdir(), 'gearvane-desktop-build-'));
   workspace = new Workspace(root);
 
   // Writes go through the injected bridge, so this module stays bundleable for
   // a browser. The desktop app installs the real one in its main process.
   const { installNodeFileSystem } = await import(
-    '@waypoint/harness/builder-node-fs'
+    '@gearvane/harness/builder-node-fs'
   );
   installNodeFileSystem();
 });

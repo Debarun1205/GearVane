@@ -13,7 +13,7 @@ import {
 } from '../src/embedded-server.js';
 
 function setupDir(files: string[] = []): string {
-  const dir = mkdtempSync(join(tmpdir(), 'waypoint-embedded-'));
+  const dir = mkdtempSync(join(tmpdir(), 'gearvane-embedded-'));
   for (const file of files) writeFileSync(join(dir, file), 'fake-gguf-bytes');
   return dir;
 }

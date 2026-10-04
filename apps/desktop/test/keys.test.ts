@@ -12,7 +12,7 @@ import {
 
 function memoryStorage(initial?: string): KeyStorage & { data: Map<string, string> } {
   const data = new Map<string, string>();
-  if (initial !== undefined) data.set('waypoint.keys', initial);
+  if (initial !== undefined) data.set('gearvane.keys', initial);
   return {
     data,
     getItem: (key) => data.get(key) ?? null,

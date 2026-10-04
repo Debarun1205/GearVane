@@ -13,7 +13,7 @@
  * the wiring in one place means the individual panes stay simple.
  */
 
-import type { AgentResult, AgentStep } from '@waypoint/harness';
+import type { AgentResult, AgentStep } from '@gearvane/harness';
 
 import { applyMonacoTheme, installMonacoEnvironment, languageForPath, monaco } from './monaco.js';
 import { buildTree, renderTree, type TreeNode } from './file-tree.js';
@@ -288,7 +288,7 @@ export class IdeView {
     // creation, and the palette is sampled from the active CSS variables.
     applyMonacoTheme();
     this.editor = monaco.editor.create(host, {
-      theme: 'waypoint',
+      theme: 'gearvane',
       automaticLayout: true,
       minimap: { enabled: false },
       fontSize: 13,
@@ -1078,7 +1078,7 @@ export class IdeView {
       languageForPath(change.path),
     );
     const diff = monaco.editor.createDiffEditor(host, {
-      theme: 'waypoint',
+      theme: 'gearvane',
       automaticLayout: true,
       renderSideBySide: true,
       readOnly: true,

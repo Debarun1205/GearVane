@@ -1,4 +1,4 @@
-Welcome to the Waypoint e2e fixture workspace.
+Welcome to the GearVane e2e fixture workspace.
 
 This file exists so the IDE tree has something real to list: the desktop
 end-to-end test stores this directory as the workspace root, mounts the

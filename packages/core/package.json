@@ -1,5 +1,5 @@
 {
-  "name": "@waypoint/core",
+  "name": "@gearvane/core",
   "version": "0.3.0",
   "description": "Tier routing, escalation, provider clients, and cost control",
   "license": "MIT",

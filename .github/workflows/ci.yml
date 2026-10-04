@@ -33,7 +33,7 @@ jobs:
         run: pytest tests/ -v --tb=short
 
       - name: Coverage
-        run: pytest tests/ --cov=waypoint --cov-report=xml --cov-report=term
+        run: pytest tests/ --cov=gearvane --cov-report=xml --cov-report=term
 
       - name: Upload coverage
         uses: codecov/codecov-action@v4
@@ -56,25 +56,25 @@ jobs:
         run: npm ci
 
       - name: Build core
-        run: npm run build --workspace @waypoint/core
+        run: npm run build --workspace @gearvane/core
 
       # The desktop app imports the harness for the builder, and TypeScript
       # resolves it through package exports, so the harness must be built
       # first. It was not, and every desktop build failed to find the module.
       - name: Build harness
-        run: npm run build --workspace @waypoint/harness
+        run: npm run build --workspace @gearvane/harness
 
       - name: Build app-core
-        run: npm run build --workspace @waypoint/app-core
+        run: npm run build --workspace @gearvane/app-core
 
       - name: Build cli
-        run: npm run build --workspace @waypoint/cli
+        run: npm run build --workspace @gearvane/cli
 
       - name: Build desktop
-        run: npm run build --workspace waypoint-app
+        run: npm run build --workspace gearvane-app
 
       - name: Build extension
-        run: npm run build --workspace waypoint
+        run: npm run build --workspace gearvane
 
   javascript-tests:
     runs-on: ubuntu-latest
@@ -94,12 +94,12 @@ jobs:
         # them here they fall back to fetching tsx over the network, which is
         # not a declared dependency and made the suite fail on CI.
         run: |
-          npm run build --workspace @waypoint/core
-          npm run build --workspace @waypoint/harness
-          npm run build --workspace @waypoint/app-core
-          npm run build --workspace @waypoint/cli
-          npm run build --workspace waypoint
-          npm run build --workspace waypoint-app
+          npm run build --workspace @gearvane/core
+          npm run build --workspace @gearvane/harness
+          npm run build --workspace @gearvane/app-core
+          npm run build --workspace @gearvane/cli
+          npm run build --workspace gearvane
+          npm run build --workspace gearvane-app
 
       - name: Run package tests
         run: npm run test --workspaces --if-present
@@ -125,11 +125,11 @@ jobs:
         # Typecheck resolves each workspace through package exports, so a
         # workspace that imports another one needs that one's dist present.
         # The harness was missed here and the desktop typecheck failed with
-        # 'Cannot find module @waypoint/harness'.
+        # 'Cannot find module @gearvane/harness'.
         run: |
-          npm run build --workspace @waypoint/core
-          npm run build --workspace @waypoint/harness
-          npm run build --workspace @waypoint/app-core
+          npm run build --workspace @gearvane/core
+          npm run build --workspace @gearvane/harness
+          npm run build --workspace @gearvane/app-core
 
       - name: Typecheck
         run: npm run typecheck --workspaces --if-present
@@ -153,16 +153,16 @@ jobs:
           pip install -r requirements-dev.txt
 
       - name: flake8
-        run: flake8 waypoint/ tests/
+        run: flake8 gearvane/ tests/
 
       - name: black
-        run: black --check waypoint/ tests/
+        run: black --check gearvane/ tests/
 
       - name: isort
-        run: isort --check-only waypoint/ tests/
+        run: isort --check-only gearvane/ tests/
 
       - name: mypy
-        run: mypy waypoint/ --ignore-missing-imports
+        run: mypy gearvane/ --ignore-missing-imports
 
   # Asserts the shipped CLIs actually run. Unit tests alone missed a subparser
   # dest collision that made two commands print help while tests stayed green.
@@ -187,17 +187,17 @@ jobs:
           pip install -r requirements.txt
           pip install -e .
           npm ci
-          npm run build --workspace @waypoint/core
+          npm run build --workspace @gearvane/core
           # The CLI imports the harness for the agent and build commands.
-          npm run build --workspace @waypoint/harness
-          npm run build --workspace @waypoint/cli
+          npm run build --workspace @gearvane/harness
+          npm run build --workspace @gearvane/cli
 
       - name: Python CLI
         run: |
-          waypoint route --task "Fix a typo in README" --files README.md
-          waypoint safety spend
-          waypoint stats
-          waypoint --version
+          gearvane route --task "Fix a typo in README" --files README.md
+          gearvane safety spend
+          gearvane stats
+          gearvane --version
 
       - name: TypeScript CLI
         run: |
@@ -212,7 +212,7 @@ jobs:
           set -euo pipefail
           task="Refactor the auth architecture for concurrency"
           files="a.py b.py c.py"
-          py=$(waypoint route --task "$task" --files $files --json | python -c 'import json,sys; print(json.load(sys.stdin)["tier"])')
+          py=$(gearvane route --task "$task" --files $files --json | python -c 'import json,sys; print(json.load(sys.stdin)["tier"])')
           ts=$(node packages/cli/dist/bin.js route --task "$task" --files $files --json | python -c 'import json,sys; print(json.load(sys.stdin)["tier"])')
           echo "python=$py typescript=$ts"
           test "$py" = "$ts"
@@ -259,10 +259,10 @@ jobs:
         # The desktop app imports the harness for the builder, so it has to be
         # built before the renderer can be bundled.
         run: |
-          npm run build --workspace @waypoint/core
-          npm run build --workspace @waypoint/harness
-          npm run build --workspace @waypoint/app-core
-          npm run build --workspace waypoint-app
+          npm run build --workspace @gearvane/core
+          npm run build --workspace @gearvane/harness
+          npm run build --workspace @gearvane/app-core
+          npm run build --workspace gearvane-app
 
       - name: The renderer has no top-level imports
         run: |
@@ -297,7 +297,7 @@ jobs:
           cache: pip
 
       - name: Install Python dependencies
-        # tests/parity.test.ts shells out to `python -m waypoint` to prove
+        # tests/parity.test.ts shells out to `python -m gearvane` to prove
         # both engines route identically. The ubuntu image happens to carry
         # PyYAML; the Windows and macOS images do not, and the subprocess
         # died with `No module named 'yaml'`.
@@ -309,12 +309,12 @@ jobs:
       - name: Install dependencies
         run: |
           npm ci
-          npm run build --workspace @waypoint/core
-          npm run build --workspace @waypoint/harness
-          npm run build --workspace @waypoint/app-core
-          npm run build --workspace @waypoint/cli
-          npm run build --workspace waypoint
-          npm run build --workspace waypoint-app
+          npm run build --workspace @gearvane/core
+          npm run build --workspace @gearvane/harness
+          npm run build --workspace @gearvane/app-core
+          npm run build --workspace @gearvane/cli
+          npm run build --workspace gearvane
+          npm run build --workspace gearvane-app
 
       - name: Run package tests
         run: npm run test --workspaces --if-present
@@ -344,9 +344,9 @@ jobs:
       - name: Install dependencies
         run: |
           npm ci
-          npm run build --workspace @waypoint/core
-          npm run build --workspace @waypoint/harness
-          npm run build --workspace @waypoint/app-core
+          npm run build --workspace @gearvane/core
+          npm run build --workspace @gearvane/harness
+          npm run build --workspace @gearvane/app-core
 
       - name: Install Playwright's browser (Linux)
         if: runner.os == 'Linux'
@@ -361,11 +361,11 @@ jobs:
       - name: Run the end-to-end suites (Linux)
         # Electron needs a display; xvfb supplies one with nothing on it.
         if: runner.os == 'Linux'
-        run: xvfb-run -a npm run test:e2e --workspace waypoint-app
+        run: xvfb-run -a npm run test:e2e --workspace gearvane-app
 
       - name: Run the end-to-end suites
         if: runner.os != 'Linux'
-        run: npm run test:e2e --workspace waypoint-app
+        run: npm run test:e2e --workspace gearvane-app
 
   package:
     runs-on: ubuntu-latest
@@ -392,10 +392,10 @@ jobs:
       - name: Build the extension package
         run: |
           npm ci
-          npm run build --workspace @waypoint/core
+          npm run build --workspace @gearvane/core
           # The extension imports the harness for the agent panel.
-          npm run build --workspace @waypoint/harness
-          npm run build --workspace waypoint
+          npm run build --workspace @gearvane/harness
+          npm run build --workspace gearvane
           cd apps/vscode-extension
           npx vsce package --no-dependencies --allow-missing-repository
 

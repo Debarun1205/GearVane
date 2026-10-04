@@ -1,7 +1,7 @@
 """Tests for the tier router."""
 
-from waypoint.classifier import TaskContext, Tier
-from waypoint.router import TierRouter
+from gearvane.classifier import TaskContext, Tier
+from gearvane.router import TierRouter
 
 
 class TestTierRouter:

@@ -28,7 +28,7 @@ async function read(target: string): Promise<string> {
 }
 
 beforeEach(async () => {
-  const base = await mkdtemp(join(tmpdir(), 'waypoint-tools-'));
+  const base = await mkdtemp(join(tmpdir(), 'gearvane-tools-'));
   root = join(base, 'project');
   outside = join(base, 'secrets');
   await mkdir(join(root, 'src'), { recursive: true });

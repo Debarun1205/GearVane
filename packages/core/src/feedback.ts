@@ -1,7 +1,7 @@
 /**
  * Feedback loop for improving classification accuracy over time.
  *
- * Mirrors waypoint/feedback.py exactly: same FeedbackEntry schema, same
+ * Mirrors gearvane/feedback.py exactly: same FeedbackEntry schema, same
  * stats keys, same suggestion messages, same training-data format. Core runs
  * unchanged in Node, a browser, an Electron renderer, and an Android
  * webview. The only host capability it needs is `fetch`; file I/O is

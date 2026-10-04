@@ -1,4 +1,4 @@
-# Waypoint website
+# GearVane website
 
 A static marketing site. No build step, no framework, no dependencies: it
 deploys to any static host by copying this directory.

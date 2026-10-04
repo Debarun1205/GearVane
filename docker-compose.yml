@@ -1,9 +1,9 @@
-# Waypoint with a local Ollama model server.
+# GearVane with a local Ollama model server.
 #
 #   cp config.example.yaml config.yaml
 #   docker compose up -d ollama
 #   docker compose exec ollama ollama pull qwen2.5-coder
-#   docker compose run --rm waypoint route --task "Fix a typo" --files README.md
+#   docker compose run --rm gearvane route --task "Fix a typo" --files README.md
 #
 # The `version` key is omitted: it is obsolete in Compose v2 and emits a warning.
 #
@@ -26,13 +26,13 @@ services:
       retries: 5
       start_period: 30s
 
-  waypoint:
+  gearvane:
     build: .
     depends_on:
       ollama:
         condition: service_healthy
     volumes:
-      # config.yaml is optional: Waypoint falls back to config.example.yaml.
+      # config.yaml is optional: GearVane falls back to config.example.yaml.
       - ./config.yaml:/app/config.yaml:ro
       # Runtime artifacts stay on the host so results survive a rebuild.
       - ./artifacts:/app/artifacts
@@ -42,7 +42,7 @@ services:
       - OLLAMA_BASE_URL=http://ollama:11434
     command: ["--config", "config.yaml", "health", "--offline"]
 
-  waypoint-run:
+  gearvane-run:
     build: .
     profiles: ["run"]
     depends_on:
@@ -57,7 +57,7 @@ services:
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
       - OLLAMA_BASE_URL=http://ollama:11434
     # Override with your own args, e.g.:
-    #   docker compose --profile run run --rm waypoint-run \
+    #   docker compose --profile run run --rm gearvane-run \
     #     run --task "Explain this module" --files src/app.py
     command: ["--config", "config.yaml", "--help"]
 

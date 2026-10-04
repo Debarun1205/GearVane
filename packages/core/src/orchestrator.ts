@@ -8,7 +8,7 @@ import type {
   ProviderConfig,
   RoutingDecision,
   TaskContext,
-  WaypointConfig,
+  GearVaneConfig,
 } from './types.js';
 
 export interface BudgetExceeded extends Error {
@@ -231,7 +231,7 @@ export class Orchestrator {
   private readonly retryConfig: RetryConfig;
   private readonly createClient: (provider: ProviderConfig, model?: string) => unknown;
 
-  constructor(config: WaypointConfig, options: OrchestratorOptions = {}) {
+  constructor(config: GearVaneConfig, options: OrchestratorOptions = {}) {
     this.router = new TierRouter(config, { learnedModel: options.learnedModel });
     this.spend = new SpendTracker(config.safety.spendLimits, options.now);
     this.providers = new ProviderFactory({

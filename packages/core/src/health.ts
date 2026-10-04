@@ -1,6 +1,6 @@
 import { ProviderFactory, type ProviderClient } from './providers.js';
 import type { TierRouter } from './router.js';
-import type { WaypointConfig } from './types.js';
+import type { GearVaneConfig } from './types.js';
 
 export type HealthStatus = 'healthy' | 'degraded' | 'unhealthy' | 'unknown';
 
@@ -44,7 +44,7 @@ export class HealthChecker {
   private readonly now: () => number;
 
   constructor(
-    private readonly config: WaypointConfig,
+    private readonly config: GearVaneConfig,
     private readonly router?: TierRouter,
     private readonly options: HealthOptions = {},
   ) {

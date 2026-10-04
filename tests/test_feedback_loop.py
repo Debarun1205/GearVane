@@ -1,8 +1,8 @@
-"""Tests for feedback recording in `waypoint run`.
+"""Tests for feedback recording in `gearvane run`.
 
 Covers the gap where record_prediction/record_outcome had no callers: every
 non-stream run must leave a prediction behind, and every successful run must
-close it with the tier that served the request, so `waypoint train` has
+close it with the tier that served the request, so `gearvane train` has
 labelled data to learn from.
 """
 
@@ -12,8 +12,8 @@ from pathlib import Path
 
 import pytest
 
-from waypoint import cli as cli_module
-from waypoint.orchestrator import ExecutionResult
+from gearvane import cli as cli_module
+from gearvane.orchestrator import ExecutionResult
 
 
 class FakeOrchestrator:

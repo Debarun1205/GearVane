@@ -22,7 +22,7 @@ let ctx: ToolContext;
 let registry: ToolRegistry;
 
 beforeEach(async () => {
-  const base = await mkdtemp(join(tmpdir(), 'waypoint-search-'));
+  const base = await mkdtemp(join(tmpdir(), 'gearvane-search-'));
   root = join(base, 'project');
   await mkdir(join(root, 'src'), { recursive: true });
   await mkdir(join(root, 'node_modules', 'dep'), { recursive: true });

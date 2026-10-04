@@ -6,8 +6,8 @@ used, which the unit tests for individual modules did not exercise.
 
 import pytest
 
-from waypoint.classifier import TaskClassifier, TaskContext, Tier
-from waypoint.cli import load_config
+from gearvane.classifier import TaskClassifier, TaskContext, Tier
+from gearvane.cli import load_config
 
 
 class TestConfigLoading:

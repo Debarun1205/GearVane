@@ -10,8 +10,8 @@ import {
   type ExecutionResult,
   type HealthResult,
   type RoutingDecision,
-  type WaypointConfig,
-} from '@waypoint/core';
+  type GearVaneConfig,
+} from '@gearvane/core';
 
 import {
   emptyState,
@@ -40,17 +40,17 @@ interface LogEntry {
 }
 
 /**
- * VS Code integration for Waypoint.
+ * VS Code integration for GearVane.
  *
  * The extension does not fork the editor: it reads the selection, asks the
  * core which tier should handle it, and runs the request through the same
  * orchestrator the CLI and app use.
  */
-export class WaypointExtension implements vscode.Disposable {
-  private readonly output = vscode.window.createOutputChannel('Waypoint');
+export class GearVaneExtension implements vscode.Disposable {
+  private readonly output = vscode.window.createOutputChannel('GearVane');
   private readonly disposables: vscode.Disposable[] = [];
 
-  private config: WaypointConfig = defaultConfig();
+  private config: GearVaneConfig = defaultConfig();
   private orchestrator: Orchestrator | undefined;
   private configPath: string | undefined;
   private readonly log: LogEntry[] = [];
@@ -97,9 +97,9 @@ export class WaypointExtension implements vscode.Disposable {
     await this.reloadConfig();
 
     this.disposables.push(
-      vscode.window.registerTreeDataProvider('waypoint.session', this.treeProvider),
+      vscode.window.registerTreeDataProvider('gearvane.session', this.treeProvider),
       vscode.workspace.onDidChangeConfiguration(async (event) => {
-        if (event.affectsConfiguration('waypoint')) await this.reloadConfig();
+        if (event.affectsConfiguration('gearvane')) await this.reloadConfig();
       }),
       vscode.workspace.onDidSaveTextDocument(async () => {
         // A saved config file may change routing, so reload rather than
@@ -109,15 +109,15 @@ export class WaypointExtension implements vscode.Disposable {
     );
 
     for (const command of [
-      'waypoint.routeSelection',
-      'waypoint.explainSelection',
-      'waypoint.ask',
-      'waypoint.agent',
-      'waypoint.health',
-      'waypoint.spend',
-      'waypoint.showLog',
-      'waypoint.pinModel',
-      'waypoint.clearPin',
+      'gearvane.routeSelection',
+      'gearvane.explainSelection',
+      'gearvane.ask',
+      'gearvane.agent',
+      'gearvane.health',
+      'gearvane.spend',
+      'gearvane.showLog',
+      'gearvane.pinModel',
+      'gearvane.clearPin',
     ]) {
       this.disposables.push(
         vscode.commands.registerCommand(command, () => this.run(command)),
@@ -125,7 +125,7 @@ export class WaypointExtension implements vscode.Disposable {
     }
 
     context.subscriptions.push(...this.disposables);
-    this.logLine('Waypoint extension activated');
+    this.logLine('GearVane extension activated');
   }
 
   dispose(): void {
@@ -141,31 +141,31 @@ export class WaypointExtension implements vscode.Disposable {
   private async run(command: string): Promise<void> {
     try {
       switch (command) {
-        case 'waypoint.routeSelection':
+        case 'gearvane.routeSelection':
           await this.routeSelection();
           break;
-        case 'waypoint.explainSelection':
+        case 'gearvane.explainSelection':
           await this.explainSelection();
           break;
-        case 'waypoint.ask':
+        case 'gearvane.ask':
           await this.ask();
           break;
-        case 'waypoint.agent':
+        case 'gearvane.agent':
           this.agent().reveal();
           break;
-        case 'waypoint.health':
+        case 'gearvane.health':
           await this.checkHealth();
           break;
-        case 'waypoint.spend':
+        case 'gearvane.spend':
           this.showSpend();
           break;
-        case 'waypoint.showLog':
+        case 'gearvane.showLog':
           this.showLog();
           break;
-        case 'waypoint.pinModel':
+        case 'gearvane.pinModel':
           await this.pinModel();
           break;
-        case 'waypoint.clearPin':
+        case 'gearvane.clearPin':
           await this.clearPin();
           break;
         default:
@@ -176,14 +176,14 @@ export class WaypointExtension implements vscode.Disposable {
       // unhandled rejection in the extension host.
       const message = error instanceof ConfigError ? error.message : String(error);
       this.logLine(`error: ${message}`);
-      void vscode.window.showErrorMessage(`Waypoint: ${message}`);
+      void vscode.window.showErrorMessage(`GearVane: ${message}`);
     }
   }
 
   // --- config --------------------------------------------------------------
 
   async reloadConfig(): Promise<void> {
-    const settings = vscode.workspace.getConfiguration('waypoint');
+    const settings = vscode.workspace.getConfiguration('gearvane');
     const explicit = settings.get<string>('configPath', '').trim();
 
     try {
@@ -208,7 +208,7 @@ export class WaypointExtension implements vscode.Disposable {
     } catch (error) {
       const message = error instanceof ConfigError ? error.message : String(error);
       this.logLine(`config error: ${message}`);
-      void vscode.window.showErrorMessage(`Waypoint config: ${message}`);
+      void vscode.window.showErrorMessage(`GearVane config: ${message}`);
       this.config = defaultConfig();
       this.orchestrator = undefined;
     }
@@ -220,7 +220,7 @@ export class WaypointExtension implements vscode.Disposable {
    * vscode.workspace.fs is async only, so this is too. Reading synchronously
    * would block the extension host on every config reload.
    */
-  private async readConfigFile(path: string): Promise<WaypointConfig> {
+  private async readConfigFile(path: string): Promise<GearVaneConfig> {
     const uri = vscode.Uri.file(path);
     const bytes = await vscode.workspace.fs.readFile(uri);
     const text = Buffer.from(bytes).toString('utf8');
@@ -229,11 +229,11 @@ export class WaypointExtension implements vscode.Disposable {
   }
 
   /** Search the workspace folders for a config. */
-  private async discoverConfig(): Promise<{ config: WaypointConfig; path?: string }> {
+  private async discoverConfig(): Promise<{ config: GearVaneConfig; path?: string }> {
     const names = [
-      'waypoint.config.json',
-      'waypoint.config.yaml',
-      'waypoint.yaml',
+      'gearvane.config.json',
+      'gearvane.config.yaml',
+      'gearvane.yaml',
       'config.yaml',
     ];
 
@@ -263,7 +263,7 @@ export class WaypointExtension implements vscode.Disposable {
     const detail = decision.reasons.map((reason) => `  - ${reason}`).join('\n');
 
     void vscode.window.showInformationMessage(
-      `Waypoint: ${decision.tier} / ${decision.provider.name}/${decision.model} ` +
+      `GearVane: ${decision.tier} / ${decision.provider.name}/${decision.model} ` +
         `(${Math.round(decision.confidence * 100)}%)\n${detail}`,
       { modal: false },
     );
@@ -287,7 +287,7 @@ export class WaypointExtension implements vscode.Disposable {
 
     const decision = this.decisionFor(selection.text, selection.files);
     const lines = [
-      `# Waypoint routing decision`,
+      `# GearVane routing decision`,
       ``,
       `**Tier:** ${decision.tier}`,
       `**Model:** ${decision.provider.name}/${decision.model}`,
@@ -315,7 +315,7 @@ export class WaypointExtension implements vscode.Disposable {
 
   private async ask(): Promise<void> {
     const question = await vscode.window.showInputBox({
-      prompt: 'Ask (Waypoint picks the model)',
+      prompt: 'Ask (GearVane picks the model)',
       placeHolder: 'e.g. explain what this function does',
     });
     if (!question) return;
@@ -324,7 +324,7 @@ export class WaypointExtension implements vscode.Disposable {
     const orchestrator = this.requireOrchestrator();
 
     await vscode.window.withProgress(
-      { location: vscode.ProgressLocation.Notification, title: 'Waypoint' },
+      { location: vscode.ProgressLocation.Notification, title: 'GearVane' },
       async (progress) => {
         progress.report({ message: 'routing' });
         const result: ExecutionResult = await orchestrator.execute(
@@ -348,7 +348,7 @@ export class WaypointExtension implements vscode.Disposable {
           await vscode.window.showTextDocument(document, { preview: true });
         } else {
           void vscode.window.showErrorMessage(
-            `Waypoint failed after ${result.attempts} attempts: ${result.error ?? 'unknown error'}`,
+            `GearVane failed after ${result.attempts} attempts: ${result.error ?? 'unknown error'}`,
           );
         }
       },
@@ -358,12 +358,12 @@ export class WaypointExtension implements vscode.Disposable {
   private async checkHealth(): Promise<void> {
     const checker = new HealthChecker(this.config, undefined, { timeoutMs: 5000 });
     const results = await vscode.window.withProgress(
-      { location: vscode.ProgressLocation.Notification, title: 'Waypoint health' },
+      { location: vscode.ProgressLocation.Notification, title: 'GearVane health' },
       () => checker.checkAll(),
     );
 
     const summary = summariseHealth(results);
-    void vscode.window.showInformationMessage(`Waypoint: ${summary}`);
+    void vscode.window.showInformationMessage(`GearVane: ${summary}`);
     this.logLine(`health: ${summary}`);
   }
 
@@ -376,7 +376,7 @@ export class WaypointExtension implements vscode.Disposable {
         `task $${status.taskSpend.toFixed(4)}`,
     );
     void vscode.window.showInformationMessage(
-      `Waypoint session spend $${status.sessionSpend.toFixed(2)} of ` +
+      `GearVane session spend $${status.sessionSpend.toFixed(2)} of ` +
         `$${this.config.safety.spendLimits.perSession}`,
     );
   }
@@ -409,29 +409,29 @@ export class WaypointExtension implements vscode.Disposable {
     if (!model) return;
 
     await vscode.workspace
-      .getConfiguration('waypoint')
+      .getConfiguration('gearvane')
       .update('model', model, vscode.ConfigurationTarget.Workspace);
     await this.reloadConfig();
-    void vscode.window.showInformationMessage(`Waypoint pinned to ${model}`);
+    void vscode.window.showInformationMessage(`GearVane pinned to ${model}`);
   }
 
   private async clearPin(): Promise<void> {
     await vscode.workspace
-      .getConfiguration('waypoint')
+      .getConfiguration('gearvane')
       .update('model', undefined, vscode.ConfigurationTarget.Workspace);
     await this.reloadConfig();
-    void vscode.window.showInformationMessage('Waypoint: pinned model cleared');
+    void vscode.window.showInformationMessage('GearVane: pinned model cleared');
   }
 
   // --- helpers -------------------------------------------------------------
 
   private maxTokens(): number {
-    return vscode.workspace.getConfiguration('waypoint').get<number>('maxTokens', 2048);
+    return vscode.workspace.getConfiguration('gearvane').get<number>('maxTokens', 2048);
   }
 
   private requireOrchestrator(): Orchestrator {
     if (!this.orchestrator) {
-      throw new ConfigError('No usable model tiers configured. Check waypoint.configPath.');
+      throw new ConfigError('No usable model tiers configured. Check gearvane.configPath.');
     }
     return this.orchestrator;
   }
@@ -447,7 +447,7 @@ export class WaypointExtension implements vscode.Disposable {
   private async currentSelection(): Promise<{ text: string; files: string[] } | undefined> {
     const editor = vscode.window.activeTextEditor;
     const includeSelection = vscode.workspace
-      .getConfiguration('waypoint')
+      .getConfiguration('gearvane')
       .get<boolean>('includeSelectionInPrompt', true);
 
     if (editor && includeSelection) {
@@ -578,10 +578,10 @@ function summariseHealth(results: HealthResult[]): string {
 }
 
 function applyOverrides(
-  config: WaypointConfig,
+  config: GearVaneConfig,
   overrides: { tier: string; model: string },
-): WaypointConfig {
-  const next: WaypointConfig = {
+): GearVaneConfig {
+  const next: GearVaneConfig = {
     ...config,
     router: { ...config.router },
   };
@@ -594,7 +594,7 @@ function applyOverrides(
     // Pinning a tier is expressed as a manual override of that tier's first
     // model, so the override resolver validates it and warns when it does not
     // match anything configured.
-    const tier = next.tiers[overrides.tier as keyof WaypointConfig['tiers']];
+    const tier = next.tiers[overrides.tier as keyof GearVaneConfig['tiers']];
     const provider = tier?.providers[0];
     const model = provider?.models[0];
 
@@ -602,7 +602,7 @@ function applyOverrides(
       next.router.manualOverride = `${provider.name}/${model}`;
     } else {
       void vscode.window.showWarningMessage(
-          `Waypoint: tier "${overrides.tier}" has no configured provider; ` +
+          `GearVane: tier "${overrides.tier}" has no configured provider; ` +
             'falling back to automatic routing.',
         );
     }
@@ -636,7 +636,7 @@ export class SessionNode {
 }
 
 class SessionTreeProvider implements vscode.TreeDataProvider<SessionNode> {
-  constructor(private readonly extension: WaypointExtension) {}
+  constructor(private readonly extension: GearVaneExtension) {}
 
   getTreeItem(node: SessionNode): vscode.TreeItem {
     const item = new vscode.TreeItem(node.label, vscode.TreeItemCollapsibleState.None);
@@ -672,8 +672,8 @@ class SessionTreeProvider implements vscode.TreeDataProvider<SessionNode> {
   }
 }
 
-export function activate(context: vscode.ExtensionContext): WaypointExtension {
-  const extension = new WaypointExtension(context.extensionUri);
+export function activate(context: vscode.ExtensionContext): GearVaneExtension {
+  const extension = new GearVaneExtension(context.extensionUri);
   void extension.activate(context);
   return extension;
 }

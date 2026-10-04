@@ -25,7 +25,7 @@ let outside: string;
 let workspace: Workspace;
 
 beforeEach(async () => {
-  const base = await mkdtemp(join(tmpdir(), 'waypoint-ws-'));
+  const base = await mkdtemp(join(tmpdir(), 'gearvane-ws-'));
   root = join(base, 'project');
   outside = join(base, 'secrets');
   await mkdir(join(root, 'src'), { recursive: true });
@@ -194,7 +194,7 @@ describe('Workspace.resolve rejects escapes', () => {
  * every platform, including the Linux CI runner that can create links fine.
  */
 const symlinksAvailable = await (async () => {
-  const base = await mkdtemp(join(tmpdir(), 'waypoint-link-probe-'));
+  const base = await mkdtemp(join(tmpdir(), 'gearvane-link-probe-'));
   try {
     await symlink(join(base, 'target'), join(base, 'link'));
     return true;

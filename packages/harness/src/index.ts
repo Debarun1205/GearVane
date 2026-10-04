@@ -1,7 +1,7 @@
 /**
- * @waypoint/harness
+ * @gearvane/harness
  *
- * The agent layer that sits on top of @waypoint/core's routing engine.
+ * The agent layer that sits on top of @gearvane/core's routing engine.
  *
  * Status: partial. Workspace containment and the file tool layer are built.
  * The agent loop, command containment, context management, and sessions are
@@ -71,7 +71,7 @@ import type {
   CompleteOptions,
   ConversationMessage,
   ToolDefinition,
-} from '@waypoint/core';
+} from '@gearvane/core';
 import {
   compact,
   type CompactionResult,

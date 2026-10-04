@@ -2,12 +2,12 @@
 
 import pytest
 
-from waypoint.opencode_plugin import (
-    WaypointPlugin,
+from gearvane.opencode_plugin import (
+    GearVanePlugin,
     find_config,
     load_yaml_config,
 )
-from waypoint.providers import Completion, Usage
+from gearvane.providers import Completion, Usage
 
 
 def make_config():
@@ -76,16 +76,16 @@ class FakeClient:
 
 class TestConfigDiscovery:
     def test_finds_config_in_current_dir(self, tmp_path, monkeypatch):
-        (tmp_path / "waypoint.config.yaml").write_text("router: {}\n")
+        (tmp_path / "gearvane.config.yaml").write_text("router: {}\n")
         monkeypatch.chdir(tmp_path)
-        assert find_config() == tmp_path / "waypoint.config.yaml"
+        assert find_config() == tmp_path / "gearvane.config.yaml"
 
     def test_walks_up_to_parent(self, tmp_path, monkeypatch):
-        (tmp_path / "waypoint.yaml").write_text("router: {}\n")
+        (tmp_path / "gearvane.yaml").write_text("router: {}\n")
         nested = tmp_path / "a" / "b" / "c"
         nested.mkdir(parents=True)
         monkeypatch.chdir(nested)
-        assert find_config() == tmp_path / "waypoint.yaml"
+        assert find_config() == tmp_path / "gearvane.yaml"
 
     def test_returns_none_when_absent(self, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
@@ -111,34 +111,34 @@ class TestConfigDiscovery:
 
 class TestLifecycle:
     def test_on_start_returns_true(self, config):
-        plugin = WaypointPlugin(config=config)
+        plugin = GearVanePlugin(config=config)
         assert plugin.on_start() is True
 
     def test_on_stop_runs(self, config):
-        plugin = WaypointPlugin(config=config)
+        plugin = GearVanePlugin(config=config)
         assert plugin.on_stop() is None
 
     def test_router_is_lazy(self, config):
-        plugin = WaypointPlugin(config=config)
+        plugin = GearVanePlugin(config=config)
         assert plugin._router is None
         plugin.classify_task("fix a typo")
         assert plugin._router is not None
 
     def test_same_router_instance_reused(self, config):
-        plugin = WaypointPlugin(config=config)
+        plugin = GearVanePlugin(config=config)
         assert plugin.router is plugin.router
 
     def test_empty_config_raises_clear_error(self):
         # With no tiers there is nothing to route to. The error must name the
         # problem rather than surfacing AttributeError on None.
-        plugin = WaypointPlugin(config={})
+        plugin = GearVanePlugin(config={})
         with pytest.raises(ValueError, match="No usable model tiers"):
             plugin.classify_task("something")
 
 
 class TestClassification:
     def setup_method(self):
-        self.plugin = WaypointPlugin(config=make_config())
+        self.plugin = GearVanePlugin(config=make_config())
 
     def test_classify_returns_expected_shape(self):
         result = self.plugin.classify_task("fix a typo in the readme")
@@ -165,7 +165,7 @@ class TestClassification:
             },
             "router": {"default_tier": "frontier", "manual_override": "anthropic/claude-x"},
         }
-        plugin = WaypointPlugin(config=cfg)
+        plugin = GearVanePlugin(config=cfg)
         result = plugin.classify_task("fix a typo")
         assert result["model"] == "claude-x"
 
@@ -177,7 +177,7 @@ class TestClassification:
 
 class TestExecution:
     def setup_method(self):
-        self.plugin = WaypointPlugin(config=make_config())
+        self.plugin = GearVanePlugin(config=make_config())
         self.plugin.orchestrator.providers.create = lambda p, m=None: FakeClient("executed")
 
     def test_execute_returns_flat_dict(self):
@@ -210,7 +210,7 @@ class TestExecution:
         assert tokens == ["he", "llo"]
 
     def test_failure_is_reported_not_raised(self):
-        from waypoint.providers import ProviderError
+        from gearvane.providers import ProviderError
 
         class Failing(FakeClient):
             def complete(self, *args, **kwargs):
@@ -224,7 +224,7 @@ class TestExecution:
 
 class TestStats:
     def test_stats_shape(self, config):
-        plugin = WaypointPlugin(config=config)
+        plugin = GearVanePlugin(config=config)
         stats = plugin.stats()
         assert set(stats) == {"spend", "cost", "tiers"}
         assert "session_spend" in stats["spend"]

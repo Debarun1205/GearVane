@@ -26,7 +26,7 @@
 
 import { spawn, type ChildProcess } from 'node:child_process';
 
-import type { ApprovalRequest, SafetyManager } from '@waypoint/core';
+import type { ApprovalRequest, SafetyManager } from '@gearvane/core';
 
 import { failure, type Tool, type ToolContext, type ToolResult } from './types.js';
 

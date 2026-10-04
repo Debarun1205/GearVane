@@ -4,8 +4,8 @@ import json
 
 import pytest
 
-from waypoint.classifier import TaskContext, Tier
-from waypoint.learned_classifier import (
+from gearvane.classifier import TaskContext, Tier
+from gearvane.learned_classifier import (
     HybridClassifier,
     LearnedClassifier,
     features_for,
@@ -193,7 +193,7 @@ class TestHybridClassifier:
 
 class TestTrainFromFeedback:
     def test_trains_from_feedback_store(self, tmp_path):
-        from waypoint.feedback import FeedbackEntry, FeedbackStore
+        from gearvane.feedback import FeedbackEntry, FeedbackStore
 
         feedback_path = tmp_path / "feedback.jsonl"
         store = FeedbackStore(str(feedback_path))
@@ -217,7 +217,7 @@ class TestTrainFromFeedback:
         assert tier == Tier.LOCAL
 
     def test_ignores_entries_without_outcome(self, tmp_path):
-        from waypoint.feedback import FeedbackEntry, FeedbackStore
+        from gearvane.feedback import FeedbackEntry, FeedbackStore
 
         feedback_path = tmp_path / "feedback.jsonl"
         store = FeedbackStore(str(feedback_path))

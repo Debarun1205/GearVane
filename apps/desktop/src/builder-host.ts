@@ -20,8 +20,8 @@ import {
   materialise,
   plan,
   type ScaffoldFile,
-} from '@waypoint/harness';
-import { installNodeFileSystem } from '@waypoint/harness';
+} from '@gearvane/harness';
+import { installNodeFileSystem } from '@gearvane/harness';
 
 /** What the renderer is told about each template. */
 function describeTemplates(): Array<{

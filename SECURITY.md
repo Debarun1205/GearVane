@@ -11,7 +11,7 @@ tested. You should get an acknowledgement within a few days.
 
 ## Credential handling
 
-Waypoint reads API keys from environment variables only. It never writes a
+GearVane reads API keys from environment variables only. It never writes a
 credential to a config file, a log, or a dashboard.
 
 Providers resolve keys in this order:
@@ -32,7 +32,7 @@ gitignored, but do not put secrets in it anyway — use the environment.
 Do not embed a personal access token in a remote URL:
 
 ```
-git remote set-url origin https://github.com/Debarun1205/Waypoint.git   # good
+git remote set-url origin https://github.com/Debarun1205/GearVane.git   # good
 git remote add origin https://x-access-token:<TOKEN>@github.com/...      # bad
 ```
 
@@ -73,6 +73,6 @@ Do not weaken `blocked_commands` without reading what it currently blocks.
 
 ## Out of scope
 
-Waypoint is an alpha routing harness. It does not sandbox shell execution;
+GearVane is an alpha routing harness. It does not sandbox shell execution;
 it gates commands and relies on your host environment for isolation. Run it
 only where you would be comfortable running the commands it approves.

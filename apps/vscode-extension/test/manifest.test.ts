@@ -40,32 +40,32 @@ describe('contributed commands', () => {
   const commands = manifest.contributes.commands.map((entry) => entry.command);
 
   it('declares the routing commands', () => {
-    expect(commands).toContain('waypoint.routeSelection');
-    expect(commands).toContain('waypoint.explainSelection');
-    expect(commands).toContain('waypoint.ask');
+    expect(commands).toContain('gearvane.routeSelection');
+    expect(commands).toContain('gearvane.explainSelection');
+    expect(commands).toContain('gearvane.ask');
   });
 
   it('declares the diagnostic commands', () => {
-    expect(commands).toContain('waypoint.health');
-    expect(commands).toContain('waypoint.spend');
-    expect(commands).toContain('waypoint.showLog');
+    expect(commands).toContain('gearvane.health');
+    expect(commands).toContain('gearvane.spend');
+    expect(commands).toContain('gearvane.showLog');
   });
 
   it('declares the model pinning commands', () => {
-    expect(commands).toContain('waypoint.pinModel');
-    expect(commands).toContain('waypoint.clearPin');
+    expect(commands).toContain('gearvane.pinModel');
+    expect(commands).toContain('gearvane.clearPin');
   });
 
   it('gives every command a title and category', () => {
     for (const entry of manifest.contributes.commands) {
       expect(entry.title).toBeTruthy();
-      expect(entry.category).toBe('Waypoint');
+      expect(entry.category).toBe('GearVane');
     }
   });
 
-  it('uses the waypoint namespace consistently', () => {
+  it('uses the gearvane namespace consistently', () => {
     for (const command of commands) {
-      expect(command.startsWith('waypoint.')).toBe(true);
+      expect(command.startsWith('gearvane.')).toBe(true);
     }
   });
 });
@@ -74,22 +74,22 @@ describe('contributed settings', () => {
   const properties = manifest.contributes.configuration.properties;
 
   it('declares the routing settings the README documents', () => {
-    expect(properties['waypoint.configPath']).toBeDefined();
-    expect(properties['waypoint.tier']).toBeDefined();
-    expect(properties['waypoint.model']).toBeDefined();
+    expect(properties['gearvane.configPath']).toBeDefined();
+    expect(properties['gearvane.tier']).toBeDefined();
+    expect(properties['gearvane.model']).toBeDefined();
   });
 
   it('offers auto plus the three tiers', () => {
-    const values = (properties['waypoint.tier'] as { enum?: string[] }).enum ?? [];
+    const values = (properties['gearvane.tier'] as { enum?: string[] }).enum ?? [];
     expect(values).toEqual(['auto', 'local', 'mid', 'frontier']);
   });
 
   it('defaults the tier to auto so classification is the default', () => {
-    expect(properties['waypoint.tier']?.default).toBe('auto');
+    expect(properties['gearvane.tier']?.default).toBe('auto');
   });
 
   it('defaults the model pin to empty', () => {
-    expect(properties['waypoint.model']?.default).toBe('');
+    expect(properties['gearvane.model']?.default).toBe('');
   });
 
   it('declares a view', () => {

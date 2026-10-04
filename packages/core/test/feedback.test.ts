@@ -53,7 +53,7 @@ describe('FeedbackStore stats', () => {
   });
 
   it('matches the Python stats for the shared parity fixture', () => {
-    // Values computed by hand from waypoint/feedback.py's get_stats so a
+    // Values computed by hand from gearvane/feedback.py's get_stats so a
     // drift in either implementation fails here before it reaches parity.
     const stats = parityStore().get_stats();
     expect(stats.total_entries).toBe(4);

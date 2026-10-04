@@ -1,29 +1,29 @@
-# Waypoint for VS Code
+# GearVane for VS Code
 
 Route each request to the cheapest model tier that can actually do the job.
 
-Waypoint does not replace your editor or your model of choice. It reads the
+GearVane does not replace your editor or your model of choice. It reads the
 selection, decides whether a local model is enough, and only reaches for an
 expensive model when the work warrants it.
 
 ## Why
 
 Running a frontier model for a typo fix wastes money. Running a 3B local
-model to debug a race condition wastes your afternoon. Waypoint classifies
+model to debug a race condition wastes your afternoon. GearVane classifies
 the task, picks a tier, and escalates only when a cheaper model fails.
 
 ## Commands
 
 | Command | What it does |
 |---------|--------------|
-| `Waypoint: Route Selection` | Shows which tier would handle the selection, without spending anything |
-| `Waypoint: Explain Routing Decision` | Opens a markdown breakdown of the tier, confidence, and reasons |
-| `Waypoint: Ask` | Sends a prompt through the routed model |
-| `Waypoint: Check Model Health` | Probes every configured model |
-| `Waypoint: Show Spend` | Session and task spend against your limits |
-| `Waypoint: Show Routing Log` | Recent decisions with outcomes and timings |
-| `Waypoint: Pin Model` | Pins a model for the workspace |
-| `Waypoint: Clear Pinned Model` | Returns to automatic routing |
+| `GearVane: Route Selection` | Shows which tier would handle the selection, without spending anything |
+| `GearVane: Explain Routing Decision` | Opens a markdown breakdown of the tier, confidence, and reasons |
+| `GearVane: Ask` | Sends a prompt through the routed model |
+| `GearVane: Check Model Health` | Probes every configured model |
+| `GearVane: Show Spend` | Session and task spend against your limits |
+| `GearVane: Show Routing Log` | Recent decisions with outcomes and timings |
+| `GearVane: Pin Model` | Pins a model for the workspace |
+| `GearVane: Clear Pinned Model` | Returns to automatic routing |
 
 All are also available from the command palette with `Ctrl+Shift+P` /
 `Cmd+Shift+P`.
@@ -32,16 +32,16 @@ All are also available from the command palette with `Ctrl+Shift+P` /
 
 | Setting | Default | Purpose |
 |---------|---------|---------|
-| `waypoint.configPath` | `""` | Path to a config file; empty searches upward |
-| `waypoint.tier` | `auto` | Force `local`, `mid`, or `frontier` |
-| `waypoint.model` | `""` | Pin a model such as `anthropic/claude-sonnet-4-20250514` |
-| `waypoint.includeSelectionInPrompt` | `true` | Include the selected text when routing |
-| `waypoint.maxTokens` | `2048` | Token ceiling per request |
-| `waypoint.showRoutingNotifications` | `true` | Notify with the chosen tier |
+| `gearvane.configPath` | `""` | Path to a config file; empty searches upward |
+| `gearvane.tier` | `auto` | Force `local`, `mid`, or `frontier` |
+| `gearvane.model` | `""` | Pin a model such as `anthropic/claude-sonnet-4-20250514` |
+| `gearvane.includeSelectionInPrompt` | `true` | Include the selected text when routing |
+| `gearvane.maxTokens` | `2048` | Token ceiling per request |
+| `gearvane.showRoutingNotifications` | `true` | Notify with the chosen tier |
 
 ## Setup
 
-Add a `waypoint.yaml` at the root of your workspace:
+Add a `gearvane.yaml` at the root of your workspace:
 
 ```yaml
 router:
@@ -82,13 +82,13 @@ machine.
 ## Troubleshooting
 
 **"No usable model tiers configured"** — no provider was found. Add a
-`waypoint.yaml` with at least one tier, or check `waypoint.configPath`.
+`gearvane.yaml` with at least one tier, or check `gearvane.configPath`.
 
 **A model shows as degraded** — the endpoint did not answer. Run
-`Waypoint: Check Model Health` and confirm Ollama is running.
+`GearVane: Check Model Health` and confirm Ollama is running.
 
 **Everything routes to local** — that is usually correct. Use
-`waypoint.tier` to force a higher tier while debugging a routing problem.
+`gearvane.tier` to force a higher tier while debugging a routing problem.
 
 ## License
 

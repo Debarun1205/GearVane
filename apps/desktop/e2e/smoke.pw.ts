@@ -32,7 +32,7 @@ test('boots without page or console errors', async ({ page }) => {
 
   // First run opens onboarding over a live app.
   await expect(page.locator('#appearance-dialog')).toBeVisible();
-  await expect(page.locator('#appearance-title')).toHaveText('Make Waypoint yours');
+  await expect(page.locator('#appearance-title')).toHaveText('Make GearVane yours');
 
   // The app behind the dialog is there, not a blank page.
   await expect(page.locator('#transcript')).toBeVisible();
@@ -67,7 +67,7 @@ test('onboarding previews live, saves once, and never returns', async ({ page })
   await expect.poll(() => bg(page)).not.toBe(before);
   const previewed = await bg(page);
   expect(
-    await page.evaluate(() => localStorage.getItem('waypoint.appearance')),
+    await page.evaluate(() => localStorage.getItem('gearvane.appearance')),
   ).toBeNull();
 
   // Save persists; the dialog closes.
@@ -80,7 +80,7 @@ test('onboarding previews live, saves once, and never returns', async ({ page })
   await expect
     .poll(
       async () =>
-        (await page.evaluate(() => localStorage.getItem('waypoint.appearance'))) ?? '',
+        (await page.evaluate(() => localStorage.getItem('gearvane.appearance'))) ?? '',
     )
     .toContain('nebula');
 
@@ -134,19 +134,19 @@ test('keys dialog stores keys on this device', async ({ page }) => {
   await page.locator('#keys-fields input[aria-label="OpenAI API key"]').fill('sk-test');
   await page.locator('#keys-save').click();
   await expect(dialog).toBeHidden();
-  expect(await page.evaluate(() => localStorage.getItem('waypoint.keys'))).toContain('sk-test');
+  expect(await page.evaluate(() => localStorage.getItem('gearvane.keys'))).toContain('sk-test');
 
   // Reopen and clear: nothing survives.
   await page.locator('#keys-button').click();
   await expect(dialog).toBeVisible();
   await page.locator('#keys-clear').click();
-  expect(await page.evaluate(() => localStorage.getItem('waypoint.keys'))).toBeNull();
+  expect(await page.evaluate(() => localStorage.getItem('gearvane.keys'))).toBeNull();
 
   expect(errors).toEqual([]);
 });
 
 test('ide mounts the device-local workspace without host bridges', async ({ page }) => {
-  // The static server injects no window.waypoint, exactly like the Android
+  // The static server injects no window.gearvane, exactly like the Android
   // webview: the IDE button must be visible, and opening it mounts the
   // editor over the seeded workspace rather than an error.
   const errors = trackErrors(page);

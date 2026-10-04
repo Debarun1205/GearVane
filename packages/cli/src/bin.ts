@@ -9,8 +9,8 @@ import {
   type ClassificationResult,
   type ExecutionResult,
   type HealthResult,
-  type WaypointConfig,
-} from '@waypoint/core';
+  type GearVaneConfig,
+} from '@gearvane/core';
 
 import {
   flagBool,
@@ -29,29 +29,29 @@ import {
   cmdBuild,
 } from './harness-commands.js';
 
-const HELP = `waypoint ${VERSION} - route each task to the cheapest model tier that can do the job
+const HELP = `gearvane ${VERSION} - route each task to the cheapest model tier that can do the job
 
-waypoint --version
+gearvane --version
 
 Usage:
-  waypoint route --task "<description>" [--files a b] [--json]
-  waypoint run   --task "<description>" [--files a b] [--stream] [--json]
-  waypoint feedback [--json]
-  waypoint train [--epochs N] [--learning-rate F] [--l2 F] [--json]
-  waypoint health [--offline] [--json]
-  waypoint models [--json]
-  waypoint cost [--json]
-  waypoint stats
-  waypoint safety <spend|pending|check> [--command "<cmd>"] [--json]
-  waypoint approve [--command "<cmd>" | --all]
-  waypoint deploy <github|docker> <action> [options] [--dry-run]
-  waypoint agent --task "<what you want done>" [options]
-  waypoint build --template <id> --name "<project>" [--out <dir>]
-  waypoint --version
+  gearvane route --task "<description>" [--files a b] [--json]
+  gearvane run   --task "<description>" [--files a b] [--stream] [--json]
+  gearvane feedback [--json]
+  gearvane train [--epochs N] [--learning-rate F] [--l2 F] [--json]
+  gearvane health [--offline] [--json]
+  gearvane models [--json]
+  gearvane cost [--json]
+  gearvane stats
+  gearvane safety <spend|pending|check> [--command "<cmd>"] [--json]
+  gearvane approve [--command "<cmd>" | --all]
+  gearvane deploy <github|docker> <action> [options] [--dry-run]
+  gearvane agent --task "<what you want done>" [options]
+  gearvane build --template <id> --name "<project>" [--out <dir>]
+  gearvane --version
 
 Routing and health:
-  waypoint agent --help
-  waypoint build --help
+  gearvane agent --help
+  gearvane build --help
 
 Options:
   --config <path>   Config file to use
@@ -140,7 +140,7 @@ async function main(argv: string[]): Promise<number> {
 
 function cmdRoute(
   args: ParsedArgs,
-  config: WaypointConfig,
+  config: GearVaneConfig,
   json: boolean,
   useColor: boolean,
 ): number {
@@ -150,7 +150,7 @@ function cmdRoute(
     return 1;
   }
 
-  // A trained model file from `waypoint train` engages the hybrid
+  // A trained model file from `gearvane train` engages the hybrid
   // classifier; without one (or with it disabled) the router stays on
   // heuristics, exactly like the Python router's fallback.
   const orchestrator = new Orchestrator(config, {
@@ -187,7 +187,7 @@ function cmdRoute(
 
 async function cmdRun(
   args: ParsedArgs,
-  config: WaypointConfig,
+  config: GearVaneConfig,
   json: boolean,
 ): Promise<number> {
   const task = flagString(args, 'task');
@@ -264,13 +264,13 @@ function printExecution(result: ExecutionResult): void {
 
 async function cmdHealth(
   args: ParsedArgs,
-  config: WaypointConfig,
+  config: GearVaneConfig,
   json: boolean,
 ): Promise<number> {
   const offline = flagBool(args, 'offline');
   const localOnly = [...LOCAL_PROVIDER_NAMES];
 
-  const scoped: WaypointConfig = offline
+  const scoped: GearVaneConfig = offline
     ? {
         ...config,
         tiers: {
@@ -331,7 +331,7 @@ async function cmdHealth(
   return counts.unhealthy > 0 ? 1 : 0;
 }
 
-async function cmdModels(config: WaypointConfig, json: boolean): Promise<number> {
+async function cmdModels(config: GearVaneConfig, json: boolean): Promise<number> {
   const checker = new HealthChecker(config, undefined, { timeoutMs: 3000 });
   const results = await checker.checkAll();
 
@@ -360,7 +360,7 @@ async function cmdModels(config: WaypointConfig, json: boolean): Promise<number>
   return 0;
 }
 
-function cmdCost(args: ParsedArgs, config: WaypointConfig, json: boolean): number {
+function cmdCost(args: ParsedArgs, config: GearVaneConfig, json: boolean): number {
   const orchestrator = new Orchestrator(config, {
     env: process.env as Record<string, string | undefined>,
   });
@@ -394,7 +394,7 @@ function cmdCost(args: ParsedArgs, config: WaypointConfig, json: boolean): numbe
   return 0;
 }
 
-function cmdSafety(args: ParsedArgs, config: WaypointConfig, json: boolean): number {
+function cmdSafety(args: ParsedArgs, config: GearVaneConfig, json: boolean): number {
   const manager = new SafetyManager(config.safety);
   const action = args.positionals[0];
 
@@ -448,7 +448,7 @@ function cmdSafety(args: ParsedArgs, config: WaypointConfig, json: boolean): num
   }
 }
 
-function cmdApprove(args: ParsedArgs, config: WaypointConfig): number {
+function cmdApprove(args: ParsedArgs, config: GearVaneConfig): number {
   const manager = new SafetyManager(config.safety);
   const command = flagString(args, 'command');
 
@@ -470,7 +470,7 @@ function cmdApprove(args: ParsedArgs, config: WaypointConfig): number {
   return 0;
 }
 
-function cmdDeploy(args: ParsedArgs, config: WaypointConfig, json: boolean): number {
+function cmdDeploy(args: ParsedArgs, config: GearVaneConfig, json: boolean): number {
   const manager = new SafetyManager(config.safety);
   const tool = args.positionals[0];
   const action = args.positionals[1];
@@ -480,8 +480,8 @@ function cmdDeploy(args: ParsedArgs, config: WaypointConfig, json: boolean): num
     'github push': `git push origin ${flagString(args, 'branch') ?? 'main'}`,
     'github status': 'git status',
     'github log': `git log --oneline -n ${flagNumber(args, 'n') ?? 10}`,
-    'docker build': `docker build -t ${flagString(args, 'tag') ?? 'waypoint:local'} .`,
-    'docker push': `docker push ${flagString(args, 'tag') ?? 'waypoint:local'}`,
+    'docker build': `docker build -t ${flagString(args, 'tag') ?? 'gearvane:local'} .`,
+    'docker push': `docker push ${flagString(args, 'tag') ?? 'gearvane:local'}`,
   };
 
   const key = `${tool} ${action ?? ''}`;
@@ -505,7 +505,7 @@ function cmdDeploy(args: ParsedArgs, config: WaypointConfig, json: boolean): num
   if (request.status === 'pending') {
     process.stderr.write(
       `approval required: ${request.reason}\n` +
-        `Approve with: waypoint approve --command "${command}"\n`,
+        `Approve with: gearvane approve --command "${command}"\n`,
     );
     return 1;
   }

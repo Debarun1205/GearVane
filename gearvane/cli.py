@@ -1,4 +1,4 @@
-"""Command-line interface for Waypoint."""
+"""Command-line interface for GearVane."""
 
 import argparse
 import json
@@ -20,7 +20,7 @@ from .model_manager import ModelManager
 from .orchestrator import Orchestrator
 from .router import TierRouter
 
-DEFAULT_CONFIG_NAMES = ("config.yaml", "waypoint.yaml", "config.example.yaml")
+DEFAULT_CONFIG_NAMES = ("config.yaml", "gearvane.yaml", "config.example.yaml")
 
 
 def load_config(config_path: str) -> dict:
@@ -131,7 +131,7 @@ def cmd_run(args):
     )
 
     # Record the prediction and outcome into the feedback loop so that
-    # `waypoint train` can learn from completed runs. The prediction is the
+    # `gearvane train` can learn from completed runs. The prediction is the
     # router's first pick (the first attempt's tier); the outcome is the tier
     # that served the request, so escalation records as a miss. Failed runs
     # record the prediction with no outcome and never enter training data.
@@ -432,7 +432,7 @@ def cmd_deploy(args):
             result = deployer.github.push(branch=args.branch, dry_run=args.dry_run)
         elif args.github_action == "pr":
             result = deployer.github.create_pr(
-                title=args.title or "Waypoint auto PR",
+                title=args.title or "GearVane auto PR",
                 branch=args.branch,
                 dry_run=args.dry_run,
             )
@@ -588,11 +588,11 @@ def cmd_safety(args):
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="waypoint",
-        description="Waypoint - Open-source AI harness with intelligent task routing",
+        prog="gearvane",
+        description="GearVane - Open-source AI harness with intelligent task routing",
     )
     parser.add_argument("--config", default="config.yaml", help="Path to config file")
-    parser.add_argument("--version", action="version", version=f"waypoint {__version__}")
+    parser.add_argument("--version", action="version", version=f"gearvane {__version__}")
     subparsers = parser.add_subparsers(dest="command", help="Command to run")
 
     # route
@@ -692,7 +692,7 @@ def main():
 
     # Dispatch on the subcommand directly. Subparser options can collide with
     # the parser's own "command" dest, so args.command is not reliable here.
-    # A leading global --config is skipped so `waypoint --config f.yaml run`
+    # A leading global --config is skipped so `gearvane --config f.yaml run`
     # dispatches instead of printing help.
     rest = sys.argv[1:]
     if rest[:1] == ["--config"] and len(rest) > 2:

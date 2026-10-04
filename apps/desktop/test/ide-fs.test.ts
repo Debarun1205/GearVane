@@ -24,7 +24,7 @@ import {
 let root: string;
 
 beforeEach(async () => {
-  root = await mkdtemp(join(tmpdir(), 'waypoint-ide-fs-'));
+  root = await mkdtemp(join(tmpdir(), 'gearvane-ide-fs-'));
   await mkdir(join(root, 'src'), { recursive: true });
   await writeFile(join(root, 'src', 'index.ts'), 'export const a = 1;\n');
   await writeFile(join(root, 'README.md'), '# project\n');
@@ -84,7 +84,7 @@ describe('listFiles', () => {
   });
 
   it('skips a symlink that escapes the workspace', async () => {
-    const outside = await mkdtemp(join(tmpdir(), 'waypoint-ide-outside-'));
+    const outside = await mkdtemp(join(tmpdir(), 'gearvane-ide-outside-'));
     await writeFile(join(outside, 'secret.txt'), 'secret');
 
     try {

@@ -33,22 +33,22 @@ const manifest = JSON.parse(
 describe('the agent panel exists and is wired up', () => {
   it('is registered as a command', () => {
     expect(
-      manifest.contributes.commands.some((c) => c.command === 'waypoint.agent'),
+      manifest.contributes.commands.some((c) => c.command === 'gearvane.agent'),
     ).toBe(true);
   });
 
   it('has a keybinding', () => {
     // A command nobody can reach is not a feature.
-    expect(manifest.keybindings?.some((k) => k.command === 'waypoint.agent')).toBe(true);
+    expect(manifest.keybindings?.some((k) => k.command === 'gearvane.agent')).toBe(true);
   });
 
   it('depends on the harness', () => {
-    expect(manifest.dependencies['@waypoint/harness']).toBeTruthy();
+    expect(manifest.dependencies['@gearvane/harness']).toBeTruthy();
   });
 
   it('is reachable from the extension entry point', () => {
     const entry = read(REPO, 'apps', 'vscode-extension', 'src', 'extension.ts');
-    expect(entry).toContain('waypoint.agent');
+    expect(entry).toContain('gearvane.agent');
     expect(entry).toContain('AgentPanel');
   });
 });

@@ -43,7 +43,7 @@ describe('gitignore', () => {
 
   it('ignores packaged installers', () => {
     expect(isIgnored('apps/desktop/release/')).toBe(true);
-    expect(isIgnored('apps/vscode-extension/waypoint-0.3.0.vsix')).toBe(true);
+    expect(isIgnored('apps/vscode-extension/gearvane-0.3.0.vsix')).toBe(true);
   });
 
   it('ignores the generated Android project', () => {
@@ -75,9 +75,9 @@ describe('gitignore', () => {
   });
 
   it('still tracks the Python package', () => {
-    expect(isIgnored('waypoint/router.py')).toBe(false);
-    expect(isIgnored('waypoint/__init__.py')).toBe(false);
-    expect(isIgnored('waypoint/providers.py')).toBe(false);
+    expect(isIgnored('gearvane/router.py')).toBe(false);
+    expect(isIgnored('gearvane/__init__.py')).toBe(false);
+    expect(isIgnored('gearvane/providers.py')).toBe(false);
   });
 
   it('still tracks every test suite', () => {

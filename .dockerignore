@@ -11,7 +11,7 @@ artifacts
 logs
 feedback
 dashboard.html
-waypoint.log
+gearvane.log
 coverage.xml
 .pytest_cache
 .mypy_cache

@@ -1,10 +1,10 @@
-# Waypoint configuration
+# GearVane configuration
 #
 # Copy this file to config.yaml and edit it:
 #
 #     cp config.example.yaml config.yaml
 #
-# Waypoint falls back to this file when config.yaml is absent, so a fresh
+# GearVane falls back to this file when config.yaml is absent, so a fresh
 # clone runs without the copy step.
 
 # ---------------------------------------------------------------------------
@@ -261,7 +261,7 @@ learned_classifier:
 logging:
   enabled: true
   level: INFO
-  file: waypoint.log
+  file: gearvane.log
   log_routing_decisions: true
   log_escalations: true
   log_costs: true
@@ -272,7 +272,7 @@ logging:
 # Safety
 # ---------------------------------------------------------------------------
 safety:
-  # Operations that require explicit approval. See: waypoint approve
+  # Operations that require explicit approval. See: gearvane approve
   require_approval:
     - git_push
     - git_force_push
@@ -317,7 +317,7 @@ safety:
 # ---------------------------------------------------------------------------
 # Health checks
 # ---------------------------------------------------------------------------
-# Each model is probed against its real endpoint by `waypoint health`.
+# Each model is probed against its real endpoint by `gearvane health`.
 health:
   check_interval_seconds: 60
   timeout_seconds: 10

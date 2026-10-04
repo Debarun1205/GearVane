@@ -7,7 +7,7 @@
  * webview does have:
  *
  * - files: a device-local virtual workspace persisted in localStorage,
- * - agent: single-shot Ask answers through @waypoint/core's Orchestrator,
+ * - agent: single-shot Ask answers through @gearvane/core's Orchestrator,
  *   which only needs fetch,
  * - workspace root: a fixed directory (no native picker to ask with).
  *
@@ -18,15 +18,15 @@
  * would die on first touch). Build mode answers with the reason instead
  * of pretending.
  *
- * Nothing here imports node:* or @waypoint/harness values (types only),
+ * Nothing here imports node:* or @gearvane/harness values (types only),
  * so bundling this into the renderer cannot poison the webview bundle.
  */
 
-import { Orchestrator, type WaypointConfig } from '@waypoint/core';
-import type { AgentResult, AgentStep } from '@waypoint/harness';
+import { Orchestrator, type GearVaneConfig } from '@gearvane/core';
+import type { AgentResult, AgentStep } from '@gearvane/harness';
 
 /** Fixed workspace: the web has no folder picker to ask with. */
-export const WEB_WORKSPACE_ROOT = 'waypoint-workspace';
+export const WEB_WORKSPACE_ROOT = 'gearvane-workspace';
 
 /** Minimal storage surface, so the backend tests without a DOM. */
 export interface WebFsStorage {
@@ -34,7 +34,7 @@ export interface WebFsStorage {
   setItem(key: string, value: string): void;
 }
 
-const STORAGE_KEY = 'waypoint.webfs.v1';
+const STORAGE_KEY = 'gearvane.webfs.v1';
 
 /** Cap mirrored from the main-process reader: huge files stay unopened. */
 const MAX_READ_BYTES = 256 * 1024;
@@ -42,7 +42,7 @@ const MAX_READ_BYTES = 256 * 1024;
 /** Cap on search hits: a phone screen cannot use ten thousand rows. */
 const MAX_SEARCH_HITS = 100;
 
-const README_SEED = `# Waypoint workspace
+const README_SEED = `# GearVane workspace
 
 This folder lives on this device, inside the app's own storage. Files
 you create here persist between launches.
@@ -224,7 +224,7 @@ export interface WebAgentModel {
 
 export interface WebAgentDeps {
   /** Current config, so key changes apply to the next run. */
-  config: () => WaypointConfig;
+  config: () => GearVaneConfig;
   /** Vault keys, so hosted models work without a shell environment. */
   env: () => Record<string, string | undefined>;
 }
