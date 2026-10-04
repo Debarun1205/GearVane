@@ -1,4 +1,4 @@
-import { mkdtemp } from 'node:fs/promises';
+import { mkdtemp, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -98,10 +98,30 @@ test('boots chat with onboarding, then opens the IDE', async () => {
 });
 
 test('models dialog reports on-disk weights as ready', async () => {
-  // Real main process, real preload bridge, real resources/models dir:
-  // whatever GGUFs the developer fetched show as ready, the rest offer
-  // downloads. No download is clicked here; fetching gigabytes is not an
-  // end-to-end test's job.
+  // Hermetic by construction: a seeded models dir is pointed at through
+  // GEARVANE_MODEL_DIR, so this passes with an empty resources/models
+  // (as in CI) as well as with real weights on a developer machine. The
+  // file carries a catalog name, which is what flips its row to ready.
+  const modelsDir = await mkdtemp(join(tmpdir(), 'gearvane-models-'));
+  await writeFile(join(modelsDir, 'qwen2.5-coder-0.5b-instruct-q4_0.gguf'), 'fake-bytes');
+
+  await app?.close();
+  const userData = await mkdtemp(join(tmpdir(), 'gearvane-e2e-'));
+  const env: Record<string, string> = {};
+  for (const [key, value] of Object.entries(process.env)) {
+    if (value !== undefined) env[key] = value;
+  }
+  env['GEARVANE_MODEL_DIR'] = modelsDir;
+  app = await electron.launch({
+    args: [
+      MAIN,
+      '--no-sandbox',
+      '--disable-gpu',
+      `--user-data-dir=${userData}`,
+    ],
+    env,
+  });
+
   const page = await app!.firstWindow();
   const errors = trackErrors(page);
 
@@ -111,8 +131,6 @@ test('models dialog reports on-disk weights as ready', async () => {
   await page.locator('#models-button').click();
   await expect(page.locator('#models-dialog')).toBeVisible();
   await expect(page.locator('#models-body .health-row')).toHaveCount(8);
-  // The developer machine fetched the bundled set, so at least the two
-  // installer weights report ready through the real IPC round-trip.
   const body = await page.locator('#models-body').textContent();
   expect(body).toContain('ready');
 

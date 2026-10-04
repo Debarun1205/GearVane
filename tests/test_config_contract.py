@@ -101,9 +101,7 @@ class TestShippedConfigShape:
         catalog_path = PROJECT_ROOT / "apps" / "desktop" / "src" / "models.json"
         catalog = json.loads(catalog_path.read_text(encoding="utf-8"))
         known = {entry["id"] for entry in catalog}
-        embedded = next(
-            p for p in config["tiers"]["local"]["providers"] if p["name"] == "embedded"
-        )
+        embedded = next(p for p in config["tiers"]["local"]["providers"] if p["name"] == "embedded")
         assert embedded["models"], "embedded lists no models"
         for model in embedded["models"]:
             assert model in known, f"embedded model {model} missing from models.json"
