@@ -44,6 +44,12 @@ export interface SubmitOptions {
   system?: string;
   signal?: AbortSignal;
   onToken?: (token: string, accumulated: string) => void;
+  /**
+   * Pin this run to one model: "provider/model" or a bare model name.
+   * Absent means auto-route, the default. Mirrors the router's
+   * manualOverride without touching the shared config.
+   */
+  model?: string;
 }
 
 export interface PreviewResult {
@@ -61,11 +67,7 @@ export class AppController {
   private readonly inFlight = new Map<string, AbortController>();
 
   constructor(private readonly options: ControllerOptions) {
-    this.orchestrator = new Orchestrator(options.config, {
-      env: options.env ?? readEnvironment(),
-      ...(options.createClient ? { createClient: options.createClient } : {}),
-      ...(options.fetchImpl ? { fetchImpl: options.fetchImpl as never } : {}),
-    });
+    this.orchestrator = this.makeOrchestrator(options.config);
 
     this.health = new HealthChecker(options.config, this.orchestrator.router, {
       timeoutMs: options.timeoutMs ?? 5000,
@@ -83,13 +85,33 @@ export class AppController {
   }
 
   /**
+   * Build an orchestrator, optionally pinned to one model.
+   *
+   * A pin clones the config with the router's manualOverride rather than
+   * mutating shared state, so concurrent Auto and pinned runs cannot leak
+   * into each other.
+   */
+  private makeOrchestrator(config: GearVaneConfig, model?: string): Orchestrator {
+    const scoped =
+      model === undefined
+        ? config
+        : { ...config, router: { ...config.router, manualOverride: model } };
+    return new Orchestrator(scoped, {
+      env: this.options.env ?? readEnvironment(),
+      ...(this.options.createClient ? { createClient: this.options.createClient } : {}),
+      ...(this.options.fetchImpl ? { fetchImpl: this.options.fetchImpl as never } : {}),
+    });
+  }
+
+  /**
    * Show which tier would handle a prompt, without spending anything.
    *
    * The UI calls this while the user is still typing so the chosen tier can
-   * be shown before they commit.
+   * be shown before they commit. A pinned model previews through the same
+   * override the run would take.
    */
-  preview(prompt: string, filesTouched: string[] = []): PreviewResult {
-    const decision = this.decision(prompt, filesTouched);
+  preview(prompt: string, filesTouched: string[] = [], model?: string): PreviewResult {
+    const decision = this.decision(prompt, filesTouched, model);
     return {
       tier: decision.tier,
       provider: decision.provider.name,
@@ -99,7 +121,7 @@ export class AppController {
     };
   }
 
-  private decision(prompt: string, filesTouched: string[]): RoutingDecision {
+  private decision(prompt: string, filesTouched: string[], model?: string): RoutingDecision {
     const context: TaskContext = {
       description: prompt,
       filesTouched,
@@ -108,7 +130,11 @@ export class AppController {
     };
     // A distinct id per preview so repeated previews do not accumulate
     // escalation state that would distort the next real request.
-    return this.orchestrator.router.route(`preview-${Date.now()}`, context);
+    const router =
+      model === undefined
+        ? this.orchestrator.router
+        : this.makeOrchestrator(this.options.config, model).router;
+    return router.route(`preview-${Date.now()}`, context);
   }
 
   /** Run a request and return the result. */
@@ -121,13 +147,17 @@ export class AppController {
         return await this.submitStreaming(options, controller.signal);
       }
 
-      const result = await this.orchestrator.execute(options.taskId, options.prompt, {
-        filesTouched: options.filesTouched ?? [],
-        maxTokens: options.maxTokens ?? 2048,
-        temperature: options.temperature ?? 0,
-        ...(options.system ? { system: options.system } : {}),
-        signal: controller.signal,
-      });
+      const result = await this.makeOrchestrator(this.options.config, options.model).execute(
+        options.taskId,
+        options.prompt,
+        {
+          filesTouched: options.filesTouched ?? [],
+          maxTokens: options.maxTokens ?? 2048,
+          temperature: options.temperature ?? 0,
+          ...(options.system ? { system: options.system } : {}),
+          signal: controller.signal,
+        },
+      );
 
       return result;
     } finally {
@@ -142,13 +172,17 @@ export class AppController {
     const started = Date.now();
     let content = '';
 
-    const iterator = this.orchestrator.executeStream(options.taskId, options.prompt, {
-      filesTouched: options.filesTouched ?? [],
-      maxTokens: options.maxTokens ?? 2048,
-      temperature: options.temperature ?? 0,
-      ...(options.system ? { system: options.system } : {}),
-      signal,
-    });
+    const iterator = this.makeOrchestrator(this.options.config, options.model).executeStream(
+      options.taskId,
+      options.prompt,
+      {
+        filesTouched: options.filesTouched ?? [],
+        maxTokens: options.maxTokens ?? 2048,
+        temperature: options.temperature ?? 0,
+        ...(options.system ? { system: options.system } : {}),
+        signal,
+      },
+    );
 
     for await (const token of iterator) {
       content += token;

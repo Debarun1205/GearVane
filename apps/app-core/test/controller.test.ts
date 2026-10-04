@@ -91,6 +91,43 @@ describe('preview', () => {
       );
     }
   });
+
+  it('pins a preview to the requested model', () => {
+    const base = config();
+    const twoModel = {
+      ...base,
+      tiers: {
+        ...base.tiers,
+        local: {
+          ...base.tiers.local,
+          providers: [{ name: 'ollama', models: ['qwen2.5-coder', 'smollm2-360m'] }],
+        },
+      },
+    };
+    const controller = new AppController({
+      config: twoModel,
+      env: {},
+      createClient: () => new FakeClient([ok()]),
+    });
+
+    const preview = controller.preview('fix a typo', [], 'smollm2-360m');
+    expect(preview.model).toBe('smollm2-360m');
+    expect(preview.provider).toBe('ollama');
+    expect(preview.tier).toBe('local');
+    // A pin is explicit, so the router reports certainty rather than
+    // the classifier's guess.
+    expect(preview.confidence).toBe(1);
+    expect(preview.reasons.join(' ')).toContain('Manual override');
+  });
+
+  it('falls back to automatic routing when a pin matches nothing', () => {
+    const controller = controllerWith([ok()]);
+
+    const preview = controller.preview('fix a typo', [], 'no-such-model');
+    expect(preview.model).toBe('qwen2.5-coder');
+    expect(preview.confidence).toBeLessThan(1);
+    expect(preview.reasons.join(' ')).toContain('matched no configured model');
+  });
 });
 
 describe('submit', () => {
@@ -176,6 +213,68 @@ describe('submit', () => {
 
   it('reports nothing to cancel for an unknown task', () => {
     expect(controllerWith([]).cancel('nope')).toBe(false);
+  });
+
+  it('runs a pinned model instead of auto-routing', async () => {
+    // Two local models so a pin is distinguishable from the
+    // default round-robin choice.
+    const base = config();
+    const twoModel = {
+      ...base,
+      tiers: {
+        ...base.tiers,
+        local: {
+          ...base.tiers.local,
+          providers: [{ name: 'ollama', models: ['qwen2.5-coder', 'smollm2-360m'] }],
+        },
+      },
+    };
+    const routed: Array<[string, string | undefined]> = [];
+    const controller = new AppController({
+      config: twoModel,
+      env: {},
+      createClient: (provider, model) => {
+        routed.push([provider.name, model]);
+        return new FakeClient([ok('pinned')]);
+      },
+    });
+
+    const result = await controller.submit({
+      taskId: 't1',
+      prompt: 'fix a typo',
+      model: 'smollm2-360m',
+    });
+
+    expect(result.success).toBe(true);
+    expect(routed).toEqual([['ollama', 'smollm2-360m']]);
+  });
+
+  it('auto-routes to the first model when no pin is given', async () => {
+    const base = config();
+    const twoModel = {
+      ...base,
+      tiers: {
+        ...base.tiers,
+        local: {
+          ...base.tiers.local,
+          providers: [{ name: 'ollama', models: ['qwen2.5-coder', 'smollm2-360m'] }],
+        },
+      },
+    };
+    const routed: Array<[string, string | undefined]> = [];
+    const controller = new AppController({
+      config: twoModel,
+      env: {},
+      createClient: (provider, model) => {
+        routed.push([provider.name, model]);
+        return new FakeClient([ok('auto')]);
+      },
+    });
+
+    const result = await controller.submit({ taskId: 't1', prompt: 'fix a typo' });
+
+    expect(result.success).toBe(true);
+    expect(routed).toEqual([['ollama', 'qwen2.5-coder']]);
   });
 });
 
