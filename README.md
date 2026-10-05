@@ -171,10 +171,12 @@ tiers:
         models: [qwen2.5-coder]
 
 safety:
-  spend_limits:
-    per_task: 1.0
-    per_session: 5.0
-    per_day: 20.0
+  # Operations that require explicit approval. See: gearvane approve
+  require_approval: [git_push, deploy_production, merge_pr]
+  # Local models cost nothing, so there are no USD spend ceilings for
+  # them: usage is tracked and reported by `gearvane cost`, never gated.
+  # (The Python reference engine still accepts per-task/session/day
+  # ceilings in this same file; the desktop app and TS CLI ignore them.)
 ```
 
 `config.example.yaml` documents every key the code reads.
