@@ -72,7 +72,8 @@ describe('model catalog', () => {
       'gemma-2-9b-it-q4_k_m': 5476089856,
       'nemotron-3-8b-q4_k_m': 5234532352,
       'qwen2.5-32b-instruct-q4_k_m': 19234877440,
-      'command-r-plus-q4_k_m': 104857600000,
+      'qwen2.5-coder-32b-instruct-q4_k_m': 19851336672,
+      'deepseek-r1-distill-qwen-32b-q4_k_m': 19851335840,
       'yi-1.5-34b-chat-q4_k_m': 19782500352,
       'nemotron-3-ultra-q4_k_m': 27922219008,
       'mixtral-8x7b-instruct-q4_k_m': 26599284736,
@@ -81,10 +82,7 @@ describe('model catalog', () => {
       'deepseek-v3-q4_k_m': 72131051520,
       'nemotron-4-ultra-q4_k_m': 32451855360,
       'gemma-3-27b-q4_k_m': 16106127360,
-      'llama-3.1-405b-instruct-q4_k_m': 234881024000,
       'deepseek-r1-q4_k_m': 12884901888,
-      'qwen2.5-coder-0.5b-instruct-q4_0': 428730240,
-      'qwen2.5-0.5b-instruct-q4_0': 428730208,
     });
   });
 
@@ -97,9 +95,9 @@ describe('model catalog', () => {
     ]);
   });
 
-  it('covers every model the defaults route to on embedded (that exists in catalog)', () => {
-    // Some embedded models in defaults are ultra-large and not in the 50-model catalog
-    // This test only verifies embedded models that ARE in the catalog
+  it('covers every model the defaults route to on embedded', () => {
+    // Otherwise the router names an id the dialog never heard of, and a
+    // first attempt fails before failover even though the fix is a click.
     const ids = new Set(ENTRIES.map((entry) => entry.id));
     const localEmbedded = defaultConfig().tiers.local.providers.find((p) => p.name === 'embedded');
     const midEmbedded = defaultConfig().tiers.mid.providers.find((p) => p.name === 'embedded');
@@ -108,13 +106,13 @@ describe('model catalog', () => {
     expect(midEmbedded).toBeDefined();
     expect(frontierEmbedded).toBeDefined();
     for (const model of localEmbedded?.models ?? []) {
-      if (ids.has(model)) expect(ids.has(model)).toBe(true);
+      expect(ids.has(model)).toBe(true);
     }
     for (const model of midEmbedded?.models ?? []) {
-      if (ids.has(model)) expect(ids.has(model)).toBe(true);
+      expect(ids.has(model)).toBe(true);
     }
     for (const model of frontierEmbedded?.models ?? []) {
-      if (ids.has(model)) expect(ids.has(model)).toBe(true);
+      expect(ids.has(model)).toBe(true);
     }
   });
 });

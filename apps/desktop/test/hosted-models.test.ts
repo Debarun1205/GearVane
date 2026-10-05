@@ -18,9 +18,9 @@ describe('keyStateFor', () => {
 describe('hostedModelRows', () => {
   it('lists keyless embedded rows without keys on defaults', () => {
     const rows = hostedModelRows(defaultConfig(), {});
-    // Mid: 23, Frontier: 15 = 38 total
-    expect(rows).toHaveLength(38);
-    expect(rows.filter((row) => row.tier === 'mid')).toHaveLength(23);
+    // Mid: 19, Frontier: 15 = 34 total
+    expect(rows).toHaveLength(34);
+    expect(rows.filter((row) => row.tier === 'mid')).toHaveLength(19);
     expect(rows.filter((row) => row.tier === 'frontier')).toHaveLength(15);
     expect(rows.every((row) => row.keyless && row.keyed)).toBe(true);
   });
@@ -48,11 +48,11 @@ describe('hostedModelRows', () => {
     };
     const rows = hostedModelRows(config, keys);
     const mid = rows.filter((row) => row.tier === 'mid');
-    // 23 embedded + 3 openrouter + 1 meta + 2 deepseek + 1 gemini + 1 mistral = 31
-    expect(mid).toHaveLength(31);
+    // 19 embedded + 3 openrouter + 1 meta + 2 deepseek + 1 gemini + 1 mistral = 27
+    expect(mid).toHaveLength(27);
     expect(mid.filter((row) => !row.keyless)).toHaveLength(8);
     const embedded = mid.filter((row) => row.keyless);
-    expect(embedded).toHaveLength(23);
+    expect(embedded).toHaveLength(19);
     expect(embedded.every((row) => row.keyed)).toBe(true);
     // Frontier: 15 embedded + 3 anthropic + 1 openai + 1 xai = 18? No, 5 hosted = 20
     expect(rows.filter((row) => row.tier === 'frontier')).toHaveLength(20);

@@ -312,11 +312,11 @@
     "bundled": false
   },
   {
-    "id": "command-r-plus-q4_k_m",
-    "file": "Command-R-Plus-Q4_K_M.gguf",
-    "url": "https://huggingface.co/bartowski/Command-R-Plus-GGUF/resolve/main/Command-R-Plus-Q4_K_M.gguf",
-    "bytes": 104857600000,
-    "use": "Cohere flagship, needs 64GB RAM",
+    "id": "qwen2.5-coder-32b-instruct-q4_k_m",
+    "file": "Qwen2.5-Coder-32B-Instruct-Q4_K_M.gguf",
+    "url": "https://huggingface.co/bartowski/Qwen2.5-Coder-32B-Instruct-GGUF/resolve/main/Qwen2.5-Coder-32B-Instruct-Q4_K_M.gguf",
+    "bytes": 19851336672,
+    "use": "Ultra flagship coder, needs 32GB RAM",
     "bundled": false
   },
   {
@@ -384,11 +384,11 @@
     "bundled": false
   },
   {
-    "id": "llama-3.1-405b-instruct-q4_k_m",
-    "file": "Llama-3.1-405B-Instruct-Q4_K_M.gguf",
-    "url": "https://huggingface.co/bartowski/Llama-3.1-405B-Instruct-GGUF/resolve/main/Llama-3.1-405B-Instruct-Q4_K_M.gguf",
-    "bytes": 234881024000,
-    "use": "Meta massive model, needs 512GB RAM",
+    "id": "deepseek-r1-distill-qwen-32b-q4_k_m",
+    "file": "DeepSeek-R1-Distill-Qwen-32B-Q4_K_M.gguf",
+    "url": "https://huggingface.co/bartowski/DeepSeek-R1-Distill-Qwen-32B-GGUF/resolve/main/DeepSeek-R1-Distill-Qwen-32B-Q4_K_M.gguf",
+    "bytes": 19851335840,
+    "use": "Ultra flagship reasoning, needs 32GB RAM",
     "bundled": false
   },
   {
