@@ -1,0 +1,10 @@
+# Pre-commit hooks for GearVane.
+#
+# Install once per clone with `pre-commit install`. The gitleaks hook is
+# the local counterpart of the `gitleaks` CI job: secrets never reach a
+# commit, not just never reach main.
+repos:
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.28.0
+    hooks:
+      - id: gitleaks

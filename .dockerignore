@@ -18,3 +18,7 @@ coverage.xml
 feedback.jsonl
 learned_model.json
 tests
+.env*
+*.session.json
+*export*.json
+.gearvane/sessions/

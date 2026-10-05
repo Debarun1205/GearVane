@@ -235,6 +235,23 @@ describe('storage', () => {
     expect(hasOnboarded(hostile)).toBe(true);
     expect(loadAppearance(hostile)).toEqual(DEFAULT_APPEARANCE);
   });
+
+  it('migrates pre-rename waypoint.* keys forward once', () => {
+    const storage = memoryStorage({
+      'waypoint.appearance': JSON.stringify({
+        theme: 'ember',
+        background: 'flat',
+        accent: 'amber',
+        motion: 'calm',
+      }),
+      'waypoint.onboarded': 'yes',
+    });
+    expect(loadAppearance(storage)).toMatchObject({ theme: 'ember' });
+    expect(hasOnboarded(storage)).toBe(true);
+    // Migrated values persist under the new keys from then on.
+    expect(storage.data.get(APPEARANCE_STORAGE_KEY)).toContain('ember');
+    expect(storage.data.get(ONBOARDED_STORAGE_KEY)).toBe('yes');
+  });
 });
 
 describe('wiring', () => {

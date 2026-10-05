@@ -1,0 +1,16 @@
+# Gitleaks allowlist for GearVane.
+#
+# Every entry here is a verified false positive, not a secret:
+# - The redaction tests in packages/harness/test/session.test.ts deliberately
+#   contain fake credentials (a made-up bearer token, a stub PEM block) to
+#   prove the session store redacts them.
+# - `waypoint.webfs.v1` is a pre-rename localStorage key literal, renamed
+#   to gearvane.* long ago. It matched generic-api-key by shape, not content.
+# Real keys live in the OS keychain or the device vault, never in the repo.
+[allowlist]
+description = "Redaction-test fixtures and legacy storage-key literals"
+regexes = [
+  '''abcdefghijklmnopqrstuvwxyz''',
+  '''MIIEowIBAAKCAQEAx7Vv8QzY''',
+  '''waypoint\.webfs\.v1''',
+]

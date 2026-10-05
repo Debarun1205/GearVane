@@ -94,6 +94,13 @@ describe('key vault', () => {
     expect(hasKeys(storage)).toBe(false);
   });
 
+  it('migrates a pre-rename waypoint.keys vault forward once', () => {
+    const storage = memoryStorage();
+    storage.data.set('waypoint.keys', JSON.stringify({ OPENAI_API_KEY: 'sk-x' }));
+    expect(loadKeys(storage)).toEqual({ OPENAI_API_KEY: 'sk-x' });
+    expect(storage.data.get('gearvane.keys')).toContain('sk-x');
+  });
+
   it('never throws when storage is disabled', () => {
     const broken: KeyStorage = {
       getItem: () => {

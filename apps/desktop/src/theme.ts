@@ -292,7 +292,7 @@ export function applyAppearance(target: AppearanceTarget, appearance: Appearance
 /** Read the stored look, falling back field by field on anything odd. */
 export function loadAppearance(storage: AppearanceStorage): Appearance {
   try {
-    const raw = storage.getItem(APPEARANCE_STORAGE_KEY);
+    const raw = readWithLegacy(storage, APPEARANCE_STORAGE_KEY);
     if (!raw) return { ...DEFAULT_APPEARANCE };
     return resolveAppearance(JSON.parse(raw));
   } catch {
@@ -312,10 +312,31 @@ export function saveAppearance(storage: AppearanceStorage, appearance: Appearanc
 /** True once the onboarding dialog has been shown, however it was closed. */
 export function hasOnboarded(storage: AppearanceStorage): boolean {
   try {
-    return storage.getItem(ONBOARDED_STORAGE_KEY) === 'yes';
+    return readWithLegacy(storage, ONBOARDED_STORAGE_KEY) === 'yes';
   } catch {
     return true;
   }
+}
+
+/**
+ * One-time migration for pre-rename installs: the rename moved storage
+ * keys from `waypoint.*` to `gearvane.*`, stranding the look and the
+ * onboarding flag. When the new key is absent but the old one is present,
+ * the value moves forward once; afterwards the new key wins outright, so
+ * this is idempotent and never overwrites a newer choice.
+ */
+function readWithLegacy(storage: AppearanceStorage, key: string): string | null {
+  const current = storage.getItem(key);
+  if (current !== null) return current;
+  if (!key.startsWith('gearvane.')) return null;
+  const legacy = storage.getItem(key.replace('gearvane.', 'waypoint.'));
+  if (legacy === null) return null;
+  try {
+    storage.setItem(key, legacy);
+  } catch {
+    // The value below still applies for this launch without persisting.
+  }
+  return legacy;
 }
 
 export function markOnboarded(storage: AppearanceStorage): void {

@@ -367,6 +367,23 @@ jobs:
         if: runner.os != 'Linux'
         run: npm run test:e2e --workspace gearvane-app
 
+  # Secret scanning. Standalone on purpose: it must run even when the
+  # build jobs fail, and adding it to `package.needs` would reshape a
+  # check branch protection already requires.
+  gitleaks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Scan history for secrets
+        uses: gitleaks/gitleaks-action@v2
+        with:
+          config-path: .gitleaks.toml
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   package:
     runs-on: ubuntu-latest
     needs: [python, javascript, javascript-tests, lint, python-lint, cli-smoke, bundle, portability, e2e]

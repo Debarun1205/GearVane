@@ -69,6 +69,18 @@ export function loadKeys(storage: KeyStorage): Record<string, string> {
   let raw: string | null = null;
   try {
     raw = storage.getItem(STORAGE_KEY);
+    // Pre-rename installs kept the vault under `waypoint.keys`; move it
+    // forward once, like the appearance migration in theme.ts.
+    if (raw === null) {
+      raw = storage.getItem('waypoint.keys');
+      if (raw !== null) {
+        try {
+          storage.setItem(STORAGE_KEY, raw);
+        } catch {
+          // Applies for this launch without persisting.
+        }
+      }
+    }
   } catch {
     return {};
   }

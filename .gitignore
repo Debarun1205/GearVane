@@ -94,3 +94,7 @@ htmlcov/
 # Environment
 .env
 .env.local
+.env*
+*.session.json
+*export*.json
+.gearvane/sessions/
