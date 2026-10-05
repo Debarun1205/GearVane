@@ -590,10 +590,18 @@ function renderTierBadge(): void {
 
   // Preview while typing so the user sees the tier before committing.
   // A pin previews the pinned model, so the badge says what will run.
-  const preview = controller.preview(draft, [], modelPin || undefined);
-  els.tierBadge.textContent = preview.tier;
-  els.tierBadge.className = `tier-badge tier-${preview.tier}`;
-  els.tierBadge.title = `${preview.provider}/${preview.model} - ${preview.reasons.join('; ')}`;
+  // Previewing must never break typing: with an empty or broken config
+  // the router throws, and the composer has to keep working regardless.
+  try {
+    const preview = controller.preview(draft, [], modelPin || undefined);
+    els.tierBadge.textContent = preview.tier;
+    els.tierBadge.className = `tier-badge tier-${preview.tier}`;
+    els.tierBadge.title = `${preview.provider}/${preview.model} - ${preview.reasons.join('; ')}`;
+  } catch {
+    els.tierBadge.textContent = 'no model';
+    els.tierBadge.className = 'tier-badge tier-none';
+    els.tierBadge.title = 'No model tiers configured';
+  }
 }
 
 function renderSpend(): void {

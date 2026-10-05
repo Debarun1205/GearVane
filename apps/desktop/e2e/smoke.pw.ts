@@ -1,3 +1,7 @@
+import { readFile } from 'node:fs/promises';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 import { expect, test, type ConsoleMessage, type Page } from '@playwright/test';
 
 /**
@@ -170,6 +174,43 @@ test('ide mounts the device-local workspace without host bridges', async ({ page
   expect(errors).toEqual([]);
 });
 
+test('dashboard shell: sidebar, effort, and approval revise', async ({ page }) => {
+  const errors = trackErrors(page);
+  await page.goto('/');
+  await page.locator('#appearance-cancel').click();
+
+  // Eigent-style shell: nav, sessions, activity, skills, connectors.
+  await expect(page.locator('#sidebar')).toBeVisible();
+  await expect(page.locator('#nav-workspace')).toBeVisible();
+  await expect(page.locator('#session-new')).toBeVisible();
+  await expect(page.locator('#sessions-list')).toContainText('New chat');
+  await expect(page.locator('#activity-list')).toContainText('No runs yet.');
+  await expect(page.locator('#skills-list')).toContainText('run_command');
+  await expect(page.locator('#connectors-list')).toContainText('No servers yet.');
+  await expect(page.locator('#space-select')).toContainText('Untitled Space');
+
+  // Thinking effort persists across reloads. Onboarding does not return
+  // (the flag survives reload in the same context), so no dismiss needed.
+  await page.locator('#effort-select').selectOption('high');
+  await expect(page.locator('#run-readout')).toContainText('High');
+  await page.reload();
+  await expect(page.locator('#appearance-dialog')).toBeHidden();
+  await expect(page.locator('#effort-select')).toHaveValue('high');
+
+  // Ask-me-first intercepts a destructive prompt; Revise keeps the draft
+  // and sends nothing, so this needs no model and no network. Typed
+  // keystroke by keystroke so the composer draft follows along.
+  await page.locator('#input').pressSequentially('git push origin main');
+  await page.locator('#send').click();
+  await expect(page.locator('#approval-dialog')).toBeVisible();
+  await page.locator('#approval-revise').click();
+  await expect(page.locator('#approval-dialog')).toBeHidden();
+  await expect(page.locator('#input')).toHaveValue('git push origin main');
+  await expect(page.locator('#transcript .message')).toHaveCount(0);
+
+  expect(errors).toEqual([]);
+});
+
 test('models dialog lists the catalog without host bridges', async ({ page }) => {
   // No bridge, so no downloads: the catalog rows still render from
   // the bundled list, with the note saying where fetching works.
@@ -180,11 +221,18 @@ test('models dialog lists the catalog without host bridges', async ({ page }) =>
   await page.locator('#models-button').click();
   const dialog = page.locator('#models-dialog');
   await expect(dialog).toBeVisible();
-  // Fifty models in local tier. Hosted groups are absent here by
+  // The local section lists every catalog entry; the count derives from
+  // the catalog so it cannot go stale. Hosted groups are absent here by
   // design: the static server answers an empty config, so mid and
   // frontier have no providers at all. Their grouping is pinned in unit
   // tests and the Electron spec, which run against real configs.
-  await expect(page.locator('#models-body [data-tier="local"] .health-row')).toHaveCount(50);
+  const catalog = JSON.parse(
+    await readFile(
+      join(fileURLToPath(new URL('.', import.meta.url)), '..', 'src', 'models.json'),
+      'utf8',
+    ),
+  ) as Array<unknown>;
+  await expect(page.locator('#models-body [data-tier="local"] .health-row')).toHaveCount(catalog.length);
   await expect(page.locator('#models-body [data-tier="mid"]')).toHaveCount(0);
   await expect(page.locator('#models-body [data-tier="frontier"]')).toHaveCount(0);
   await expect(page.locator('#models-body')).toContainText('desktop app');

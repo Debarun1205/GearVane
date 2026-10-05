@@ -1,4 +1,4 @@
-import { mkdtemp, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -11,6 +11,8 @@ import {
   type Page,
 } from '@playwright/test';
 
+import { defaultConfig } from '../../../packages/core/src/defaults.js';
+
 /**
  * End-to-end test of the real desktop app: main process, preload bridge,
  * renderer, and the IDE (Monaco included) in one run.
@@ -22,6 +24,29 @@ import {
 
 const HERE = fileURLToPath(new URL('.', import.meta.url));
 const MAIN = join(HERE, '..', 'dist', 'main.js');
+
+/**
+ * Expected row counts derived from the catalog and the default config,
+ * so adding a model updates the catalog, the tiers, and these checks
+ * together instead of failing on a stale literal (the counts are pinned
+ * exactly in unit tests; here they only size the waits).
+ */
+async function expectedCounts(): Promise<{ local: number; mid: number; picker: number; frontier: number }> {
+  const catalog = JSON.parse(
+    await readFile(join(HERE, '..', 'src', 'models.json'), 'utf8'),
+  ) as Array<unknown>;
+  const config = defaultConfig();
+  const embedded = (tier: 'mid' | 'frontier'): number =>
+    config.tiers[tier].providers.find((provider) => provider.name === 'embedded')?.models.length ?? 0;
+  // Fresh profile, no keys: the picker lists Auto plus the catalog, and
+  // the dialog lists the catalog plus the keyless embedded tier rows.
+  return {
+    local: catalog.length,
+    mid: embedded('mid'),
+    frontier: embedded('frontier'),
+    picker: 1 + catalog.length,
+  };
+}
 
 let app: ElectronApplication | null = null;
 
@@ -130,11 +155,13 @@ test('models dialog reports on-disk weights as ready', async () => {
 
   await page.locator('#models-button').click();
   await expect(page.locator('#models-dialog')).toBeVisible();
-  // All 50 models appear in the local tier section.
-  // Mid tier shows 27 embedded models; frontier shows 25 embedded models.
-  await expect(page.locator('#models-body [data-tier="local"] .health-row')).toHaveCount(50);
-  await expect(page.locator('#models-body [data-tier="mid"] .health-row')).toHaveCount(27);
-  await expect(page.locator('#models-body [data-tier="frontier"] .health-row')).toHaveCount(25);
+  // Counts derive from the catalog and the default tiers above: the
+  // local section lists every catalog entry, mid and frontier list the
+  // keyless embedded rows a keyless profile can route to.
+  const counts = await expectedCounts();
+  await expect(page.locator('#models-body [data-tier="local"] .health-row')).toHaveCount(counts.local);
+  await expect(page.locator('#models-body [data-tier="mid"] .health-row')).toHaveCount(counts.mid);
+  await expect(page.locator('#models-body [data-tier="frontier"] .health-row')).toHaveCount(counts.frontier);
   await expect(page.locator('#models-body')).toContainText('no key needed');
   const body = await page.locator('#models-body').textContent();
   expect(body).toContain('ready');
@@ -172,8 +199,8 @@ test('chat model picker lists models, marks installed, and pins a choice', async
   await button.click();
   const panel = page.locator('#model-picker-host .model-picker-panel');
   await expect(panel).toBeVisible();
-  // Auto plus the fifty downloadable weights.
-  await expect(panel.locator('.model-picker-row')).toHaveCount(51);
+  // Auto plus every catalog entry (derived above, not a literal).
+  await expect(panel.locator('.model-picker-row')).toHaveCount((await expectedCounts()).picker);
 
   // The seeded weight carries the green installed marker.
   const seeded = panel.locator(
