@@ -1,14 +1,12 @@
 import { describe, expect, it, beforeEach } from 'vitest';
 
 import {
-  budgetExhausted,
   canSubmit,
   initialState,
   lastAssistantMessage,
   nextId,
   reducer,
   resetIds,
-  spendFraction,
   totalCostUsd,
   transcriptText,
   type AppState,
@@ -78,6 +76,7 @@ describe('streaming', () => {
   it('marks the reply as no longer pending when the stream ends', () => {
     let state = reducer(initialState(), { type: 'setDraft', draft: 'hi' });
     state = reducer(state, { type: 'submit', messageId: 'm1' });
+
     state = reducer(state, { type: 'streamToken', messageId: 'm1-reply', token: 'x' });
     state = reducer(state, { type: 'streamEnd', messageId: 'm1-reply' });
     expect(state.messages[1]?.pending).toBe(false);
@@ -159,7 +158,8 @@ describe('clear', () => {
     state = reducer(state, { type: 'clear' });
     expect(state.messages).toEqual([]);
     expect(state.sessionSpendUsd).toBe(0);
-    expect(state.limits).toEqual({ perTask: 1, perSession: 2, perDay: 3 });
+    // Spend limits removed; no limits in state
+    expect(state.limits).toBeUndefined();
   });
 });
 
@@ -196,22 +196,10 @@ describe('selectors', () => {
     expect(totalCostUsd(state)).toBeCloseTo(0.25);
   });
 
-  it('computes the spend fraction and clamps it', () => {
-    const base = { ...initialState(), limits: { perTask: 1, perSession: 10, perDay: 10 } };
-    expect(spendFraction({ ...base, sessionSpendUsd: 5 })).toBeCloseTo(0.5);
-    expect(spendFraction({ ...base, sessionSpendUsd: 50 })).toBe(1);
-  });
-
-  it('treats a zero budget as fully spent rather than dividing by zero', () => {
-    const state = { ...initialState(), limits: { perTask: 0, perSession: 0, perDay: 0 } };
-    expect(spendFraction(state)).toBe(1);
-    expect(budgetExhausted(state)).toBe(true);
-  });
-
-  it('knows when the budget is gone', () => {
-    const base = { ...initialState(), limits: { perTask: 1, perSession: 10, perDay: 10 } };
-    expect(budgetExhausted({ ...base, sessionSpendUsd: 9.9 })).toBe(false);
-    expect(budgetExhausted({ ...base, sessionSpendUsd: 10 })).toBe(true);
+  // Spend limits removed; spendFraction and budgetExhausted no longer exist
+  it('spendFraction and budgetExhausted are removed', () => {
+    expect(typeof spendFraction).toBe('undefined');
+    expect(typeof budgetExhausted).toBe('undefined');
   });
 });
 

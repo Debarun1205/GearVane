@@ -57,6 +57,41 @@ import {
   type ModelPicker,
   type ModelPickerEntry,
 } from './model-picker.js';
+import {
+  activeSession,
+  activeSpace,
+  createSession,
+  createSpace,
+  loadBoard,
+  renameSpace,
+  saveBoard,
+  sessionsInSpace,
+  snapshotSession,
+  switchSession,
+  type Board,
+} from './board.js';
+import {
+  DEFAULT_EFFORT,
+  EFFORTS,
+  effortById,
+  maxIterationsFor,
+  maxTokensFor,
+} from './effort.js';
+import {
+  needsApproval,
+  parseAgentMode,
+  parseApprovalMode,
+  type AgentMode,
+  type ApprovalMode,
+} from './approval.js';
+import {
+  addConnector,
+  loadConnectors,
+  parseMcpServerJson,
+  removeConnector,
+  toggleConnector,
+} from './connectors.js';
+import { SKILLS } from './skills.js';
 
 /** Capabilities the host may provide. Every one is optional. */
 interface HostBridge {
@@ -243,6 +278,41 @@ const els = {
   appearanceSave: byId<HTMLButtonElement>('appearance-save'),
   onboardingSteps: byId('onboarding-steps'),
   onboardingContent: byId('onboarding-content'),
+  sidebar: byId('sidebar'),
+  navWorkspace: byId<HTMLButtonElement>('nav-workspace'),
+  navFiles: byId<HTMLButtonElement>('nav-files'),
+  navAutomations: byId<HTMLButtonElement>('nav-automations'),
+  navDispatch: byId<HTMLButtonElement>('nav-dispatch'),
+  navConfiguration: byId<HTMLButtonElement>('nav-configuration'),
+  navHome: byId<HTMLButtonElement>('nav-home'),
+  sidebarToggle: byId<HTMLButtonElement>('sidebar-toggle'),
+  spaceSelect: byId<HTMLSelectElement>('space-select'),
+  spaceRename: byId<HTMLButtonElement>('space-rename'),
+  spaceDialog: byId<HTMLDialogElement>('space-dialog'),
+  spaceName: byId<HTMLInputElement>('space-name'),
+  spaceSave: byId<HTMLButtonElement>('space-save'),
+  sessionNew: byId<HTMLButtonElement>('session-new'),
+  sessionsList: byId('sessions-list'),
+  activityList: byId('activity-list'),
+  skillsList: byId('skills-list'),
+  connectorsList: byId('connectors-list'),
+  connectorAdd: byId<HTMLButtonElement>('connector-add'),
+  mcpDialog: byId<HTMLDialogElement>('mcp-dialog'),
+  mcpJson: byId<HTMLTextAreaElement>('mcp-json'),
+  mcpError: byId('mcp-error'),
+  mcpAdd: byId<HTMLButtonElement>('mcp-add'),
+  mcpCancel: byId<HTMLButtonElement>('mcp-cancel'),
+  agentModeSelect: byId<HTMLSelectElement>('agent-mode-select'),
+  approvalModeSelect: byId<HTMLSelectElement>('approval-mode-select'),
+  effortSelect: byId<HTMLSelectElement>('effort-select'),
+  runReadout: byId('run-readout'),
+  executionDialog: byId<HTMLDialogElement>('execution-dialog'),
+  executionTitle: byId('execution-title'),
+  executionBody: byId('execution-body'),
+  approvalDialog: byId<HTMLDialogElement>('approval-dialog'),
+  approvalText: byId('approval-text'),
+  approvalApprove: byId<HTMLButtonElement>('approval-approve'),
+  approvalRevise: byId<HTMLButtonElement>('approval-revise'),
 };
 
 function byId<T extends HTMLElement = HTMLElement>(id: string): T {
@@ -391,6 +461,7 @@ async function mountPicker(): Promise<void> {
     onSelect: (id) => {
       modelPin = id;
       saveModelPin();
+      syncRunReadout();
     },
   });
   els.modelPickerHost.append(instance.root);
@@ -570,15 +641,30 @@ async function send(): Promise<void> {
   const prompt = state.draft.trim();
   if (!prompt || state.busy || !controller) return;
 
+  // Ask-me-first: destructive prompts need an explicit approve. Revise
+  // leaves the draft in the composer and focuses it.
+  if (approvalMode === 'ask-first' && needsApproval(prompt)) {
+    const approved = await showApproval(prompt);
+    if (!approved) return;
+    if (!state.draft.trim() || state.busy || !controller) return;
+  }
+
   const messageId = nextId('turn');
   activeTaskId = messageId;
+  const excerpt = prompt.length > 60 ? `${prompt.slice(0, 60)}...` : prompt;
+  const activityId = addActivity({ kind: 'chat', title: excerpt, detail: 'sending' });
   dispatch({ type: 'submit', messageId });
+
+  // Chat + Builder fans the same prompt out to the headless IDE agent in
+  // parallel; both streams land in the Activity Hub.
+  if (agentMode === 'pair') void runBuilderHeadless(prompt);
 
   try {
     const result = await controller.submit({
       taskId: messageId,
       prompt,
       stream: true,
+      maxTokens: maxTokensFor(effortId),
       // A pinned model rides along; empty (Auto) omits it so the
       // router classifies the request as it always did.
       ...(modelPin ? { model: modelPin } : {}),
@@ -601,8 +687,18 @@ async function send(): Promise<void> {
 
     if (result.success) {
       dispatch({ type: 'succeeded', messageId, result });
+      updateActivity(activityId, {
+        status: 'done',
+        detail: result.tier + (result.model ? `/${result.model}` : ''),
+        tier: result.tier,
+        model: result.model,
+        costUsd: result.costUsd,
+        durationMs: result.durationMs,
+        content: result.content.slice(0, 4000),
+      });
     } else {
       dispatch({ type: 'failed', messageId, error: result.error ?? 'Request failed' });
+      updateActivity(activityId, { status: 'failed', detail: result.error ?? 'Request failed' });
     }
   } catch (error) {
     dispatch({
@@ -610,14 +706,29 @@ async function send(): Promise<void> {
       messageId,
       error: error instanceof Error ? error.message : String(error),
     });
+    updateActivity(activityId, {
+      status: 'failed',
+      detail: error instanceof Error ? error.message : String(error),
+    });
   } finally {
     activeTaskId = null;
     updateFromController();
     render();
+    persistCurrentSession();
+    renderBoard();
   }
 }
 
 function cancel(): void {
+  if (builderCancel) {
+    builderCancel();
+    builderCancel = undefined;
+    for (const activity of activities) {
+      if (activity.kind === 'builder' && activity.status === 'running') {
+        updateActivity(activity.id, { status: 'failed', detail: 'Cancelled' });
+      }
+    }
+  }
   if (!activeTaskId || !controller) return;
   controller.cancel(activeTaskId);
   dispatch({ type: 'streamEnd', messageId: `${activeTaskId}-reply` });
@@ -783,11 +894,13 @@ async function downloadModel(
   if (!bridge.models) return;
   button.disabled = true;
   button.textContent = 'Fetching…';
+  const downloadId = addActivity({ kind: 'download', title: entry.id, detail: '0%' });
   const stop = bridge.models.onProgress((progress) => {
     if (progress.id !== entry.id) return;
     const pct =
       progress.total > 0 ? Math.round((progress.done / progress.total) * 100) : 0;
     button.textContent = `${pct}%`;
+    updateActivity(downloadId, { detail: `${pct}%` });
   });
   try {
     const result = await bridge.models.fetch(entry.id);
@@ -797,10 +910,12 @@ async function downloadModel(
       ready.textContent = 'ready';
       ready.className = 'health-status-healthy';
       status.append(ready);
+      updateActivity(downloadId, { status: 'done', detail: 'ready' });
     } else {
       button.disabled = false;
       button.textContent = 'Retry';
       status.title = result.error ?? 'download failed';
+      updateActivity(downloadId, { status: 'failed', detail: result.error ?? 'download failed' });
     }
   } catch {
     button.disabled = false;
@@ -1065,6 +1180,7 @@ async function mountOnboardingPicker(host: HTMLElement): Promise<void> {
     onSelect: (id) => {
       modelPin = id;
       saveModelPin();
+      syncRunReadout();
     },
   });
   host.textContent = '';
@@ -1273,6 +1389,584 @@ function wireKeys(): void {
   });
 }
 
+// --- dashboard space ----------------------------------------------------------
+// Eigent-style shell: spaces holding sessions, an activity hub, skills,
+// connectors, and a composer command bar. Additive over the chat view:
+// every pre-existing element id stays, so existing e2e keeps passing.
+
+const deviceStore = {
+  getItem: (key: string): string | null => {
+    try {
+      return window.localStorage.getItem(key);
+    } catch {
+      return null;
+    }
+  },
+  setItem: (key: string, value: string): void => {
+    try {
+      window.localStorage.setItem(key, value);
+    } catch {
+      // Device-local and non-essential; skip it.
+    }
+  },
+};
+
+let board: Board = loadBoard(deviceStore);
+
+const EFFORT_STORAGE_KEY = 'gearvane.effort';
+const APPROVAL_STORAGE_KEY = 'gearvane.approvalMode';
+const AGENT_MODE_STORAGE_KEY = 'gearvane.agentMode';
+
+let effortId = deviceStore.getItem(EFFORT_STORAGE_KEY) ?? DEFAULT_EFFORT;
+if (!EFFORTS.some((effort) => effort.id === effortId)) effortId = DEFAULT_EFFORT;
+let approvalMode: ApprovalMode = parseApprovalMode(deviceStore.getItem(APPROVAL_STORAGE_KEY));
+let agentMode: AgentMode = parseAgentMode(deviceStore.getItem(AGENT_MODE_STORAGE_KEY));
+
+interface BuilderStepView {
+  iteration: number;
+  text: string;
+  calls: Array<{ name: string; ok: boolean }>;
+}
+
+interface Activity {
+  id: string;
+  kind: 'chat' | 'builder' | 'download';
+  title: string;
+  detail: string;
+  status: 'running' | 'done' | 'failed';
+  tier?: string;
+  model?: string;
+  costUsd?: number;
+  durationMs?: number;
+  content?: string;
+  steps?: BuilderStepView[];
+  startedAt: number;
+}
+
+let activities: Activity[] = [];
+let activityCounter = 0;
+
+function addActivity(init: Omit<Activity, 'id' | 'status' | 'startedAt'>): string {
+  activityCounter += 1;
+  const activity: Activity = {
+    ...init,
+    id: `activity-${Date.now().toString(36)}-${activityCounter.toString(36)}`,
+    status: 'running',
+    startedAt: Date.now(),
+  };
+  activities = [activity, ...activities].slice(0, 20);
+  renderActivity();
+  return activity.id;
+}
+
+function updateActivity(id: string, patch: Partial<Activity>): void {
+  activities = activities.map((activity) =>
+    activity.id === id ? { ...activity, ...patch } : activity,
+  );
+  renderActivity();
+}
+
+/** Readout under the composer: what the next run uses. */
+function syncRunReadout(): void {
+  const effort = effortById(effortId);
+  const model = modelPin || 'Auto';
+  els.runReadout.textContent = `${model} · ${effort.label}`;
+  els.runReadout.title =
+    `Model: ${model}; thinking effort ${effort.label} ` +
+    `(${effort.maxTokens} max tokens, ${effort.maxIterations} agent iterations)`;
+}
+
+function renderBoard(): void {
+  renderSpaces();
+  renderSessions();
+  renderActivity();
+  renderConnectors();
+  syncRunReadout();
+}
+
+function renderSpaces(): void {
+  els.spaceSelect.textContent = '';
+  for (const space of board.spaces) {
+    const option = document.createElement('option');
+    option.value = space.id;
+    option.textContent = space.name;
+    els.spaceSelect.append(option);
+  }
+  const fresh = document.createElement('option');
+  fresh.value = '__new__';
+  fresh.textContent = '+ New space';
+  els.spaceSelect.append(fresh);
+  els.spaceSelect.value = board.activeSpaceId;
+}
+
+function renderSessions(): void {
+  els.sessionsList.textContent = '';
+  const sessions = sessionsInSpace(board, board.activeSpaceId);
+  if (sessions.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'sidebar-empty';
+    empty.textContent = 'No sessions yet.';
+    els.sessionsList.append(empty);
+    return;
+  }
+  for (const session of sessions) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'sidebar-row' + (session.id === board.activeSessionId ? ' active' : '');
+    button.title = session.title;
+    const label = document.createElement('span');
+    label.className = 'row-label';
+    label.textContent = session.title;
+    button.append(label);
+    button.addEventListener('click', () => switchChatSession(session.id));
+    els.sessionsList.append(button);
+  }
+}
+
+function renderActivity(): void {
+  els.activityList.textContent = '';
+  if (activities.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'sidebar-empty';
+    empty.textContent = 'No runs yet.';
+    els.activityList.append(empty);
+    return;
+  }
+  for (const activity of activities.slice(0, 8)) {
+    const dot = document.createElement('span');
+    dot.className = `activity-dot ${activity.status}`;
+    dot.title = activity.status;
+
+    const detail = activity.detail ? ` - ${activity.detail}` : '';
+    const row = activity.steps || activity.content
+      ? document.createElement('button')
+      : document.createElement('div');
+    row.className = 'sidebar-row';
+    if (row instanceof HTMLButtonElement) {
+      row.type = 'button';
+      row.title = `${activity.title}${detail} (open run detail)`;
+      row.addEventListener('click', () => openExecution(activity.id));
+    } else {
+      row.title = `${activity.title}${detail}`;
+    }
+    const text = document.createElement('span');
+    text.className = 'row-label';
+    text.textContent = `${activity.title}${detail}`;
+    row.append(dot, text);
+    els.activityList.append(row);
+  }
+}
+
+function renderSkillsOnce(): void {
+  els.skillsList.textContent = '';
+  for (const skill of SKILLS) {
+    const row = document.createElement('div');
+    row.className = 'sidebar-row';
+    row.title = skill.blurb;
+    const label = document.createElement('span');
+    label.className = 'row-label';
+    label.textContent = skill.name;
+    row.append(label);
+    els.skillsList.append(row);
+  }
+}
+
+function renderConnectors(): void {
+  els.connectorsList.textContent = '';
+  const servers = loadConnectors(deviceStore);
+  if (servers.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'sidebar-empty';
+    empty.textContent = 'No servers yet.';
+    els.connectorsList.append(empty);
+    return;
+  }
+  for (const server of servers) {
+    const row = document.createElement('div');
+    row.className = 'sidebar-row';
+    row.title = server.url ?? server.command ?? server.name;
+
+    const label = document.createElement('span');
+    label.className = 'row-label';
+    label.textContent = `${server.name}${server.tools.length > 0 ? ` (${server.tools.length})` : ''}`;
+    if (!server.enabled) label.textContent += ' (off)';
+
+    const toggle = document.createElement('input');
+    toggle.type = 'checkbox';
+    toggle.className = 'connector-toggle';
+    toggle.checked = server.enabled;
+    toggle.setAttribute('aria-label', `Enable ${server.name}`);
+    toggle.addEventListener('change', () => {
+      toggleConnector(deviceStore, server.id);
+      renderConnectors();
+    });
+
+    const remove = document.createElement('button');
+    remove.type = 'button';
+    remove.className = 'ghost-button';
+    remove.textContent = 'Remove';
+    remove.setAttribute('aria-label', `Remove ${server.name}`);
+    remove.addEventListener('click', () => {
+      removeConnector(deviceStore, server.id);
+      renderConnectors();
+    });
+
+    row.append(label, toggle, remove);
+    els.connectorsList.append(row);
+  }
+}
+
+/** Snapshot the live transcript into its session and persist the board. */
+function persistCurrentSession(): void {
+  board = snapshotSession(board, board.activeSessionId, state.messages, state.draft);
+  saveBoard(deviceStore, board);
+}
+
+function restoreSession(session: { messages: AppState['messages']; draft: string }): void {
+  state = { ...state, messages: [...session.messages], draft: session.draft, busy: false, error: null };
+  els.input.value = session.draft;
+  autoGrow();
+  if (session.messages.length === 0 && !els.welcome.isConnected) {
+    els.transcript.querySelectorAll('.message').forEach((node) => node.remove());
+    els.transcript.prepend(els.welcome);
+  }
+  render();
+  renderBoard();
+}
+
+function switchChatSession(sessionId: string): void {
+  persistCurrentSession();
+  board = switchSession(board, sessionId);
+  const session = board.sessions.find((entry) => entry.id === sessionId);
+  if (session) restoreSession(session);
+  saveBoard(deviceStore, board);
+  els.input.focus();
+}
+
+function newChatSession(): void {
+  persistCurrentSession();
+  board = createSession(board, board.activeSpaceId);
+  restoreSession({ messages: [], draft: '' });
+  saveBoard(deviceStore, board);
+  els.input.focus();
+}
+
+function showChatHome(): void {
+  document.getElementById('ide-root')?.setAttribute('hidden', '');
+  document.querySelector('.app')?.removeAttribute('hidden');
+  for (const button of [els.navWorkspace, els.navFiles, els.navAutomations, els.navDispatch, els.navConfiguration]) {
+    button.classList.toggle('active', button === els.navWorkspace);
+  }
+  els.input.focus();
+}
+
+function markNav(button: HTMLButtonElement): void {
+  for (const entry of [els.navWorkspace, els.navFiles, els.navAutomations, els.navDispatch, els.navConfiguration]) {
+    entry.classList.toggle('active', entry === button);
+  }
+}
+
+let spaceDialogMode: 'rename' | 'create' = 'rename';
+
+function openSpaceDialog(mode: 'rename' | 'create'): void {
+  spaceDialogMode = mode;
+  els.spaceName.value = mode === 'rename' ? (activeSpace(board)?.name ?? '') : '';
+  if (typeof els.spaceDialog.showModal === 'function') els.spaceDialog.showModal();
+  window.setTimeout(() => els.spaceName.focus(), 0);
+}
+
+/**
+ * Approve-or-revise gate for destructive prompts.
+ *
+ * Resolves true on Approve, false on Revise, Escape, or dismiss. Revise
+ * leaves the draft in the composer and focuses it, so editing is one
+ * keystroke away.
+ */
+function showApproval(prompt: string): Promise<boolean> {
+  return new Promise<boolean>((resolve) => {
+    const excerpt = prompt.length > 220 ? `${prompt.slice(0, 220)}...` : prompt;
+    els.approvalText.textContent =
+      `This request looks destructive: "${excerpt}". ` +
+      'Approve to run it, or revise it first.';
+    els.approvalDialog.returnValue = '';
+    els.approvalDialog.addEventListener(
+      'close',
+      () => {
+        const approved = els.approvalDialog.returnValue === 'approve';
+        if (!approved) els.input.focus();
+        resolve(approved);
+      },
+      { once: true },
+    );
+    if (typeof els.approvalDialog.showModal === 'function') {
+      els.approvalDialog.showModal();
+    } else {
+      resolve(false);
+    }
+  });
+}
+
+/** Headless IDE agent for Chat + Builder mode: runs without mounting the IDE. */
+interface HeadlessAgent {
+  run(
+    prompt: string,
+    root: string,
+    options?: { maxIterations?: number; mode?: 'ask' | 'build'; model?: string },
+  ): Promise<{
+    ok: boolean;
+    result?: import('@gearvane/harness').AgentResult;
+    error?: string;
+    provider?: string;
+    model?: string;
+  }>;
+  cancel(): void;
+  onStep(handler: (step: import('@gearvane/harness').AgentStep) => void): () => void;
+}
+
+let headlessAgent: HeadlessAgent | undefined;
+let resolveHeadlessRoot: (() => Promise<string | null>) | undefined;
+let builderCancel: (() => void) | undefined;
+
+async function runBuilderHeadless(prompt: string): Promise<void> {
+  const agent = headlessAgent;
+  if (!agent) {
+    els.hint.textContent = 'Chat + Builder needs a workspace: open the IDE once, then retry.';
+    els.hint.classList.add('warn');
+    return;
+  }
+  const root = (await resolveHeadlessRoot?.()) ?? null;
+  if (!root) {
+    els.hint.textContent = 'Chat + Builder needs a workspace: open the IDE once, then retry.';
+    els.hint.classList.add('warn');
+    return;
+  }
+  if (approvalMode === 'ask-first' && needsApproval(prompt)) {
+    const approved = await showApproval(prompt);
+    if (!approved) return;
+  }
+  const excerpt = prompt.length > 60 ? `${prompt.slice(0, 60)}...` : prompt;
+  const id = addActivity({ kind: 'builder', title: excerpt, detail: 'starting' });
+  builderCancel = () => agent.cancel();
+  const steps: BuilderStepView[] = [];
+  const stop = agent.onStep((step) => {
+    steps.push({
+      iteration: step.iteration,
+      text: step.content.slice(0, 2000),
+      calls: step.toolCalls.map((call) => ({
+        name: call.name,
+        ok: step.results.find((entry) => entry.name === call.name)?.ok ?? false,
+      })),
+    });
+    updateActivity(id, { detail: `iteration ${step.iteration}`, steps: [...steps] });
+  });
+  try {
+    const response = await agent.run(prompt, root, {
+      maxIterations: maxIterationsFor(effortId),
+      mode: 'build',
+      ...(modelPin ? { model: modelPin } : {}),
+    });
+    if (response.ok && response.result) {
+      const driver = response.provider && response.model
+        ? `${response.provider}/${response.model}, `
+        : '';
+      updateActivity(id, {
+        status: 'done',
+        detail: `${driver}${response.result.iterations} iterations, ${response.result.stopReason}`,
+        model: response.model,
+        content: response.result.content.slice(0, 4000),
+        steps: [...steps],
+      });
+    } else {
+      updateActivity(id, { status: 'failed', detail: response.error ?? 'unknown problem' });
+    }
+  } catch (error) {
+    updateActivity(id, {
+      status: 'failed',
+      detail: error instanceof Error ? error.message : String(error),
+    });
+  } finally {
+    stop();
+    builderCancel = undefined;
+  }
+}
+
+/** Split-view run detail: run info beside its steps. */
+function openExecution(activityId: string): void {
+  const activity = activities.find((entry) => entry.id === activityId);
+  if (!activity) return;
+  els.executionTitle.textContent = `${activity.kind === 'chat' ? 'Chat' : activity.kind === 'builder' ? 'Builder' : 'Download'} run`;
+  els.executionBody.textContent = '';
+
+  const split = document.createElement('div');
+  split.className = 'execution-split';
+
+  const meta = document.createElement('div');
+  meta.className = 'execution-meta';
+  const rows: Array<[string, string]> = [
+    ['Status', activity.status],
+    ['Detail', activity.detail || '-'],
+  ];
+  if (activity.tier) rows.push(['Tier', activity.tier]);
+  if (activity.model) rows.push(['Model', activity.model]);
+  if (activity.costUsd !== undefined) rows.push(['Cost', `$${activity.costUsd.toFixed(4)}`]);
+  if (activity.durationMs !== undefined) rows.push(['Duration', `${activity.durationMs}ms`]);
+  for (const [label, value] of rows) {
+    const line = document.createElement('div');
+    line.textContent = `${label}: ${value}`;
+    meta.append(line);
+  }
+  split.append(meta);
+
+  const steps = document.createElement('div');
+  steps.className = 'execution-steps';
+  if (activity.steps) {
+    for (const step of activity.steps) {
+      const box = document.createElement('details');
+      box.className = 'execution-step';
+      const summary = document.createElement('summary');
+      const calls = step.calls.map((call) => `${call.name} (${call.ok ? 'ok' : 'failed'})`).join(', ');
+      summary.textContent = `Iteration ${step.iteration}${calls ? ` - ${calls}` : ''}`;
+      const body = document.createElement('pre');
+      body.textContent = step.text || '(no output)';
+      box.append(summary, body);
+      steps.append(box);
+    }
+  }
+  if (activity.content) {
+    const box = document.createElement('details');
+    box.className = 'execution-step';
+    box.open = true;
+    const summary = document.createElement('summary');
+    summary.textContent = 'Answer';
+    const body = document.createElement('pre');
+    body.textContent = activity.content;
+    box.append(summary, body);
+    steps.append(box);
+  }
+  if (steps.children.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'sidebar-empty';
+    empty.textContent = 'No steps recorded for this run yet.';
+    steps.append(empty);
+  }
+  split.append(steps);
+  els.executionBody.append(split);
+
+  if (typeof els.executionDialog.showModal === 'function') els.executionDialog.showModal();
+}
+
+function wireSpace(): void {
+  // Narrow screens start with the sidebar out of the way.
+  try {
+    if (window.matchMedia('(max-width: 48rem)').matches) {
+      document.querySelector('.shell')?.classList.add('sidebar-collapsed');
+    }
+  } catch {
+    // matchMedia is universal here; a failure only keeps the sidebar open.
+  }
+
+  els.sidebarToggle.addEventListener('click', () => {
+    document.querySelector('.shell')?.classList.toggle('sidebar-collapsed');
+  });
+
+  els.effortSelect.value = effortId;
+  els.approvalModeSelect.value = approvalMode;
+  els.agentModeSelect.value = agentMode;
+  els.effortSelect.addEventListener('change', () => {
+    effortId = els.effortSelect.value;
+    deviceStore.setItem(EFFORT_STORAGE_KEY, effortId);
+    syncRunReadout();
+  });
+  els.approvalModeSelect.addEventListener('change', () => {
+    approvalMode = parseApprovalMode(els.approvalModeSelect.value);
+    deviceStore.setItem(APPROVAL_STORAGE_KEY, approvalMode);
+  });
+  els.agentModeSelect.addEventListener('change', () => {
+    agentMode = parseAgentMode(els.agentModeSelect.value);
+    deviceStore.setItem(AGENT_MODE_STORAGE_KEY, agentMode);
+    syncRunReadout();
+  });
+
+  els.navHome.addEventListener('click', showChatHome);
+  els.navWorkspace.addEventListener('click', showChatHome);
+  els.navFiles.addEventListener('click', () => {
+    markNav(els.navFiles);
+    document.getElementById('ide-toggle')?.click();
+  });
+  els.navAutomations.addEventListener('click', () => {
+    markNav(els.navAutomations);
+    const dialog = document.getElementById('builder-dialog');
+    if (dialog instanceof HTMLDialogElement) dialog.showModal();
+  });
+  els.navDispatch.addEventListener('click', () => {
+    markNav(els.navDispatch);
+    els.input.focus();
+  });
+  els.navConfiguration.addEventListener('click', () => {
+    markNav(els.navConfiguration);
+    els.keysButton.click();
+  });
+
+  els.sessionNew.addEventListener('click', newChatSession);
+
+  els.spaceSelect.addEventListener('change', () => {
+    if (els.spaceSelect.value === '__new__') {
+      openSpaceDialog('create');
+      els.spaceSelect.value = board.activeSpaceId;
+      return;
+    }
+    persistCurrentSession();
+    const target = els.spaceSelect.value;
+    const newest = sessionsInSpace(board, target)[0];
+    if (newest) {
+      board = { ...board, activeSpaceId: target, activeSessionId: newest.id };
+      restoreSession(newest);
+      saveBoard(deviceStore, board);
+    }
+  });
+  els.spaceRename.addEventListener('click', () => openSpaceDialog('rename'));
+  els.spaceDialog.addEventListener('close', () => {
+    if (els.spaceDialog.returnValue !== 'save') return;
+    const name = els.spaceName.value.trim();
+    if (!name) return;
+    if (spaceDialogMode === 'create') {
+      persistCurrentSession();
+      board = createSpace(board, name);
+      const session = activeSession(board);
+      if (session) restoreSession({ messages: [], draft: '' });
+    } else {
+      board = renameSpace(board, board.activeSpaceId, name);
+    }
+    saveBoard(deviceStore, board);
+    renderBoard();
+  });
+
+  els.connectorAdd.addEventListener('click', () => {
+    els.mcpJson.value = '';
+    els.mcpError.hidden = true;
+    els.mcpError.textContent = '';
+    if (typeof els.mcpDialog.showModal === 'function') els.mcpDialog.showModal();
+  });
+  els.mcpCancel.addEventListener('click', () => els.mcpDialog.close());
+  els.mcpAdd.addEventListener('click', () => {
+    const parsed = parseMcpServerJson(els.mcpJson.value);
+    if (!parsed.ok) {
+      els.mcpError.textContent = parsed.error;
+      els.mcpError.hidden = false;
+      return;
+    }
+    addConnector(deviceStore, parsed.draft);
+    els.mcpDialog.close();
+    renderConnectors();
+  });
+
+  els.approvalApprove.addEventListener('click', () => els.approvalDialog.close('approve'));
+  els.approvalRevise.addEventListener('click', () => els.approvalDialog.close('revise'));
+
+  renderSkillsOnce();
+  renderBoard();
+}
+
 // --- wiring -----------------------------------------------------------------
 
 async function resolveConfig(): Promise<{
@@ -1423,6 +2117,18 @@ async function main(): Promise<void> {
   wireKeys();
   syncKeysButton();
 
+  // Dashboard shell: sidebar, spaces, sessions, activity, skills,
+  // connectors, and the composer command bar.
+  wireSpace();
+  {
+    const session = activeSession(board);
+    if (session && (session.messages.length > 0 || session.draft)) {
+      restoreSession(session);
+    } else {
+      renderBoard();
+    }
+  }
+
   if (error) {
     els.hint.textContent = `Config problem: ${error}`;
     els.hint.classList.add('warn');
@@ -1466,6 +2172,8 @@ async function main(): Promise<void> {
     els.input.value = '';
     autoGrow();
     render();
+    persistCurrentSession();
+    renderBoard();
   });
 
   els.input.addEventListener('input', () => {
@@ -1533,6 +2241,33 @@ async function main(): Promise<void> {
   const agent = bridge.agent ?? webBackend?.agent;
   const ideCapable = Boolean(ideHost && ideRoot && ideFs && agent);
 
+  // Headless agent for Chat + Builder mode: the same bridge the IDE view
+  // uses, without mounting the IDE. Runs land in the Activity Hub.
+  headlessAgent = agent
+    ? {
+        run: (prompt, root, options) =>
+          agent.run(prompt, root, { ...options, keys: loadKeys(keyStorage) }),
+        cancel: () => agent.cancel(),
+        onStep: (handler) => agent.onStep(handler),
+      }
+    : undefined;
+  resolveHeadlessRoot = async () => {
+    const stored = storedWorkspaceRoot();
+    if (stored) return stored;
+    if (bridge.workspaceRoot) {
+      try {
+        return await bridge.workspaceRoot();
+      } catch {
+        return null;
+      }
+    }
+    try {
+      return (await webBackend?.workspaceRoot()) ?? null;
+    } catch {
+      return null;
+    }
+  };
+
   if (!ideCapable && ideToggle instanceof HTMLButtonElement) {
     ideToggle.hidden = true;
   }
@@ -1578,6 +2313,11 @@ async function main(): Promise<void> {
                 confirmInstall: (entry) => pickerHandlers.confirmInstall(entry),
               }
             : undefined,
+          maxIterations: () => maxIterationsFor(effortId),
+          confirmDestructive: async (prompt) => {
+            if (approvalMode !== 'ask-first') return true;
+            return showApproval(prompt);
+          },
         });
         ideHost.textContent = '';
         view.mount(ideHost);

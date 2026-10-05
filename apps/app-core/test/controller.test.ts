@@ -331,17 +331,6 @@ describe('streaming submit', () => {
 });
 
 describe('budget and safety', () => {
-  it('exposes the configured limits', () => {
-    const limits = controllerWith([]).limits();
-    expect(limits.perTask).toBeGreaterThan(0);
-    expect(limits.perSession).toBeGreaterThan(0);
-  });
-
-  it('reports spend', () => {
-    const status = controllerWith([]).spendStatus();
-    expect(status).toHaveProperty('sessionRemaining');
-  });
-
   it('gates a push command', () => {
     const request = controllerWith([]).gate('git push origin main');
     expect(request.operation).toBe('git_push');

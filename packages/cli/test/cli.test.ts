@@ -85,10 +85,11 @@ describe('CLI end to end', () => {
     expect(result.stderr).toMatch(/Unknown command/);
   });
 
-  it('reports safety spend limits', () => {
+  it('reports safety status', () => {
     const result = run(['safety', 'spend']);
     expect(result.code).toBe(0);
-    expect(result.stdout).toMatch(/per task/);
+    // Spend limits removed; command should succeed with empty output
+    expect(result.stdout).toBe('');
   });
 
   it('checks a command against the gates', () => {

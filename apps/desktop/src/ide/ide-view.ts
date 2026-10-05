@@ -28,6 +28,7 @@ import {
   type InlineModel,
 } from './inline-complete.js';
 import type { FsEntry } from './fs-store.js';
+import { needsApproval } from '../approval.js';
 import {
   createModelPicker,
   type ModelPicker,
@@ -88,7 +89,7 @@ export interface AgentBridge {
   models(): Promise<IdeAgentModel[]>;
   run(
     prompt: string,
-    options?: { mode?: 'ask' | 'build'; model?: string },
+    options?: { maxIterations?: number; mode?: 'ask' | 'build'; model?: string },
   ): Promise<{
     ok: boolean;
     result?: AgentResult;
@@ -133,6 +134,16 @@ export interface IdeViewOptions {
   completion?: InlineModel;
   /** Model picker for the agent pane. Absent keeps the old select. */
   modelPicker?: IdeModelPickerOptions;
+  /**
+   * Thinking-effort budget for agent runs, read live on every run so the
+   * composer control applies without remounting the view.
+   */
+  maxIterations?: () => number;
+  /**
+   * Ask-me-first gate for destructive prompts. Resolves true to run, false
+   * to stay in the pane with the draft intact.
+   */
+  confirmDestructive?: (prompt: string) => Promise<boolean>;
   /** Called when the agent touches a file, so the editor can reveal it. */
   onAgentFile?: (path: string) => void;
 }
@@ -932,6 +943,13 @@ export class IdeView {
     const prompt = this.agentInput?.value.trim() ?? '';
     if (!prompt || this.agentRunning) return;
 
+    // Ask-me-first: destructive prompts need an explicit approve, wired by
+    // the host (the chat view uses the same approval dialog).
+    if (this.options.confirmDestructive && needsApproval(prompt)) {
+      const approved = await this.options.confirmDestructive(prompt);
+      if (!approved) return;
+    }
+
     this.setAgentRunning(true);
     if (this.agentLog) this.agentLog.textContent = '';
 
@@ -949,7 +967,11 @@ export class IdeView {
     try {
       const mode = this.agentMode?.value === 'ask' ? 'ask' : 'build';
       const selectedModel = this.agentModelPin || undefined;
-      const response = await this.options.agent.run(prompt, { mode, model: selectedModel });
+      const response = await this.options.agent.run(prompt, {
+        mode,
+        model: selectedModel,
+        ...(this.options.maxIterations ? { maxIterations: this.options.maxIterations() } : {}),
+      });
 
       if (!response.ok || !response.result) {
         this.agentLogLine(`Failed: ${response.error ?? 'unknown problem'}`, 'ide-agent-failed');

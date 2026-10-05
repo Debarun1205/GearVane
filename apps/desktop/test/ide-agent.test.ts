@@ -301,7 +301,15 @@ describe('the IDE view runs prompts', () => {
   });
 
   it('sends the selected model with the prompt', () => {
-    expect(view).toMatch(/this\.options\.agent\.run\(prompt, \{ mode, model: selectedModel \}\)/);
+    expect(view).toMatch(/this\.options\.agent\.run\(prompt, \{/);
+    expect(view).toMatch(/mode,\s*$/m);
+    expect(view).toMatch(/model: selectedModel,/);
+    expect(view).toMatch(/maxIterations/);
+  });
+
+  it('gates destructive prompts behind the ask-me-first confirm', () => {
+    expect(view).toMatch(/needsApproval\(prompt\)/);
+    expect(view).toMatch(/confirmDestructive/);
   });
 
   it('names the driving model when the run finishes', () => {
@@ -659,7 +667,9 @@ describe('agent modes', () => {
 
   it('passes the selected mode and model from the prompt box to the bridge', () => {
     expect(view).toMatch(/this\.agentMode\?\.value === 'ask' \? 'ask' : 'build'/);
-    expect(view).toMatch(/this\.options\.agent\.run\(prompt, \{ mode, model: selectedModel \}\)/);
+    expect(view).toMatch(/this\.options\.agent\.run\(prompt, \{/);
+    expect(view).toMatch(/model: selectedModel,/);
+    expect(view).toMatch(/maxIterations/);
   });
 });
 
