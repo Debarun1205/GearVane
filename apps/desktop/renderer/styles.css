@@ -1330,3 +1330,305 @@ html[data-motion='calm'] *::after {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* --- dashboard shell (Eigent-style space layout) --------------------------- */
+
+.shell {
+  display: flex;
+  height: 100vh;
+  min-height: 0;
+}
+
+.sidebar {
+  width: 15rem;
+  flex-shrink: 0;
+  overflow-y: auto;
+  border-right: 1px solid var(--border);
+  background: var(--bg-raised);
+  padding: 0.85rem 0.7rem 1.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.shell.sidebar-collapsed .sidebar {
+  display: none;
+}
+
+.sidebar-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.sidebar-heading {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+  margin: 0 0 0.2rem;
+  padding: 0 0.5rem;
+}
+
+.sidebar-button {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  font-size: 0.85rem;
+  color: var(--text);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: calc(var(--radius) - 3px);
+  padding: 0.4rem 0.5rem;
+  cursor: pointer;
+}
+
+.sidebar-button:hover {
+  background: var(--bg-soft);
+}
+
+.sidebar-button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.sidebar-button.active {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+}
+
+.sidebar-button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.sidebar-tag {
+  margin-left: auto;
+  font-size: 0.65rem;
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.05rem 0.45rem;
+}
+
+.sidebar-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.sidebar-row {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: calc(var(--radius) - 3px);
+  padding: 0.35rem 0.5rem;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  font-family: inherit;
+}
+
+div.sidebar-row {
+  cursor: default;
+}
+
+button.sidebar-row:hover {
+  background: var(--bg-soft);
+}
+
+button.sidebar-row:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+button.sidebar-row.active {
+  color: var(--text);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.sidebar-row .row-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebar-empty {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  padding: 0 0.5rem;
+}
+
+.activity-dot {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+}
+
+.activity-dot.running {
+  background: var(--tier-mid);
+  border-color: var(--tier-mid);
+}
+
+.activity-dot.done {
+  background: var(--tier-local);
+  border-color: var(--tier-local);
+}
+
+.activity-dot.failed {
+  background: var(--danger);
+  border-color: var(--danger);
+}
+
+.connector-toggle {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.shell .app {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Breadcrumb space picker in the top bar. */
+.crumb-button {
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  padding: 0.2rem 0.3rem;
+}
+
+.crumb-button:hover {
+  color: var(--accent);
+}
+
+.crumb-button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.crumb-sep {
+  color: var(--text-dim);
+}
+
+.crumb-select {
+  font: inherit;
+  font-size: 0.82rem;
+  color: var(--text);
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.2rem 0.35rem;
+  max-width: 12rem;
+}
+
+/* Composer command bar: agent mode, approval, effort, readout. */
+.composer-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  flex-wrap: wrap;
+  margin-top: 0.5rem;
+  font-size: 0.78rem;
+  color: var(--text-dim);
+}
+
+.composer-control {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.composer-control select {
+  font: inherit;
+  font-size: 0.78rem;
+  color: var(--text);
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.2rem 0.35rem;
+}
+
+.run-readout {
+  margin-left: auto;
+  color: var(--text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Execution dialog: split run info and steps. */
+.execution-split {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr;
+  gap: 0.9rem;
+}
+
+.execution-meta {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.execution-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  max-height: 50vh;
+  overflow-y: auto;
+}
+
+.execution-step {
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius) - 3px);
+  padding: 0.45rem 0.6rem;
+  font-size: 0.8rem;
+}
+
+.execution-step summary {
+  cursor: pointer;
+  color: var(--text);
+}
+
+.execution-step pre {
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  margin: 0.4rem 0 0;
+  max-height: 12rem;
+  overflow-y: auto;
+}
+
+@media (max-width: 48rem) {
+  .sidebar {
+    position: absolute;
+    z-index: 50;
+    height: 100vh;
+    box-shadow: 0 0 2rem rgb(0 0 0 / 0.5);
+  }
+  .shell:not(.sidebar-collapsed) .sidebar {
+    display: flex;
+  }
+  .execution-split {
+    grid-template-columns: 1fr;
+  }
+}

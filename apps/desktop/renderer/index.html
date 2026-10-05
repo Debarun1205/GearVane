@@ -38,11 +38,54 @@
       <div id="ide" class="ide"></div>
     </div>
 
-    <div class="app">
+    <div class="shell">
+      <aside id="sidebar" class="sidebar" aria-label="Workspace navigation">
+        <nav class="sidebar-section" aria-label="Primary">
+          <button id="nav-workspace" class="sidebar-button" type="button">Workspace</button>
+          <button id="nav-files" class="sidebar-button" type="button">
+            Files <span class="sidebar-tag">Local</span>
+          </button>
+          <button id="nav-automations" class="sidebar-button" type="button">Automations</button>
+          <button id="nav-dispatch" class="sidebar-button" type="button">Dispatch</button>
+          <button id="nav-configuration" class="sidebar-button" type="button">Configuration</button>
+        </nav>
+
+        <div class="sidebar-section">
+          <button id="session-new" class="sidebar-button" type="button">+ New</button>
+        </div>
+
+        <div class="sidebar-section">
+          <h2 class="sidebar-heading">Sessions</h2>
+          <div id="sessions-list" class="sidebar-list"></div>
+        </div>
+
+        <div class="sidebar-section">
+          <h2 class="sidebar-heading">Activity</h2>
+          <div id="activity-list" class="sidebar-list"></div>
+        </div>
+
+        <div class="sidebar-section">
+          <h2 class="sidebar-heading">Skills</h2>
+          <div id="skills-list" class="sidebar-list"></div>
+        </div>
+
+        <div class="sidebar-section">
+          <h2 class="sidebar-heading">Connectors</h2>
+          <div id="connectors-list" class="sidebar-list"></div>
+          <button id="connector-add" class="sidebar-button" type="button">+ Add MCP Server</button>
+        </div>
+      </aside>
+
+      <div class="app">
       <header class="topbar">
         <div class="brand">
+          <button id="sidebar-toggle" class="ghost-button" type="button" aria-label="Toggle sidebar">Menu</button>
           <span class="brand-mark" aria-hidden="true"></span>
           <span class="brand-name">GearVane</span>
+          <button id="nav-home" class="crumb-button" type="button">Home</button>
+          <span class="crumb-sep" aria-hidden="true">/</span>
+          <select id="space-select" class="crumb-select" aria-label="Space"></select>
+          <button id="space-rename" class="ghost-button" type="button">Rename</button>
         </div>
 
         <div class="topbar-meta">
@@ -91,7 +134,33 @@
         <p class="composer-hint" id="hint">
           Local models are free. Hosted models use keys from your environment or the Keys dialog.
         </p>
+        <div class="composer-bar">
+          <label class="composer-control">Agent
+            <select id="agent-mode-select" aria-label="Agent mode">
+              <option value="single">Single Agent</option>
+              <option value="pair">Chat + Builder</option>
+            </select>
+          </label>
+          <label class="composer-control">Approval
+            <select id="approval-mode-select" aria-label="Approval mode">
+              <option value="ask-first">Ask me first</option>
+              <option value="auto">Auto-approve</option>
+            </select>
+          </label>
+          <label class="composer-control">Effort
+            <select id="effort-select" aria-label="Thinking effort">
+              <option value="low">Low</option>
+              <option value="default">Default</option>
+              <option value="medium">Medium</option>
+              <option value="high">High</option>
+              <option value="extra">Extra High</option>
+              <option value="max">Max</option>
+            </select>
+          </label>
+          <span id="run-readout" class="run-readout"></span>
+        </div>
       </footer>
+      </div>
     </div>
 
     <dialog id="builder-dialog" class="dialog dialog-wide" aria-label="Site builder">
@@ -131,6 +200,53 @@
           Download and use
         </button>
       </form>
+    </dialog>
+
+    <dialog id="space-dialog" class="dialog" aria-label="Space">
+      <h2>Space</h2>
+      <p class="builder-help">Spaces hold sessions. Switching never touches models or keys.</p>
+      <label class="builder-label">Name
+        <input id="space-name" class="builder-input" type="text" maxlength="60" />
+      </label>
+      <form method="dialog" class="builder-actions">
+        <button class="ghost-button" type="submit" value="cancel">Cancel</button>
+        <button id="space-save" class="send-button" type="submit" value="save">Save</button>
+      </form>
+    </dialog>
+
+    <dialog id="execution-dialog" class="dialog dialog-wide" aria-label="Run detail">
+      <h2 id="execution-title">Run</h2>
+      <div id="execution-body" class="health-body"></div>
+      <form method="dialog">
+        <button class="ghost-button" type="submit">Close</button>
+      </form>
+    </dialog>
+
+    <dialog id="approval-dialog" class="dialog" aria-label="Approve run">
+      <h2>Approve run</h2>
+      <p class="builder-help" id="approval-text"></p>
+      <div class="builder-actions">
+        <button id="approval-revise" class="ghost-button" type="button">Revise</button>
+        <button id="approval-approve" class="send-button" type="button">Approve</button>
+      </div>
+    </dialog>
+
+    <dialog id="mcp-dialog" class="dialog" aria-label="Add MCP server">
+      <h2>Add MCP server</h2>
+      <p class="builder-help">
+        Paste one server as JSON with a name plus a url or a command, and an
+        optional tools array. Servers are stored on this device and listed
+        under Connectors; built-in skills run locally, custom servers do not
+        grant the agent new tools yet.
+      </p>
+      <label class="builder-label">Server JSON
+        <textarea id="mcp-json" class="builder-input" rows="6"></textarea>
+      </label>
+      <p class="builder-help" id="mcp-error" hidden></p>
+      <div class="builder-actions">
+        <button id="mcp-cancel" class="ghost-button" type="button">Cancel</button>
+        <button id="mcp-add" class="send-button" type="button">Add server</button>
+      </div>
     </dialog>
 
     <dialog id="keys-dialog" class="dialog" aria-label="API keys">
