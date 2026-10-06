@@ -1,0 +1,46 @@
+name: Link check
+
+# The download links on the site and in the README are the one place where a
+# rename or a re-cut release silently breaks everything a visitor came for.
+#
+# A unit test cannot catch this on its own: the asset names are not derivable
+# from the repository. v0.3.0 was built before the Waypoint-to-GearVane rename,
+# so every published asset still carries the old product name, and the links
+# were written from package.json instead of from the release. That left seven
+# of eight buttons as 404s while tests stayed green, because the test compared
+# the links against a list derived from the same wrong source.
+#
+# So this asks GitHub what is actually published. It runs on a schedule rather
+# than on every PR, because a link rot is not a code change and a network
+# check on every push is a slow, flaky gate. It also runs on demand and on
+# release publication, which is the moment a name is most likely to move.
+
+on:
+  schedule:
+    # Mondays, 06:17 UTC. An off-round minute keeps it off the top-of-hour
+    # stampede every scheduled workflow lands on.
+    - cron: '17 6 * * 1'
+  workflow_dispatch:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Verify every download link resolves
+        # Reads the published asset names from the releases API and compares
+        # them against what the README and site link to.
+        run: node tools/check-release-links.mjs
+
+      - name: Verify the catalog still matches the app
+        run: node tools/gen-site-catalog.mjs --check

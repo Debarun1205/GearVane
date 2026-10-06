@@ -213,40 +213,50 @@ describe('about', () => {
 });
 
 describe('downloads', () => {
+  // The asset names published on the v0.3.0 tag, read from the releases API.
+  //
+  // They say Waypoint because v0.3.0 was built before the rename: the
+  // productName in package.json changed afterwards, but these artifacts were
+  // already cut, so the filenames still carry the old name. The previous
+  // version of this list was written from package.json instead of from the
+  // release, which meant it asserted GearVane-* assets that never existed -
+  // and every download button but the APK was a 404, with this test green
+  // throughout. Do not "correct" these back to the product name.
+  const published = [
+    'Waypoint.Setup.0.3.0.exe',
+    'Waypoint.0.3.0.exe',
+    'Waypoint-0.3.0.dmg',
+    'Waypoint-0.3.0-arm64.dmg',
+    'Waypoint-0.3.0.AppImage',
+    'waypoint-app_0.3.0_amd64.deb',
+    'waypoint-app_0.3.0_arm64.deb',
+    'app-debug.apk',
+  ];
+
+  function linkedAssets(): string[] {
+    return [
+      ...html.matchAll(/\/releases\/download\/v[\d.]+\/([^"]+)"/g),
+    ].map((match) => match[1] ?? '');
+  }
+
   it('links every platform straight to a real release asset', () => {
     // Regression: these pointed at the generic releases page, so a visitor
     // had to find the right file themselves. Now each card resolves to an
     // actual artifact on a versioned tag.
-    const assetLinks = html.match(
-      /href="https:\/\/github\.com\/Debarun1205\/GearVane\/releases\/download\/v[\d.]+\/[^"]+"/g,
-    ) ?? [];
+    const links = linkedAssets();
 
-    expect(assetLinks.length).toBeGreaterThanOrEqual(4);
-    for (const link of assetLinks) {
+    expect(links.length).toBeGreaterThanOrEqual(4);
+    for (const name of links) {
       // A link to a directory or the tag page is not a download.
-      expect(link).toMatch(/\.(exe|AppImage|dmg|apk|deb|vsix)"/);
+      expect(name).toMatch(/\.(exe|AppImage|dmg|apk|deb|vsix)$/);
+      // The guard that was missing: the filename must be one the tag actually
+      // publishes, not merely one that looks right.
+      expect(published, `link to unpublished asset: ${name}`).toContain(name);
     }
   });
 
   it('covers every platform the release publishes', () => {
-    // The exact asset names from the v0.3.0 release. If a future release
-    // renames one of these, this test is what should notice.
-    const published = [
-      'GearVane.Setup.0.3.0.exe',
-      'GearVane.0.3.0.exe',
-      'GearVane-0.3.0.dmg',
-      'GearVane-0.3.0-arm64.dmg',
-      'GearVane-0.3.0.AppImage',
-      'gearvane-app_0.3.0_amd64.deb',
-      'gearvane-app_0.3.0_arm64.deb',
-      'app-debug.apk',
-    ];
-
-    const linked = new Set(
-      [...html.matchAll(/\/releases\/download\/v[\d.]+\/([^"]+)"/g)].map(
-        (match) => match[1] ?? '',
-      ),
-    );
+    const linked = new Set(linkedAssets());
 
     // Every platform gets a link; not every artifact needs its own button,
     // but nothing may be linked that was never published.
@@ -258,6 +268,15 @@ describe('downloads', () => {
     for (const platform of ['.exe', '.AppImage', '.dmg', '.apk']) {
       expect([...linked].some((asset) => asset.endsWith(platform))).toBe(true);
     }
+  });
+
+  it('never links a product name the tag does not publish', () => {
+    // The specific failure, pinned so the next rename cannot reintroduce it:
+    // a link built from the current productName, against artifacts cut before
+    // the rename, is a 404 that a filename-shaped test will happily accept.
+    const links = linkedAssets();
+    const renamed = links.filter((name) => /^gearvane[-._]/i.test(name));
+    expect(renamed).toEqual([]);
   });
 
   it('opens external links safely', () => {

@@ -81,15 +81,15 @@ Download a build for your platform from the
 
 | Platform | File | Size |
 |----------|------|------|
-| Windows x64 (installer) | `GearVane.Setup.0.3.0.exe` | 93 MB |
-| Windows x64 (portable) | `GearVane.0.3.0.exe` | 93 MB |
-| macOS Intel | `GearVane-0.3.0.dmg` | 118 MB |
-| macOS Apple Silicon | `GearVane-0.3.0-arm64.dmg` | 113 MB |
-| Linux x64 (AppImage) | `GearVane-0.3.0.AppImage` | 123 MB |
-| Linux x64 (deb) | `gearvane-app_0.3.0_amd64.deb` | 83 MB |
-| Linux arm64 (deb) | `gearvane-app_0.3.0_arm64.deb` | 78 MB |
+| Windows x64 (installer) | `Waypoint.Setup.0.3.0.exe` | 93 MB |
+| Windows x64 (portable) | `Waypoint.0.3.0.exe` | 93 MB |
+| macOS Intel | `Waypoint-0.3.0.dmg` | 118 MB |
+| macOS Apple Silicon | `Waypoint-0.3.0-arm64.dmg` | 113 MB |
+| Linux x64 (AppImage) | `Waypoint-0.3.0.AppImage` | 123 MB |
+| Linux x64 (deb) | `waypoint-app_0.3.0_amd64.deb` | 83 MB |
+| Linux arm64 (deb) | `waypoint-app_0.3.0_arm64.deb` | 78 MB |
 | Android (debug APK) | `app-debug.apk` | 5.1 MB |
-| VS Code | `gearvane-0.3.0.vsix` | 16 KB |
+| VS Code | `waypoint-0.3.0.vsix` | 16 KB |
 
 Linux notes: the AppImage is x64 only, because arm64 AppImages cannot be
 cross-built reliably on an x64 runner. The `.deb` covers both architectures.
@@ -109,7 +109,7 @@ SmartScreen will warn on first launch. See
 cd apps/vscode-extension
 npm install && npm run build
 npx @vscode/vsce package
-code --install-extension gearvane-0.3.0.vsix
+code --install-extension waypoint-0.3.0.vsix
 ```
 
 ### The CLI
