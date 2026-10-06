@@ -277,4 +277,12 @@ Alpha, and honest about it:
 
 ## Licence
 
-MIT
+GearVane is MIT licensed ([LICENSE](LICENSE)).
+
+Model weights are **not** covered by that licence. Each keeps its own terms —
+MIT, Apache-2.0, Llama Community, Gemma, NVIDIA Open Model, Qwen, Falcon, and
+others — and
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) lists all 50 catalog weights
+with their licence and a link to it. Only Apache-2.0 and MIT weights ship in
+the installer; everything else is download-on-request, and the app shows the
+licence beside the download before you accept it.

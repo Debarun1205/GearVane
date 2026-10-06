@@ -1063,6 +1063,18 @@ html[data-bg='grid'] .ambience::after {
   border-bottom: 1px solid var(--border);
 }
 
+/* The license of a downloadable weight, shown beside its name. */
+.models-license {
+  color: var(--text-dim);
+  font-size: 0.78rem;
+  text-decoration: none;
+}
+
+.models-license:hover {
+  color: var(--accent-dim);
+  text-decoration: underline;
+}
+
 .health-status-healthy {
   color: var(--tier-local);
 }

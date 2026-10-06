@@ -342,6 +342,19 @@ describe('loopback hardening', () => {
     expect(hostAllowed({ host: '127.0.0.1:11439' })).toBe(true);
     expect(hostAllowed({ host: 'localhost' })).toBe(true);
     expect(hostAllowed({})).toBe(false);
+    // A repeated header arrives as an array; it cannot name loopback.
+    expect(hostAllowed({ host: ['127.0.0.1', 'evil.example.com'] })).toBe(false);
+  });
+
+  it('allows only an absent, opaque, or loopback Origin', () => {
+    // Absence is the non-browser client; `null` is a file:// renderer.
+    expect(originAllowed({})).toBe(true);
+    expect(originAllowed({ origin: 'null' })).toBe(true);
+    expect(originAllowed({ origin: 'http://127.0.0.1:11439' })).toBe(true);
+    expect(originAllowed({ origin: 'http://localhost:11439' })).toBe(true);
+    expect(originAllowed({ origin: 'https://evil.example.com' })).toBe(false);
+    // A malformed repeated Origin fails closed rather than guessing.
+    expect(originAllowed({ origin: ['http://127.0.0.1', 'https://evil.example.com'] })).toBe(false);
   });
 
   it('rejects a web-page Origin and accepts an opaque one', async () => {

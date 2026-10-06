@@ -5,7 +5,9 @@
     "url": "https://huggingface.co/Qwen/Qwen2.5-Coder-0.5B-Instruct-GGUF/resolve/main/qwen2.5-coder-0.5b-instruct-q4_0.gguf",
     "bytes": 428730240,
     "use": "Code: typos, refactors, boilerplate",
-    "bundled": true
+    "bundled": true,
+    "license": "Apache-2.0",
+    "licenseUrl": "https://www.apache.org/licenses/LICENSE-2.0"
   },
   {
     "id": "smollm2-360m-instruct.q4_k_m",
@@ -13,7 +15,9 @@
     "url": "https://huggingface.co/QuantFactory/SmolLM2-360M-Instruct-GGUF/resolve/main/SmolLM2-360M-Instruct.Q4_K_M.gguf",
     "bytes": 270590592,
     "use": "Light chat and Q&A",
-    "bundled": true
+    "bundled": true,
+    "license": "Apache-2.0",
+    "licenseUrl": "https://www.apache.org/licenses/LICENSE-2.0"
   },
   {
     "id": "qwen2.5-1.5b-instruct-q4_0",
@@ -21,7 +25,9 @@
     "url": "https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/qwen2.5-1.5b-instruct-q4_0.gguf",
     "bytes": 1066227232,
     "use": "Stronger all-rounder",
-    "bundled": false
+    "bundled": false,
+    "license": "Apache-2.0",
+    "licenseUrl": "https://www.apache.org/licenses/LICENSE-2.0"
   },
   {
     "id": "llama-3.2-1b-instruct-q4_k_m",
@@ -29,7 +35,9 @@
     "url": "https://huggingface.co/bartowski/Llama-3.2-1B-Instruct-GGUF/resolve/main/Llama-3.2-1B-Instruct-Q4_K_M.gguf",
     "bytes": 807694464,
     "use": "Light chat",
-    "bundled": false
+    "bundled": false,
+    "license": "Llama 3.2 Community License",
+    "licenseUrl": "https://github.com/meta-llama/llama-models/blob/main/models/llama3_2/LICENSE"
   },
   {
     "id": "llama-3.2-3b-instruct-q4_k_m",
@@ -37,7 +45,9 @@
     "url": "https://huggingface.co/bartowski/Llama-3.2-3B-Instruct-GGUF/resolve/main/Llama-3.2-3B-Instruct-Q4_K_M.gguf",
     "bytes": 2019377696,
     "use": "Capable chat, needs RAM",
-    "bundled": false
+    "bundled": false,
+    "license": "Llama 3.2 Community License",
+    "licenseUrl": "https://github.com/meta-llama/llama-models/blob/main/models/llama3_2/LICENSE"
   },
   {
     "id": "gemma-2-2b-it-q4_k_m",
@@ -45,7 +55,9 @@
     "url": "https://huggingface.co/bartowski/gemma-2-2b-it-GGUF/resolve/main/gemma-2-2b-it-Q4_K_M.gguf",
     "bytes": 1708582752,
     "use": "Chat",
-    "bundled": false
+    "bundled": false,
+    "license": "Gemma License",
+    "licenseUrl": "https://ai.google.dev/gemma/terms"
   },
   {
     "id": "deepseek-r1-distill-qwen-1.5b-q4_k_m",
@@ -53,7 +65,9 @@
     "url": "https://huggingface.co/bartowski/DeepSeek-R1-Distill-Qwen-1.5B-GGUF/resolve/main/DeepSeek-R1-Distill-Qwen-1.5B-Q4_K_M.gguf",
     "bytes": 1117320800,
     "use": "Step-by-step reasoning",
-    "bundled": false
+    "bundled": false,
+    "license": "MIT",
+    "licenseUrl": "https://opensource.org/license/mit"
   },
   {
     "id": "qwen2.5-coder-1.5b-instruct-q4_0",
@@ -61,7 +75,9 @@
     "url": "https://huggingface.co/Qwen/Qwen2.5-Coder-1.5B-Instruct-GGUF/resolve/main/qwen2.5-coder-1.5b-instruct-q4_0.gguf",
     "bytes": 1066227264,
     "use": "Stronger coder",
-    "bundled": false
+    "bundled": false,
+    "license": "Apache-2.0",
+    "licenseUrl": "https://www.apache.org/licenses/LICENSE-2.0"
   },
   {
     "id": "qwen2.5-coder-3b-instruct-q4_0",
@@ -69,7 +85,9 @@
     "url": "https://huggingface.co/Qwen/Qwen2.5-Coder-3B-Instruct-GGUF/resolve/main/qwen2.5-coder-3b-instruct-q4_0.gguf",
     "bytes": 1997879744,
     "use": "Strongest small coder, needs RAM",
-    "bundled": false
+    "bundled": false,
+    "license": "Qwen Research License",
+    "licenseUrl": "https://huggingface.co/Qwen/Qwen2.5-Coder-3B-Instruct/blob/main/LICENSE"
   },
   {
     "id": "smollm2-1.7b-instruct.q4_k_m",
@@ -77,7 +95,9 @@
     "url": "https://huggingface.co/QuantFactory/SmolLM2-1.7B-Instruct-GGUF/resolve/main/SmolLM2-1.7B-Instruct.Q4_K_M.gguf",
     "bytes": 1055609536,
     "use": "Bigger chat companion",
-    "bundled": false
+    "bundled": false,
+    "license": "Apache-2.0",
+    "licenseUrl": "https://www.apache.org/licenses/LICENSE-2.0"
   },
   {
     "id": "qwen3-0.6b.q4_k_m",
@@ -85,7 +105,9 @@
     "url": "https://huggingface.co/QuantFactory/Qwen3-0.6B-GGUF/resolve/main/Qwen3-0.6B.Q4_K_M.gguf",
     "bytes": 484220000,
     "use": "Newest tiny chat",
-    "bundled": false
+    "bundled": false,
+    "license": "Apache-2.0",
+    "licenseUrl": "https://www.apache.org/licenses/LICENSE-2.0"
   },
   {
     "id": "tinyllama-1.1b-chat-v1.0.q4_k_m",
@@ -93,7 +115,9 @@
     "url": "https://huggingface.co/TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF/resolve/main/tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf",
     "bytes": 668788096,
     "use": "Tiny chat",
-    "bundled": false
+    "bundled": false,
+    "license": "Apache-2.0",
+    "licenseUrl": "https://www.apache.org/licenses/LICENSE-2.0"
   },
   {
     "id": "deepseek-coder-1.3b-instruct.q4_k_m",
@@ -101,7 +125,9 @@
     "url": "https://huggingface.co/TheBloke/deepseek-coder-1.3b-instruct-GGUF/resolve/main/deepseek-coder-1.3b-instruct.Q4_K_M.gguf",
     "bytes": 873582624,
     "use": "Small coder",
-    "bundled": false
+    "bundled": false,
+    "license": "DeepSeek Model License",
+    "licenseUrl": "https://github.com/deepseek-ai/deepseek-coder/blob/main/LICENSE-MODEL"
   },
   {
     "id": "falcon3-3b-instruct-q4_k_m",
@@ -109,7 +135,9 @@
     "url": "https://huggingface.co/tiiuae/Falcon3-3B-Instruct-GGUF/resolve/main/Falcon3-3B-Instruct-q4_k_m.gguf",
     "bytes": 2005684448,
     "use": "Capable chat, needs RAM",
-    "bundled": false
+    "bundled": false,
+    "license": "TII Falcon-LLM License 2.0",
+    "licenseUrl": "https://falconllm.tii.ae/falcon-terms-and-conditions.html"
   },
   {
     "id": "phi-3-mini-4k-instruct-q4",
@@ -117,7 +145,9 @@
     "url": "https://huggingface.co/microsoft/Phi-3-mini-4k-instruct-gguf/resolve/main/Phi-3-mini-4k-instruct-q4.gguf",
     "bytes": 2393231072,
     "use": "Microsoft chat",
-    "bundled": false
+    "bundled": false,
+    "license": "MIT",
+    "licenseUrl": "https://opensource.org/license/mit"
   },
   {
     "id": "qwen2.5-3b-instruct-q4_0",
@@ -125,7 +155,9 @@
     "url": "https://huggingface.co/Qwen/Qwen2.5-3B-Instruct-GGUF/resolve/main/qwen2.5-3b-instruct-q4_0.gguf",
     "bytes": 1997879712,
     "use": "Stronger all-round",
-    "bundled": false
+    "bundled": false,
+    "license": "Qwen Research License",
+    "licenseUrl": "https://huggingface.co/Qwen/Qwen2.5-3B-Instruct/blob/main/LICENSE"
   },
   {
     "id": "qwen2.5-0.5b-instruct-q4_0",
@@ -133,7 +165,9 @@
     "url": "https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_0.gguf",
     "bytes": 428730208,
     "use": "Light general chat",
-    "bundled": false
+    "bundled": false,
+    "license": "Apache-2.0",
+    "licenseUrl": "https://www.apache.org/licenses/LICENSE-2.0"
   },
   {
     "id": "qwen2.5-7b-instruct-q4_k_m",
@@ -141,7 +175,9 @@
     "url": "https://huggingface.co/bartowski/Qwen2.5-7B-Instruct-GGUF/resolve/main/Qwen2.5-7B-Instruct-Q4_K_M.gguf",
     "bytes": 4683074240,
     "use": "Mid all-rounder, needs 8GB RAM",
-    "bundled": true
+    "bundled": true,
+    "license": "Apache-2.0",
+    "licenseUrl": "https://www.apache.org/licenses/LICENSE-2.0"
   },
   {
     "id": "mistral-7b-instruct-v0.3-q4_k_m",
@@ -149,7 +185,9 @@
     "url": "https://huggingface.co/bartowski/Mistral-7B-Instruct-v0.3-GGUF/resolve/main/Mistral-7B-Instruct-v0.3-Q4_K_M.gguf",
     "bytes": 4372812000,
     "use": "Mid chat, needs 8GB RAM",
-    "bundled": false
+    "bundled": false,
+    "license": "Apache-2.0",
+    "licenseUrl": "https://www.apache.org/licenses/LICENSE-2.0"
   },
   {
     "id": "deepseek-r1-distill-qwen-7b-q4_k_m",
@@ -157,7 +195,9 @@
     "url": "https://huggingface.co/bartowski/DeepSeek-R1-Distill-Qwen-7B-GGUF/resolve/main/DeepSeek-R1-Distill-Qwen-7B-Q4_K_M.gguf",
     "bytes": 4683073504,
     "use": "Mid reasoning, needs 8GB RAM",
-    "bundled": false
+    "bundled": false,
+    "license": "MIT",
+    "licenseUrl": "https://opensource.org/license/mit"
   },
   {
     "id": "falcon3-7b-instruct-q4_k_m",
@@ -165,7 +205,9 @@
     "url": "https://huggingface.co/tiiuae/Falcon3-7B-Instruct-GGUF/resolve/main/Falcon3-7B-Instruct-q4_k_m.gguf",
     "bytes": 4569726368,
     "use": "Mid chat, needs 8GB RAM",
-    "bundled": false
+    "bundled": false,
+    "license": "TII Falcon-LLM License 2.0",
+    "licenseUrl": "https://falconllm.tii.ae/falcon-terms-and-conditions.html"
   },
   {
     "id": "qwen2.5-coder-7b-instruct-q4_0",
@@ -173,7 +215,9 @@
     "url": "https://huggingface.co/Qwen/Qwen2.5-Coder-7B-Instruct-GGUF/resolve/main/qwen2.5-coder-7b-instruct-q4_0.gguf",
     "bytes": 4431390720,
     "use": "Mid coder, needs 8GB RAM",
-    "bundled": false
+    "bundled": false,
+    "license": "Apache-2.0",
+    "licenseUrl": "https://www.apache.org/licenses/LICENSE-2.0"
   },
   {
     "id": "falcon3-1b-instruct-q4_k_m",
@@ -181,7 +225,9 @@
     "url": "https://huggingface.co/tiiuae/Falcon3-1B-Instruct-GGUF/resolve/main/Falcon3-1B-Instruct-q4_k_m.gguf",
     "bytes": 1057044608,
     "use": "Tiny Falcon chat",
-    "bundled": false
+    "bundled": false,
+    "license": "TII Falcon-LLM License 2.0",
+    "licenseUrl": "https://falconllm.tii.ae/falcon-terms-and-conditions.html"
   },
   {
     "id": "qwen3-1.7b.q4_k_m",
@@ -189,7 +235,9 @@
     "url": "https://huggingface.co/QuantFactory/Qwen3-1.7B-GGUF/resolve/main/Qwen3-1.7B.Q4_K_M.gguf",
     "bytes": 1282439264,
     "use": "Newest small chat",
-    "bundled": false
+    "bundled": false,
+    "license": "Apache-2.0",
+    "licenseUrl": "https://www.apache.org/licenses/LICENSE-2.0"
   },
   {
     "id": "starcoder2-7b-q4_k_m",
@@ -197,7 +245,9 @@
     "url": "https://huggingface.co/second-state/StarCoder2-7B-GGUF/resolve/main/starcoder2-7b-Q4_K_M.gguf",
     "bytes": 4402887488,
     "use": "Mid coder, needs 8GB RAM",
-    "bundled": false
+    "bundled": false,
+    "license": "BigCode OpenRAIL-M",
+    "licenseUrl": "https://huggingface.co/spaces/bigcode/bigcode-model-license-agreement"
   },
   {
     "id": "qwen3-4b.q4_k_m",
@@ -205,7 +255,9 @@
     "url": "https://huggingface.co/QuantFactory/Qwen3-4B-GGUF/resolve/main/Qwen3-4B.Q4_K_M.gguf",
     "bytes": 2716068512,
     "use": "Capable small chat",
-    "bundled": false
+    "bundled": false,
+    "license": "Apache-2.0",
+    "licenseUrl": "https://www.apache.org/licenses/LICENSE-2.0"
   },
   {
     "id": "starcoder2-3b-q4_k_m",
@@ -213,7 +265,9 @@
     "url": "https://huggingface.co/second-state/StarCoder2-3B-GGUF/resolve/main/starcoder2-3b-Q4_K_M.gguf",
     "bytes": 1848976448,
     "use": "Small coder",
-    "bundled": false
+    "bundled": false,
+    "license": "BigCode OpenRAIL-M",
+    "licenseUrl": "https://huggingface.co/spaces/bigcode/bigcode-model-license-agreement"
   },
   {
     "id": "qwen2.5-14b-instruct-q4_k_m",
@@ -221,7 +275,9 @@
     "url": "https://huggingface.co/bartowski/Qwen2.5-14B-Instruct-GGUF/resolve/main/Qwen2.5-14B-Instruct-Q4_K_M.gguf",
     "bytes": 8988110976,
     "use": "Flagship chat, needs 16GB RAM",
-    "bundled": false
+    "bundled": false,
+    "license": "Apache-2.0",
+    "licenseUrl": "https://www.apache.org/licenses/LICENSE-2.0"
   },
   {
     "id": "deepseek-r1-distill-qwen-14b-q4_k_m",
@@ -229,7 +285,9 @@
     "url": "https://huggingface.co/bartowski/DeepSeek-R1-Distill-Qwen-14B-GGUF/resolve/main/DeepSeek-R1-Distill-Qwen-14B-Q4_K_M.gguf",
     "bytes": 8988110240,
     "use": "Flagship reasoning, needs 16GB RAM",
-    "bundled": false
+    "bundled": false,
+    "license": "MIT",
+    "licenseUrl": "https://opensource.org/license/mit"
   },
   {
     "id": "mistral-nemo-instruct-2407-q4_k_m",
@@ -237,7 +295,9 @@
     "url": "https://huggingface.co/bartowski/Mistral-Nemo-Instruct-2407-GGUF/resolve/main/Mistral-Nemo-Instruct-2407-Q4_K_M.gguf",
     "bytes": 7477208192,
     "use": "Frontier chat, needs 16GB RAM",
-    "bundled": false
+    "bundled": false,
+    "license": "Apache-2.0",
+    "licenseUrl": "https://www.apache.org/licenses/LICENSE-2.0"
   },
   {
     "id": "falcon3-10b-instruct-q4_k_m",
@@ -245,7 +305,9 @@
     "url": "https://huggingface.co/tiiuae/Falcon3-10B-Instruct-GGUF/resolve/main/Falcon3-10B-Instruct-q4_k_m.gguf",
     "bytes": 6287521408,
     "use": "Frontier chat, needs 16GB RAM",
-    "bundled": false
+    "bundled": false,
+    "license": "TII Falcon-LLM License 2.0",
+    "licenseUrl": "https://falconllm.tii.ae/falcon-terms-and-conditions.html"
   },
   {
     "id": "qwen2.5-coder-14b-instruct-q4_k_m",
@@ -253,7 +315,9 @@
     "url": "https://huggingface.co/bartowski/Qwen2.5-Coder-14B-Instruct-GGUF/resolve/main/Qwen2.5-Coder-14B-Instruct-Q4_K_M.gguf",
     "bytes": 8988111072,
     "use": "Flagship coder, needs 16GB RAM",
-    "bundled": false
+    "bundled": false,
+    "license": "Apache-2.0",
+    "licenseUrl": "https://www.apache.org/licenses/LICENSE-2.0"
   },
   {
     "id": "qwen3-8b.q4_k_m",
@@ -261,7 +325,9 @@
     "url": "https://huggingface.co/QuantFactory/Qwen3-8B-GGUF/resolve/main/Qwen3-8B.Q4_K_M.gguf",
     "bytes": 5027783872,
     "use": "Frontier chat, needs 16GB RAM",
-    "bundled": true
+    "bundled": true,
+    "license": "Apache-2.0",
+    "licenseUrl": "https://www.apache.org/licenses/LICENSE-2.0"
   },
   {
     "id": "starcoder2-15b-q4_k_m",
@@ -269,7 +335,9 @@
     "url": "https://huggingface.co/second-state/StarCoder2-15B-GGUF/resolve/main/starcoder2-15b-Q4_K_M.gguf",
     "bytes": 9860188000,
     "use": "Frontier coder, needs 16GB RAM",
-    "bundled": false
+    "bundled": false,
+    "license": "BigCode OpenRAIL-M",
+    "licenseUrl": "https://huggingface.co/spaces/bigcode/bigcode-model-license-agreement"
   },
   {
     "id": "phi-4-q4_k",
@@ -277,7 +345,9 @@
     "url": "https://huggingface.co/microsoft/phi-4-gguf/resolve/main/phi-4-Q4_K.gguf",
     "bytes": 9053114560,
     "use": "Microsoft flagship, needs 16GB RAM",
-    "bundled": false
+    "bundled": false,
+    "license": "MIT",
+    "licenseUrl": "https://opensource.org/license/mit"
   },
   {
     "id": "llama-3.1-8b-instruct-q4_k_m",
@@ -285,7 +355,9 @@
     "url": "https://huggingface.co/bartowski/Llama-3.1-8B-Instruct-GGUF/resolve/main/Llama-3.1-8B-Instruct-Q4_K_M.gguf",
     "bytes": 4928307200,
     "use": "Frontier chat, needs 16GB RAM",
-    "bundled": false
+    "bundled": false,
+    "license": "Llama 3.1 Community License",
+    "licenseUrl": "https://github.com/meta-llama/llama-models/blob/main/models/llama3_1/LICENSE"
   },
   {
     "id": "gemma-2-9b-it-q4_k_m",
@@ -293,7 +365,9 @@
     "url": "https://huggingface.co/bartowski/Gemma-2-9B-It-GGUF/resolve/main/Gemma-2-9B-It-Q4_K_M.gguf",
     "bytes": 5476089856,
     "use": "Frontier chat, needs 16GB RAM",
-    "bundled": false
+    "bundled": false,
+    "license": "Gemma License",
+    "licenseUrl": "https://ai.google.dev/gemma/terms"
   },
   {
     "id": "nemotron-3-8b-q4_k_m",
@@ -301,7 +375,9 @@
     "url": "https://huggingface.co/bartowski/Nemotron-3-8B-GGUF/resolve/main/Nemotron-3-8B-Q4_K_M.gguf",
     "bytes": 5234532352,
     "use": "NVIDIA mid model, needs 16GB RAM",
-    "bundled": false
+    "bundled": false,
+    "license": "NVIDIA AI Foundation Models License",
+    "licenseUrl": "https://www.nvidia.com/en-us/agreements/enterprise-software/nvidia-nemotron-open-model-license"
   },
   {
     "id": "qwen2.5-32b-instruct-q4_k_m",
@@ -309,7 +385,9 @@
     "url": "https://huggingface.co/bartowski/Qwen2.5-32B-Instruct-GGUF/resolve/main/Qwen2.5-32B-Instruct-Q4_K_M.gguf",
     "bytes": 19234877440,
     "use": "Ultra flagship chat, needs 32GB RAM",
-    "bundled": false
+    "bundled": false,
+    "license": "Apache-2.0",
+    "licenseUrl": "https://www.apache.org/licenses/LICENSE-2.0"
   },
   {
     "id": "qwen2.5-coder-32b-instruct-q4_k_m",
@@ -317,7 +395,9 @@
     "url": "https://huggingface.co/bartowski/Qwen2.5-Coder-32B-Instruct-GGUF/resolve/main/Qwen2.5-Coder-32B-Instruct-Q4_K_M.gguf",
     "bytes": 19851336672,
     "use": "Ultra flagship coder, needs 32GB RAM",
-    "bundled": false
+    "bundled": false,
+    "license": "Apache-2.0",
+    "licenseUrl": "https://www.apache.org/licenses/LICENSE-2.0"
   },
   {
     "id": "yi-1.5-34b-chat-q4_k_m",
@@ -325,7 +405,9 @@
     "url": "https://huggingface.co/bartowski/Yi-1.5-34B-Chat-GGUF/resolve/main/Yi-1.5-34B-Chat-Q4_K_M.gguf",
     "bytes": 19782500352,
     "use": "Ultra chat, needs 32GB RAM",
-    "bundled": false
+    "bundled": false,
+    "license": "Apache-2.0",
+    "licenseUrl": "https://www.apache.org/licenses/LICENSE-2.0"
   },
   {
     "id": "nemotron-3-ultra-q4_k_m",
@@ -333,7 +415,9 @@
     "url": "https://huggingface.co/bartowski/Nemotron-3-Ultra-GGUF/resolve/main/Nemotron-3-Ultra-Q4_K_M.gguf",
     "bytes": 27922219008,
     "use": "NVIDIA ultra model, needs 48GB RAM",
-    "bundled": false
+    "bundled": false,
+    "license": "NVIDIA AI Foundation Models License",
+    "licenseUrl": "https://www.nvidia.com/en-us/agreements/enterprise-software/nvidia-nemotron-open-model-license"
   },
   {
     "id": "mixtral-8x7b-instruct-q4_k_m",
@@ -341,7 +425,9 @@
     "url": "https://huggingface.co/bartowski/Mixtral-8x7B-Instruct-GGUF/resolve/main/Mixtral-8x7B-Instruct-Q4_K_M.gguf",
     "bytes": 26599284736,
     "use": "Mixture of experts, needs 48GB RAM",
-    "bundled": false
+    "bundled": false,
+    "license": "Apache-2.0",
+    "licenseUrl": "https://www.apache.org/licenses/LICENSE-2.0"
   },
   {
     "id": "qwen2.5-72b-instruct-q4_k_m",
@@ -349,7 +435,9 @@
     "url": "https://huggingface.co/bartowski/Qwen2.5-72B-Instruct-GGUF/resolve/main/Qwen2.5-72B-Instruct-Q4_K_M.gguf",
     "bytes": 41231686041,
     "use": "Massive flagship, needs 96GB RAM",
-    "bundled": false
+    "bundled": false,
+    "license": "Qwen License",
+    "licenseUrl": "https://huggingface.co/Qwen/Qwen2.5-72B-Instruct/blob/main/LICENSE"
   },
   {
     "id": "llama-3.3-70b-instruct-q4_k_m",
@@ -357,7 +445,9 @@
     "url": "https://huggingface.co/bartowski/Llama-3.3-70B-Instruct-GGUF/resolve/main/Llama-3.3-70B-Instruct-Q4_K_M.gguf",
     "bytes": 40045121536,
     "use": "Meta flagship, needs 96GB RAM",
-    "bundled": false
+    "bundled": false,
+    "license": "Llama 3.3 Community License",
+    "licenseUrl": "https://github.com/meta-llama/llama-models/blob/main/models/llama3_3/LICENSE"
   },
   {
     "id": "deepseek-v3-q4_k_m",
@@ -365,7 +455,9 @@
     "url": "https://huggingface.co/bartowski/DeepSeek-V3-GGUF/resolve/main/DeepSeek-V3-Q4_K_M.gguf",
     "bytes": 72131051520,
     "use": "DeepSeek flagship, needs 128GB RAM",
-    "bundled": false
+    "bundled": false,
+    "license": "DeepSeek Model License",
+    "licenseUrl": "https://github.com/deepseek-ai/DeepSeek-V3/blob/main/LICENSE-MODEL"
   },
   {
     "id": "nemotron-4-ultra-q4_k_m",
@@ -373,7 +465,9 @@
     "url": "https://huggingface.co/bartowski/Nemotron-4-Ultra-GGUF/resolve/main/Nemotron-4-Ultra-Q4_K_M.gguf",
     "bytes": 32451855360,
     "use": "NVIDIA next-gen ultra, needs 96GB RAM",
-    "bundled": false
+    "bundled": false,
+    "license": "NVIDIA AI Foundation Models License",
+    "licenseUrl": "https://www.nvidia.com/en-us/agreements/enterprise-software/nvidia-nemotron-open-model-license"
   },
   {
     "id": "gemma-3-27b-q4_k_m",
@@ -381,7 +475,9 @@
     "url": "https://huggingface.co/bartowski/Gemma-3-27B-GGUF/resolve/main/Gemma-3-27B-Q4_K_M.gguf",
     "bytes": 16106127360,
     "use": "Google multimodal, needs 48GB RAM",
-    "bundled": false
+    "bundled": false,
+    "license": "Gemma License",
+    "licenseUrl": "https://ai.google.dev/gemma/terms"
   },
   {
     "id": "deepseek-r1-distill-qwen-32b-q4_k_m",
@@ -389,7 +485,9 @@
     "url": "https://huggingface.co/bartowski/DeepSeek-R1-Distill-Qwen-32B-GGUF/resolve/main/DeepSeek-R1-Distill-Qwen-32B-Q4_K_M.gguf",
     "bytes": 19851335840,
     "use": "Ultra flagship reasoning, needs 32GB RAM",
-    "bundled": false
+    "bundled": false,
+    "license": "MIT",
+    "licenseUrl": "https://opensource.org/license/mit"
   },
   {
     "id": "deepseek-r1-q4_k_m",
@@ -397,6 +495,8 @@
     "url": "https://huggingface.co/bartowski/DeepSeek-R1-GGUF/resolve/main/DeepSeek-R1-Q4_K_M.gguf",
     "bytes": 12884901888,
     "use": "DeepSeek R1 reasoning, needs 32GB RAM",
-    "bundled": false
+    "bundled": false,
+    "license": "MIT",
+    "licenseUrl": "https://opensource.org/license/mit"
   }
 ]

@@ -10,6 +10,8 @@ interface CatalogEntry {
   bytes: number;
   use: string;
   bundled: boolean;
+  license: string;
+  licenseUrl: string;
 }
 
 const ENTRIES = CATALOG as CatalogEntry[];
@@ -93,6 +95,25 @@ describe('model catalog', () => {
       'qwen2.5-7b-instruct-q4_k_m',
       'qwen3-8b.q4_k_m',
     ]);
+  });
+
+  it('carries a verified license and link for every model', () => {
+    // Licences were checked against each model's Hugging Face card
+    // (API tags plus card frontmatter, with base-model fallbacks for
+    // gated repos). THIRD_PARTY_NOTICES.md lists the full mapping.
+    for (const entry of ENTRIES) {
+      expect(entry.license.length).toBeGreaterThan(0);
+      expect(entry.licenseUrl.startsWith('https://')).toBe(true);
+    }
+  });
+
+  it('bundles only permissively licensed weights', () => {
+    // The install-time bundle ships without asking, so it is
+    // restricted to Apache-2.0 and MIT — licences that impose no
+    // commercial or use restrictions.
+    for (const entry of ENTRIES.filter((e) => e.bundled)) {
+      expect(['Apache-2.0', 'MIT']).toContain(entry.license);
+    }
   });
 
   it('covers every model the defaults route to on embedded', () => {

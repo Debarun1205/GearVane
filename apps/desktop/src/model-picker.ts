@@ -28,6 +28,10 @@ export interface ModelPickerEntry {
   download?: { bytes: number };
   /** Catalog id to install, when the row id is qualified (provider/model). */
   downloadId?: string;
+  /** License the weights ship under, when known. */
+  license?: string;
+  /** Where to read the license. */
+  licenseUrl?: string;
 }
 
 /** Host-supplied actions the picker needs to run a selection. */

@@ -260,6 +260,7 @@ const els = {
   modelsBody: byId('models-body'),
   modelInstallDialog: byId<HTMLDialogElement>('model-install-dialog'),
   modelInstallText: byId('model-install-text'),
+  modelInstallLicense: byId('model-install-license'),
   modelPickerHost: byId('model-picker-host'),
   keysButton: byId<HTMLButtonElement>('keys-button'),
   keysDialog: byId<HTMLDialogElement>('keys-dialog'),
@@ -369,6 +370,8 @@ async function catalogEntries(): Promise<ModelPickerEntry[]> {
           detail: `${entry.use} · ${formatMB(entry.bytes)}`,
           present: present.has(entry.id),
           download: { bytes: entry.bytes },
+          license: entry.license,
+          licenseUrl: entry.licenseUrl,
         }
       : {
           id: entry.id,
@@ -426,6 +429,19 @@ const pickerHandlers = {
         `${entry.label} is not on this device yet. ` +
         `Download ${size} now? It is served locally by GearVane — ` +
         'no key, no cloud, and it stays available offline.';
+      // The license is part of the install decision: the user
+      // agrees to it by downloading.
+      const license = els.modelInstallLicense;
+      license.textContent = '';
+      license.hidden = !entry.license;
+      if (entry.license) {
+        const link = document.createElement('a');
+        link.href = entry.licenseUrl ?? '#';
+        link.textContent = `Licensed under ${entry.license}`;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        license.append('Weights are ', link, '.');
+      }
       els.modelInstallDialog.returnValue = '';
       els.modelInstallDialog.addEventListener(
         'close',
@@ -812,6 +828,8 @@ interface CatalogEntry {
   bytes: number;
   use: string;
   bundled: boolean;
+  license: string;
+  licenseUrl: string;
 }
 
 function formatMB(bytes: number): string {
@@ -860,7 +878,18 @@ async function showModels(): Promise<void> {
     row.className = 'health-row';
 
     const name = document.createElement('span');
-    name.textContent = `${entry.id} — ${entry.use} (${formatMB(entry.bytes)})`;
+    // The license travels with the row: a user choosing what to
+    // download is choosing under which terms.
+    const licenseLink = document.createElement('a');
+    licenseLink.href = entry.licenseUrl;
+    licenseLink.textContent = entry.license;
+    licenseLink.target = '_blank';
+    licenseLink.rel = 'noopener noreferrer';
+    licenseLink.className = 'models-license';
+    name.append(
+      `${entry.id} — ${entry.use} (${formatMB(entry.bytes)}) · `,
+      licenseLink,
+    );
 
     const action = document.createElement('span');
     if (present.has(entry.id)) {
