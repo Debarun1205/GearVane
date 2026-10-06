@@ -26,6 +26,7 @@ import { registerIdeAgentHandlers } from './ide-agent-host.js';
 import { registerIdeFsHandlers } from './ide-fs-host.js';
 import { KeyVault, vaultPath } from './keys-host.js';
 import { registerModelsHandlers } from './models-host.js';
+import { registerHardwareHandlers } from './hardware-host.js';
 import { registerTerminalHandlers } from './terminal-host.js';
 
 const HERE = fileURLToPath(new URL('.', import.meta.url));
@@ -316,5 +317,10 @@ registerIdeAgentHandlers(async () => serveConfig(), () => vault.env());
 // Model downloads land in the same directory the embedded server serves,
 // so a finished fetch is usable without a restart. See models-host.ts.
 registerModelsHandlers(findModelDir());
+
+// The renderer cannot statfs or read os.totalmem from a sandboxed context, so
+// the fit checks in the install dialog and the onboarding scan get their
+// numbers from here.
+registerHardwareHandlers(findModelDir());
 
 export { mainWindow, createWindow };

@@ -198,11 +198,26 @@ and the app says so next to the picker.
 | `deepseek-r1-q4_k_m` | `frontier` | 12 GiB | MIT |  |
 <!-- END catalog-table -->
 
-RAM figures in the app's model list are hand-written guidance, not computed
-requirements, and they do not hold together — a 15 GB weight claims 48 GB of
-RAM while an 18 GB one claims 32. Treat them as a prompt to check your own
-machine. Tokens per second is not shown at all, because nothing measures it
-yet. Both become real fields when hardware detection lands.
+**The catalog's RAM figures are hand-written prose, and they contradict each
+other.** 29 of the 50 entries say "needs NGB RAM" inside their description, the
+ratio to file size ranges from 1.73x to 3.48x, and gemma-3-27b is a 15 GiB file
+claiming 48 GB while qwen2.5-32b is a 17.9 GiB file claiming 32. Treat them as
+hints, never as requirements.
+
+So the app does not use them to decide anything. It measures the machine
+instead: **os.totalmem**, **os.freemem**, and **statfs** on the volume holding
+the model directory, read in the main process because the renderer is sandboxed.
+One rule is arithmetic rather than an estimate — weights are memory-mapped, so a
+weight larger than physical RAM cannot load, whatever else is running. Above
+that floor the app adds a stated 1.3x overhead factor and calls it an estimate,
+because the KV cache scales with context length and quantization in ways the
+catalog does not record. Tokens per second is still not shown, because nothing
+in this repository measures it.
+
+The onboarding wizard reports the figures and which weights fit; the install
+confirmation for anything over 500 MB reports them before you commit the
+download. Where the app cannot measure — the Android webview has no filesystem
+to read — both say so instead of showing zeros.
 
 ## Use it
 

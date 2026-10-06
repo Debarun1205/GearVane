@@ -55,6 +55,12 @@ import { createWebBackend, type WebFsStorage } from './web-backend.js';
 import { hostedModelRows } from './hosted-models.js';
 import MODEL_CATALOG from './models.json';
 import {
+  assessFit,
+  formatBytes,
+  sanitizeMachineInfo,
+  type MachineInfo,
+} from './hardware.js';
+import {
   createModelPicker,
   type InstallProgress,
   type ModelPicker,
@@ -143,6 +149,15 @@ interface HostBridge {
      * one. Absent on hosts with no transfer to cancel.
      */
     cancel?(id: string): Promise<{ ok: boolean }>;
+  };
+
+  /**
+   * Machine facts for the fit checks. Absent in the webview, which has no
+   * filesystem to measure, so the dialog omits the figures rather than
+   * showing zeros as if they were real.
+   */
+  hardware?: {
+    info(): Promise<MachineInfo>;
   };
 
   /**
@@ -285,6 +300,7 @@ const els = {
   modelInstallDialog: byId<HTMLDialogElement>('model-install-dialog'),
   modelInstallText: byId('model-install-text'),
   modelInstallLicense: byId('model-install-license'),
+  modelInstallFit: byId('model-install-fit'),
   modelPickerHost: byId('model-picker-host'),
   keysButton: byId<HTMLButtonElement>('keys-button'),
   keysDialog: byId<HTMLDialogElement>('keys-dialog'),
@@ -444,6 +460,82 @@ async function pickerEntries(): Promise<ModelPickerEntry[]> {
   return entries;
 }
 
+/**
+ * Fill in the install dialog's fit summary.
+ *
+ * Shows what was measured, whether the weights can load here, and how much room
+ * is left. Every line is conditional on the measurement having succeeded: with
+ * no host bridge, or a degraded reading, the section says so rather than
+ * showing zeros, which would read as "you have no RAM" instead of "we could
+ * not tell".
+ */
+async function showInstallFit(entry: ModelPickerEntry): Promise<void> {
+  const host = els.modelInstallFit;
+  host.textContent = '';
+  host.hidden = true;
+
+  const bytes = entry.download?.bytes ?? 0;
+  if (bytes === 0) return;
+
+  // No bridge means no filesystem and no memory figures - the Android webview.
+  // Showing nothing is the honest outcome; inventing numbers is not.
+  if (!bridge.hardware) {
+    host.hidden = false;
+    host.textContent =
+      'This build cannot read memory or disk figures, so it cannot check ' +
+      'whether this weight fits.';
+    return;
+  }
+
+  let machine: MachineInfo;
+  try {
+    machine = sanitizeMachineInfo(await bridge.hardware.info());
+  } catch {
+    host.hidden = false;
+    host.textContent = 'Could not measure this machine, so fit is unchecked.';
+    return;
+  }
+
+  const report = assessFit(bytes, machine);
+  const lines: string[] = [];
+
+  if (machine.totalMemory > 0) {
+    lines.push(
+      `Memory: ${formatBytes(machine.totalMemory)} total, ` +
+        `${formatBytes(machine.freeMemory)} free. ` +
+        `This weight needs about ${formatBytes(report.estimatedRam)} ` +
+        '(weights plus runtime overhead; an estimate).',
+    );
+  }
+  if (machine.diskFree > 0) {
+    lines.push(
+      `Disk free: ${formatBytes(machine.diskFree)}, ` +
+        `${formatBytes(bytes)} needed.`,
+    );
+  }
+  if (machine.cpuCount > 0) {
+    lines.push(`${machine.cpuCount} logical CPUs.`);
+  }
+
+  // The verdict leads, because it is the reason the dialog exists.
+  if (!report.fitsRam) {
+    lines.unshift(
+      'Warning: the weights are larger than this machine\'s memory, so this ' +
+        'cannot load here.',
+    );
+  } else if (!report.fitsDisk) {
+    lines.unshift('Warning: not enough free disk space for the download.');
+  }
+  lines.push(...report.notes);
+
+  if (machine.degraded) {
+    lines.push('Some figures could not be read, so this is not a full check.');
+  }
+
+  host.textContent = lines.join(' ');
+  host.hidden = lines.length === 0;
+}
+
 const pickerHandlers = {
   install: async (entry: ModelPickerEntry): Promise<boolean> => {
     if (!bridge.models) return false;
@@ -482,6 +574,10 @@ const pickerHandlers = {
         `${entry.label} is not on this device yet. ` +
         `Download ${size} now? It is served locally by GearVane — ` +
         'no key, no cloud, and it stays available offline.';
+      // Fit is checked against measured facts, not the catalog's RAM prose.
+      // Resolved rather than awaited so the dialog opens immediately and
+      // fills in; a slow statfs must not make the button feel broken.
+      void showInstallFit(entry);
       // The license is part of the install decision: the user
       // agrees to it by downloading.
       const license = els.modelInstallLicense;
@@ -1088,8 +1184,14 @@ function savePosture(): void {
   }
 }
 
-/** The onboarding steps: welcome, theme, environment. */
-const ONBOARDING_STEPS = ['welcome', 'theme', 'environment'] as const;
+/**
+ * The onboarding steps: welcome, theme, environment, hardware.
+ *
+ * The hardware scan is last on purpose. It measures the machine and then says
+ * which weights will fit, which is only useful after someone has seen what is
+ * on offer.
+ */
+const ONBOARDING_STEPS = ['welcome', 'theme', 'environment', 'hardware'] as const;
 type OnboardingStep = (typeof ONBOARDING_STEPS)[number];
 let onboardingStep: OnboardingStep = 'welcome';
 /** Settings mode edits the theme step directly, without the wizard chrome. */
@@ -1282,6 +1384,128 @@ function renderEnvironmentStep(content: HTMLElement): void {
 }
 
 /**
+ * The hardware step: what this machine has, and what will fit on it.
+ *
+ * Reports measured figures rather than the catalog's RAM prose, and marks the
+ * estimate as an estimate. The hard rule is arithmetic - weights are mmapped, so
+ * a weight larger than physical RAM cannot load - and everything above that
+ * carries a stated overhead factor.
+ *
+ * With no host bridge there is no filesystem or memory to read, so the step
+ * says exactly that. It does not fall back to the catalog's figures, because
+ * those are what this step exists to correct.
+ */
+function renderHardwareStep(content: HTMLElement): void {
+  const head = document.createElement('h3');
+  head.className = 'onboarding-subhead';
+  head.textContent = 'This machine';
+  content.appendChild(head);
+
+  const intro = document.createElement('p');
+  intro.className = 'builder-help';
+  intro.textContent =
+    'Local models run here, so what fits depends on your memory and free ' +
+    'disk. GearVane measures both rather than guessing from a table.';
+  content.appendChild(intro);
+
+  const host = document.createElement('div');
+  host.className = 'onboarding-hardware';
+  host.setAttribute('role', 'status');
+  host.textContent = 'Measuring this machine...';
+  content.appendChild(host);
+
+  void fillHardwareStep(host);
+}
+
+/**
+ * Fill the hardware step with measurements.
+ *
+ * Separate from the render so the dialog is already interactive while this
+ * awaits: a statfs on a network volume can take seconds, and a wizard that
+ * blocks on it looks broken.
+ */
+async function fillHardwareStep(host: HTMLElement): Promise<void> {
+  if (!bridge.hardware) {
+    host.textContent =
+      'This build cannot read memory or disk figures, so it cannot say which ' +
+      'weights will fit. Every weight in the list still downloads and runs.';
+    return;
+  }
+
+  let machine: MachineInfo;
+  try {
+    machine = sanitizeMachineInfo(await bridge.hardware.info());
+  } catch {
+    host.textContent =
+      'Could not read this machine\'s figures. Every weight in the list ' +
+      'still downloads and runs; the sizes shown are what they need on disk.';
+    return;
+  }
+
+  host.textContent = '';
+
+  const rows: Array<[string, string]> = [];
+  if (machine.totalMemory > 0) {
+    rows.push([
+      'Memory',
+      `${formatBytes(machine.totalMemory)} total, ${formatBytes(machine.freeMemory)} free`,
+    ]);
+  }
+  if (machine.diskFree > 0) {
+    rows.push([
+      'Free disk',
+      `${formatBytes(machine.diskFree)} where models are stored`,
+    ]);
+  }
+  if (machine.cpuCount > 0) {
+    rows.push(['Processors', `${machine.cpuCount} logical`]);
+  }
+
+  if (rows.length === 0) {
+    host.textContent =
+      'No figures could be read for this machine, so fit is unchecked here.';
+    return;
+  }
+
+  const list = document.createElement('dl');
+  list.className = 'onboarding-hardware-list';
+  for (const [label, value] of rows) {
+    const term = document.createElement('dt');
+    term.textContent = label;
+    const detail = document.createElement('dd');
+    detail.textContent = value;
+    list.append(term, detail);
+  }
+  host.appendChild(list);
+
+  // What will actually fit, from the catalog rather than a rule of thumb.
+  const fit = document.createElement('p');
+  fit.className = 'builder-help';
+  const fitting = (MODEL_CATALOG as CatalogEntry[]).filter(
+    (entry) => assessFit(entry.bytes, machine).fitsRam && assessFit(entry.bytes, machine).fitsDisk,
+  );
+  const weights = (MODEL_CATALOG as CatalogEntry[]).length;
+
+  if (machine.degraded) {
+    fit.textContent =
+      'Some figures could not be read, so this is not a complete picture.';
+  } else if (fitting.length === 0) {
+    fit.textContent =
+      `None of the ${weights} weights are a comfortable fit for this machine ` +
+      'right now. They still download, and hosted models do not use local ' +
+      'memory at all.';
+  } else {
+    fit.textContent =
+      `${fitting.length} of the ${weights} weights fit in memory and on disk. ` +
+      'Weights are memory-mapped, so one larger than this machine\'s total ' +
+      'memory cannot load here at any context length. Figures above the ' +
+      'weights themselves allow for runtime overhead, which is an estimate ' +
+      'rather than a measurement.';
+  }
+  host.appendChild(fit);
+}
+
+/**
  * The onboarding model picker: Auto plus every downloadable weight.
  *
  * Deliberately without hosted rows — onboarding runs before the
@@ -1320,7 +1544,7 @@ function syncPostureCards(): void {
 function renderStep(): void {
   const wizard = appearanceMode === 'onboarding';
   const isFirst = onboardingStep === 'welcome';
-  const isLast = onboardingStep === 'environment';
+  const isLast = onboardingStep === 'hardware';
 
   els.onboardingSteps.hidden = !wizard;
   els.appearanceBack.hidden = !wizard || isFirst;
@@ -1337,7 +1561,8 @@ function renderStep(): void {
   content.textContent = '';
   if (onboardingStep === 'welcome') renderWelcomeStep(content);
   else if (onboardingStep === 'theme') renderThemeStep(content);
-  else renderEnvironmentStep(content);
+  else if (onboardingStep === 'environment') renderEnvironmentStep(content);
+  else renderHardwareStep(content);
 
   syncAppearanceButtons();
 }

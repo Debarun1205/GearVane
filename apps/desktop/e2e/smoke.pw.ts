@@ -78,8 +78,19 @@ test('onboarding previews live, saves once, and never returns', async ({ page })
     await page.evaluate(() => localStorage.getItem('gearvane.appearance')),
   ).toBeNull();
 
-  // Advance to the environment step, then save: the dialog closes.
+  // Advance to the environment step.
   await page.locator('#appearance-next').click();
+
+  // On to the hardware scan, which measures the machine rather than reading the
+  // catalog's RAM prose. The webview has no host bridge, so it must say it
+  // cannot measure - not show zeros that read as "this machine has no memory".
+  await page.locator('#appearance-next').click();
+  const scan = page.locator('.onboarding-hardware');
+  await expect(scan).toBeVisible();
+  await expect(scan).toContainText(/cannot read memory or disk|could not read/i);
+  // A fit claim of "all clear" from an unmeasurable host is exactly the bug.
+  await expect(scan).not.toContainText(/\d+\s*of\s*\d+\s*weights fit/i);
+
   await page.locator('#appearance-save').click();
   await expect(dialog).toBeHidden();
   expect(await bg(page)).toBe(previewed);

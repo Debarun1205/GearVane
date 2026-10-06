@@ -717,6 +717,13 @@ describe('the model explorer', () => {
     expect(prose).toMatch(/15 GB weight claims 48 GB of RAM while an 18 GB one claims 32/);
     expect(prose).toMatch(/Tokens per second is absent entirely/);
     expect(prose).not.toMatch(/RAM\s+requirements and tokens per second are absent/);
+    // The app measures rather than reading the column. Claiming it does not
+    // would be the reverse error: hardware detection now exists, so the page
+    // would be describing a superseded app.
+    expect(prose).toMatch(/does not decide anything from those numbers/);
+    expect(prose).toMatch(/memory-mapped/);
+    expect(prose).toMatch(/1\.3x overhead factor/);
+    expect(prose).not.toMatch(/hardware manager lands/);
     // No invented columns in the data either.
     expect(read(ASSETS, 'catalog.js')).not.toMatch(/tokensPerSecond|estimatedRam|minRam/);
   });

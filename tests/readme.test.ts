@@ -162,6 +162,23 @@ describe('claims are qualified', () => {
     expect(readme).toMatch(/2 GiB per-asset limit/);
   });
 
+  it('says the app measures the machine rather than trusting catalog RAM', () => {
+    // The catalog's RAM prose contradicts itself, so any claim that the app
+    // computes requirements from it would be false. What it does is measure,
+    // with one arithmetic rule and one labelled estimate.
+    // The sentence wraps mid-clause, so the whitespace has to be flexible or the
+// assertion describes the line breaks rather than the claim.
+expect(readme).toMatch(/contradict\s+each\s+other/);
+    expect(readme).toMatch(/29 of the 50 entries/);
+    expect(readme).toMatch(/1\.73x to 3\.48x/);
+    expect(readme).toMatch(/os\.totalmem/);
+    expect(readme).toMatch(/statfs/);
+    expect(readme).toMatch(/memory-mapped/);
+    // The estimate has to be labelled, or it reads as a measurement.
+    expect(readme).toMatch(/stated 1\.3x overhead factor and calls it an estimate/);
+    expect(readme).not.toMatch(/RAM figures become real fields when hardware detection lands/);
+  });
+
   it('explains why the download filenames say Waypoint', () => {
     // v0.3.0 predates the rename, so the published artifacts carry the old
     // product name. Without this the table reads as a mistake.

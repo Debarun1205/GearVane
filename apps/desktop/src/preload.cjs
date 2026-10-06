@@ -31,6 +31,16 @@ const api = {
   },
 
   /**
+   * Machine facts, measured in the main process.
+   *
+   * A sandboxed renderer cannot statfs a volume or read total memory, and the
+   * install dialog needs both to tell someone whether a weight will fit.
+   */
+  hardware: {
+    info: () => ipcRenderer.invoke('hardware:info'),
+  },
+
+  /**
    * Terminal bridge.
    *
    * The renderer cannot load node-pty, so the main process owns the PTY and
@@ -106,6 +116,8 @@ const api = {
     list: () => ipcRenderer.invoke('models:list'),
     fetch: (id) => ipcRenderer.invoke('models:fetch', id),
     cancel: (id) => ipcRenderer.invoke('models:cancel', id),
+    // Measured in the main process: a sandboxed renderer cannot statfs or
+    // read total memory.
     onProgress: (handler) => {
       const listener = (_event, progress) => handler(progress);
       ipcRenderer.on('models:progress', listener);

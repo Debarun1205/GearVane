@@ -292,9 +292,18 @@
               not a computed requirement, and it does not hold together: a
               15 GB weight claims 48 GB of RAM while an 18 GB one claims 32.
               Treat it as a hint to check against your own machine rather than
-              a requirement. Tokens per second is absent entirely, because
-              nothing measures it yet. Both become real fields when the
-              hardware manager lands. Sizes are the on-disk download, so allow
+              a requirement.
+
+              The app does not decide anything from those numbers. It measures
+              your machine instead - total and free memory, and free disk on the
+              volume where weights are stored - and reports both in onboarding
+              and before any download over 500 MB. One rule there is arithmetic
+              rather than an estimate: weights are memory-mapped, so a weight
+              larger than your physical RAM cannot load. Above that it adds a
+              stated 1.3x overhead factor and calls it an estimate, because the
+              KV cache scales with context length in ways the catalog does not
+              record. Tokens per second is absent entirely, because nothing
+              here measures it yet. Sizes are the on-disk download, so allow
               roughly the same again for memory while a model is loaded.
             </p>
 

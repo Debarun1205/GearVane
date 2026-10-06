@@ -196,6 +196,13 @@
       <h2>Install model</h2>
       <p class="builder-help" id="model-install-text"></p>
       <p class="builder-help" id="model-install-license" hidden></p>
+      <!--
+        Fit summary. Filled in from measured memory and disk rather than the
+        catalog's RAM prose, which is hand-written and contradicts itself. Left
+        hidden when nothing could be measured, so an empty box never implies a
+        clean bill of health.
+      -->
+      <p class="builder-help" id="model-install-fit" hidden></p>
       <form method="dialog" class="builder-actions">
         <button class="ghost-button" type="submit" value="cancel">Cancel</button>
         <button class="send-button" type="submit" value="install">
@@ -273,7 +280,13 @@
         them; nothing is kept until you save.
       </p>
 
+      <!--
+        One dot per ONBOARDING_STEPS entry. Static markup, so the count has to
+        be kept in step with that array by hand - the renderer only toggles an
+        active class per index and never adds or removes dots.
+      -->
       <div id="onboarding-steps" class="onboarding-steps" hidden>
+        <span class="onboarding-step-dot"></span>
         <span class="onboarding-step-dot"></span>
         <span class="onboarding-step-dot"></span>
         <span class="onboarding-step-dot"></span>
