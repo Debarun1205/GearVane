@@ -30,11 +30,14 @@ describe('site structure', () => {
     expect(existsSync(join(SITE, 'index.html'))).toBe(true);
     expect(existsSync(join(ASSETS, 'styles.css'))).toBe(true);
     expect(existsSync(join(ASSETS, 'demos.js'))).toBe(true);
+    expect(existsSync(join(ASSETS, 'catalog.js'))).toBe(true);
+    expect(existsSync(join(ASSETS, 'catalog-data.js'))).toBe(true);
   });
 
   it('links the stylesheet and script', () => {
     expect(html).toMatch(/href="\.\/assets\/styles\.css"/);
     expect(html).toMatch(/src="\.\/assets\/demos\.js"/);
+    expect(html).toMatch(/src="\.\/assets\/catalog\.js"/);
   });
 
   it('needs no build step', () => {
@@ -62,6 +65,7 @@ describe('sections', () => {
   it.each([
     ['how', 'How it works'],
     ['tiers', 'Tiers'],
+    ['models', 'Every model, in full'],
     ['demos', 'See it decide'],
     ['harness', 'Inside the harness'],
     ['download', 'Download'],
@@ -77,6 +81,7 @@ describe('sections', () => {
     for (const anchor of [
       '#how',
       '#tiers',
+      '#models',
       '#demos',
       '#harness',
       '#download',
@@ -514,6 +519,166 @@ describe('files served to the browser', () => {
     expect(code).not.toMatch(/<[A-Z][A-Za-z]*>\(/);
     expect(code).not.toMatch(/\binterface\s+\w+/);
     expect(code).not.toMatch(/^\s*(export\s+)?type\s+\w+\s*=/m);
+  });
+});
+
+describe('the model explorer', () => {
+  // The table is generated from the app's catalog, so the guard against drift
+  // is mechanical: same file, same bytes. A hand-typed fifty-row table would
+  // silently go stale the first time someone added a model.
+  it('ships catalog data that matches apps/desktop/src/models.json', async () => {
+    const catalog = JSON.parse(
+      readFileSync(join(REPO, 'apps', 'desktop', 'src', 'models.json'), 'utf8'),
+    ) as Array<Record<string, unknown>>;
+    const generated = await import('../site/assets/catalog-data.js');
+
+    expect(generated.MODELS).toHaveLength(catalog.length);
+
+    const byId = new Map(catalog.map((entry) => [entry['id'] as string, entry]));
+    for (const row of generated.MODELS) {
+      const source = byId.get(row.id);
+      expect(source, `catalog has no ${row.id}`).toBeDefined();
+      expect(row.bytes).toBe(source?.['bytes']);
+      expect(row.use).toBe(source?.['use']);
+      expect(row.bundled).toBe(source?.['bundled'] === true);
+      expect(row.license).toBe(source?.['license']);
+      expect(row.licenseUrl).toBe(source?.['licenseUrl']);
+    }
+  });
+
+  it('regenerates byte-identically, so --check can gate CI', async () => {
+    const { execFileSync } = await import('node:child_process');
+    // The generator exits non-zero when the committed file is stale, which is
+    // the whole point of committing generated output into a no-build site.
+    expect(() =>
+      execFileSync('node', [join(REPO, 'tools', 'gen-site-catalog.mjs'), '--check'], {
+        cwd: REPO,
+        stdio: 'pipe',
+      }),
+    ).not.toThrow();
+  });
+
+  it('shows a licence for every row and links it', () => {
+    const explorer = read(ASSETS, 'catalog.js');
+    expect(explorer).toMatch(/licenseUrl/);
+    expect(explorer).toMatch(/link\.href = row\.licenseUrl/);
+    // External links from generated DOM need the same protection as the
+    // hand-written ones.
+    expect(explorer).toMatch(/link\.rel = 'noopener'/);
+  });
+
+  it('marks installed models with a word, not only a colour', () => {
+    // Colour alone is not an accessible signal: it fails a monochrome
+    // display and a screen reader equally.
+    expect(html).toContain('in the installer');
+    expect(read(ASSETS, 'catalog.js')).toMatch(/textContent = ' in the installer'/);
+  });
+
+  it('flags the RAM figures as prose rather than measurements', () => {
+    // Two ways to be wrong here, both of which the earlier draft managed.
+    //
+    // Claiming RAM is absent would be false: 29 of the 50 "Good for" strings
+    // carry a gigabyte figure. Presenting those figures as requirements would
+    // also be false, and demonstrably so - gemma-3-27b at 15.0 GiB claims
+    // 48 GB while qwen2.5-32b at 17.9 GiB claims 32 GB, which cannot both be
+    // true. So the page names the inconsistency rather than hiding the column
+    // or laundering the numbers.
+    expect(prose).toMatch(/What this table does not tell you/);
+    expect(prose).toMatch(/hand-written guidance,\s+not a computed requirement/);
+    expect(prose).toMatch(/15 GB weight claims 48 GB of RAM while an 18 GB one claims 32/);
+    expect(prose).toMatch(/Tokens per second is absent entirely/);
+    expect(prose).not.toMatch(/RAM\s+requirements and tokens per second are absent/);
+    // No invented columns in the data either.
+    expect(read(ASSETS, 'catalog.js')).not.toMatch(/tokensPerSecond|estimatedRam|minRam/);
+  });
+
+  it('builds the table without innerHTML', () => {
+    // Same rule as the demo list: ids, use strings, and URLs all come from a
+    // JSON file, so none of them may reach the DOM as markup. Comments are
+    // stripped first, because this file explains at length that it does not
+    // use innerHTML, and the word legitimately appears there.
+    const explorer = read(ASSETS, 'catalog.js')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/^\s*\/\/.*$/gm, '');
+    expect(explorer).not.toMatch(/innerHTML/);
+    expect(explorer).toMatch(/textContent/);
+  });
+
+  it('carries no TypeScript-only syntax in the explorer modules', () => {
+    for (const file of ['catalog.js', 'catalog-data.js']) {
+      const code = read(ASSETS, file)
+        .replace(/\/\*[\s\S]*?\*\//g, '')
+        .replace(/^\s*\/\/.*$/gm, '');
+      expect(code).not.toMatch(/:\s*(void|string|number|boolean)\b/);
+      expect(code).not.toMatch(/\bas\s+[A-Z][A-Za-z]*\b/);
+      expect(code).not.toMatch(/^\s*(export\s+)?type\s+\w+\s*=/m);
+    }
+  });
+
+  it('does not derive a tier from the file size', async () => {
+    // Regression: the first version of the explorer computed each tier from
+    // the download size, on the assumption that was how GearVane tiers. It is
+    // not - qwen3-8b is in frontier at 4.7 GB and eleven sub-2 GB weights are
+    // in mid - so that approach disagreed with the app on 13 of the 36 routed
+    // models. The tier is read from the config instead, and the guard is
+    // tests/catalog-tiers.test.ts.
+    const explorer = await import('../site/assets/catalog.js');
+    expect((explorer as Record<string, unknown>)['tierForBytes']).toBeUndefined();
+    const source = read(ASSETS, 'catalog.js');
+    expect(source).not.toMatch(/function tierForBytes/);
+    expect(source).toMatch(/tier: entry\.tier \?\? null/);
+  });
+
+  it('marks a weight no tier names as on request', async () => {
+    // 14 of the 50 catalog weights are downloadable but absent from the
+    // shipped tier lists. Calling them "on request" is honest; assigning them
+    // a tier would be a classification the app does not perform.
+    const explorer = await import('../site/assets/catalog.js');
+    const rows = explorer.buildRows([
+      { id: 'routed', bytes: 1e9, use: 'x', bundled: false, license: 'MIT', licenseUrl: 'https://e.com', tier: 'local' },
+      { id: 'loner', bytes: 2e9, use: 'y', bundled: false, license: 'MIT', licenseUrl: 'https://e.com', tier: null },
+    ]);
+    const loner = rows.find((r: { id: string }) => r.id === 'loner');
+    expect(loner?.tier).toBeNull();
+  });
+
+  it('shows real sizes rather than a placeholder', async () => {
+    const explorer = await import('../site/assets/catalog.js');
+    expect(explorer.formatGiB(428730240)).toBe('0.4 GiB');
+    // Above 10 GB the decimal is noise.
+    expect(explorer.formatGiB(72131051520)).toBe('67 GiB');
+  });
+
+  it('summarises the catalog from the data, not a typed sentence', async () => {
+    const explorer = await import('../site/assets/catalog.js');
+    const rows = explorer.buildRows([
+      { id: 'a', bytes: 1073741824, use: 'x', bundled: true, license: 'MIT', licenseUrl: 'https://e.com', tier: 'local' },
+      { id: 'b', bytes: 2147483648, use: 'y', bundled: false, license: 'Apache-2.0', licenseUrl: 'https://e.com', tier: null },
+    ]);
+    const summary = explorer.summaryLine(rows);
+    expect(summary).toContain('2 weights');
+    expect(summary).toContain('1 ship in the installer');
+    // Both counts are derived, so the sentence cannot drift from the table.
+    expect(summary).toContain('1 are in the default tiers');
+    expect(summary).toContain('1 are downloadable and selectable on request');
+  });
+
+  it('sorts bundled weights first, then by size', async () => {
+    const explorer = await import('../site/assets/catalog.js');
+    const rows = explorer.buildRows([
+      { id: 'frontier-big', bytes: 9e9, use: 'x', bundled: false, license: 'MIT', licenseUrl: 'https://e.com', tier: 'frontier' },
+      { id: 'local-small', bytes: 1e9, use: 'x', bundled: false, license: 'MIT', licenseUrl: 'https://e.com', tier: 'local' },
+      { id: 'bundled', bytes: 5e9, use: 'x', bundled: true, license: 'MIT', licenseUrl: 'https://e.com', tier: 'mid' },
+      { id: 'loner', bytes: 2e9, use: 'x', bundled: false, license: 'MIT', licenseUrl: 'https://e.com', tier: null },
+    ]);
+    // Bundled first, then by tier, then by size; an untiered weight sinks to
+    // the bottom rather than being interleaved as if it were local.
+    expect(rows.map((r: { id: string }) => r.id)).toEqual([
+      'bundled',
+      'local-small',
+      'frontier-big',
+      'loner',
+    ]);
   });
 });
 

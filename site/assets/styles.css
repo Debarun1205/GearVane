@@ -794,6 +794,129 @@ pre {
 
 /* --- downloads ------------------------------------------------------------- */
 
+/* --- model explorer --------------------------------------------------------- */
+
+/* Band counts above the table. The numbers come from the catalog, so the
+   legend cannot disagree with what is listed. */
+.model-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  margin-bottom: 1.25rem;
+}
+
+.model-legend-item {
+  color: var(--text-dim);
+  font-size: 0.9rem;
+}
+
+.model-count {
+  color: var(--text);
+  font-size: 1.35rem;
+  font-variant-numeric: tabular-nums;
+  margin-right: 0.35rem;
+}
+
+.model-table-host {
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  box-shadow: var(--card-shadow);
+  overflow-x: auto;
+}
+
+.model-table {
+  border-collapse: collapse;
+  width: 100%;
+  min-width: 46rem;
+  font-size: 0.85rem;
+}
+
+.model-table th,
+.model-table td {
+  padding: 0.45rem 0.7rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.model-table thead th {
+  border-bottom: 1px solid var(--border-strong);
+  color: var(--text-dim);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.model-table tbody tr + tr th,
+.model-table tbody tr + tr td {
+  border-top: 1px solid var(--border);
+}
+
+.model-table tbody th {
+  font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 0.78rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.model-table td {
+  color: var(--text-dim);
+}
+
+.model-table .model-size {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Bundled is a word, not a colour: it has to survive a screen reader and a
+   monochrome display. The tint is a bonus. */
+.model-bundled {
+  color: var(--local);
+  font-family: inherit;
+  font-size: 0.72rem;
+  white-space: normal;
+}
+
+.model-tier {
+  font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+.model-tier-local { color: var(--local); }
+.model-tier-mid { color: var(--mid); }
+.model-tier-frontier { color: var(--frontier); }
+
+/* A weight the default tiers do not name. Dim rather than coloured: it is a
+   real, usable model that simply sits outside the shipped tier lists. */
+.model-tier-none {
+  color: var(--text-dim);
+  font-style: italic;
+}
+
+.model-licence-custom {
+  color: var(--mid);
+}
+
+/* Visually hidden but announced. Used for the table caption, which names the
+   table for a screen reader without repeating it visually. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
 .download-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));

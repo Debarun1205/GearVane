@@ -27,6 +27,7 @@
         <nav aria-label="Main">
           <a href="#how">How it works</a>
           <a href="#tiers">Tiers</a>
+          <a href="#models">Models</a>
           <a href="#demos">Demos</a>
           <a href="#harness">Harness</a>
           <a href="#download">Download</a>
@@ -189,6 +190,70 @@
           </p>
         </div>
       </section>
+
+      <!-- models ---------------------------------------------------------- -->
+      <section class="section" id="models">
+        <div class="wrap">
+          <h2>Every model, in full</h2>
+            <p class="section-lede" id="model-summary"></p>
+
+            <div class="model-legend">
+              <span class="model-legend-item">
+                <strong class="model-count" id="model-count-local">-</strong>
+                in local
+              </span>
+              <span class="model-legend-item">
+                <strong class="model-count" id="model-count-mid">-</strong>
+                in mid
+              </span>
+              <span class="model-legend-item">
+                <strong class="model-count" id="model-count-frontier">-</strong>
+                in frontier
+              </span>
+              <span class="model-legend-item">
+                <strong class="model-count" id="model-count-none">-</strong>
+                on request
+              </span>
+            </div>
+
+            <div class="model-table-host" id="model-table"></div>
+
+            <p class="note">
+              <strong>What this table does not tell you.</strong> The tier
+              column is read from the router's own configuration, not
+              calculated from the size - which is just as well, because size
+              does not predict it. <code>qwen3-8b</code> sits in frontier at
+              4.7 GB while eleven weights under 2 GB sit in mid. The tier
+              names are still provisional: a reasonable ordering, not a
+              measured capability ranking, and a benchmark that would settle
+              it is on the list.
+
+              <strong>On the RAM figures.</strong> Where the Good for column
+              mentions a number of gigabytes, that is hand-written guidance,
+              not a computed requirement, and it does not hold together: a
+              15 GB weight claims 48 GB of RAM while an 18 GB one claims 32.
+              Treat it as a hint to check against your own machine rather than
+              a requirement. Tokens per second is absent entirely, because
+              nothing measures it yet. Both become real fields when the
+              hardware manager lands. Sizes are the on-disk download, so allow
+              roughly the same again for memory while a model is loaded.
+            </p>
+
+            <p class="note">
+              GearVane itself is MIT licensed. Each weight is downloaded under
+              its own licence, and a few of those are custom rather than
+              permissive - Meta's Llama, Google's Gemma, NVIDIA's Nemotron,
+              Qwen, Falcon, DeepSeek, and BigCode all add terms. Only the
+              Apache-2.0 and MIT weights ship in the installer; the rest are
+              download-on-request, and the app shows the licence before you
+              accept one. The full mapping is in
+              <a
+                href="https://github.com/Debarun1205/GearVane/blob/master/THIRD_PARTY_NOTICES.md"
+                rel="noopener">THIRD_PARTY_NOTICES.md</a
+              >.
+            </p>
+          </div>
+        </section>
 
       <!-- demos ----------------------------------------------------------- -->
       <section class="section" id="demos">
@@ -886,5 +951,6 @@ code --install-extension gearvane-0.3.0.vsix</code></pre>
     </footer>
 
     <script type="module" src="./assets/demos.js"></script>
+    <script type="module" src="./assets/catalog.js"></script>
   </body>
 </html>
