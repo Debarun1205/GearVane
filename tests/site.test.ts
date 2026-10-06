@@ -88,6 +88,29 @@ describe('sections', () => {
     }
   });
 
+  it('describes tiers as size bands, not a capability ranking', () => {
+    // Regression: the page called 7-8B local weights "frontier" next to
+    // Claude Opus, which is a marketing risk the owner asked to avoid. The
+    // labels stay (they are the internal ids) but the page now says what
+    // they mean and states that capability tiering is not measured yet.
+    expect(prose).toMatch(/Read those names as size bands/);
+    expect(prose).toMatch(/the heaviest weights/);
+    expect(prose).toMatch(/not a hosted frontier model/);
+    expect(prose).toMatch(/provisional/);
+  });
+
+  it('no longer bills the local tiers', () => {
+    // The catalog tiers are all downloadable weights served locally, so
+    // every one of them is free. Only hosted models can cost money, and
+    // the page says so.
+    const costs = html.match(/<span class="tier-cost">([^<]+)<\/span>/g) ?? [];
+    expect(costs.length).toBe(3);
+    for (const cost of costs) {
+      expect(cost).toContain('free');
+    }
+    expect(prose).toMatch(/the only tier that can cost you money/);
+  });
+
   it('covers all four platforms', () => {
     expect(html).toMatch(/>Windows</);
     expect(html).toMatch(/>Linux</);
@@ -112,6 +135,17 @@ describe('version history', () => {
   it('explains why there is no entry before v0.2.0', () => {
     // Without this a short history reads as if entries were lost.
     expect(prose).toMatch(/no earlier version to install/i);
+  });
+
+  it('says escalation happens on an error, not a verified failure', () => {
+    // The orchestrator retries and escalates when a model call errors or
+    // returns nothing usable. It does not run the user's tests to decide an
+    // answer is wrong, so a page implying it does is claiming a capability
+    // that does not exist. The step names the work as future rather than
+    // shipping the implication.
+    expect(prose).toContain('Escalate when a cheap model cannot answer');
+    expect(prose).toMatch(/escalation on an <em>error<\/em>, not on a verified/);
+    expect(prose).toMatch(/does not yet run your tests/);
   });
 
   it('pairs each version with what shipped and what was broken', () => {
@@ -261,35 +295,52 @@ describe('downloads', () => {
 });
 
 describe('platform claims are scoped to what ships', () => {
-  it('claims the IDE on desktop and Android alike', () => {
-    // The webview backend mounts the IDE over a device-local workspace, so
-    // the hero no longer scopes it to the desktop. The scope that remains
-    // is the honest one: terminal and file-changing builds stay behind.
-    expect(prose).toContain('full IDE on desktop and Android alike');
+  it('claims the IDE on Android, and names the two real gaps', () => {
+    // Ground truth, from apps/desktop/src/web-backend.ts: the IDE does mount
+    // in the webview over a device-local workspace. What is genuinely
+    // missing is the terminal (no shell) and file-changing Build mode (the
+    // tool layer imports node:*). The page used to claim a "full" IDE,
+    // which overclaimed, and the v0.3.0 notes claimed no IDE at all, which
+    // was simply false. Both now say this.
+    expect(prose).toContain('the same IDE');
     expect(prose).toContain('device-local workspace');
+    expect(prose).not.toContain('full IDE on desktop and Android alike');
+    expect(prose).toMatch(/no terminal, because a webview has no shell/);
+    expect(prose).toMatch(/no file-changing Build mode/);
   });
 
   it('describes the Android build as the webview it is', () => {
     // The download card is where a phone visitor decides; it has to say
     // what the APK does and does not carry.
     expect(prose).toMatch(/run in a webview/);
-    expect(prose).toMatch(/IDE over a device-local workspace/);
-    expect(prose).toMatch(/terminal.*desktop-only/);
-  });
-
-  it('lists the Android scope among the known limitations', () => {
-    expect(prose).toContain(
-      'Android build is webview-only: no IDE, files, or terminal',
+    expect(prose).toMatch(/Ask-mode agent/);
+    expect(prose).toMatch(/stored on the device/);
+    expect(prose).toMatch(
+      /There is no terminal, because a webview has no shell/,
     );
   });
 
+  it('lists the Android scope among the known limitations', () => {
+    // Regression: this used to say "no IDE, files, or terminal", which was
+    // false. The webview backend mounts the whole IDE over a device-local
+    // workspace, so a limitation list that denies it misinforms anyone
+    // deciding whether to install on a phone.
+    expect(html).toMatch(
+      /Android runs the IDE in a webview over a device-local workspace, but has no terminal and no file-changing Build mode/,
+    );
+    expect(prose).not.toMatch(/no IDE, files, or terminal/);
+  });
+
   it('answers the Android IDE question in the FAQ', () => {
-    // The question a phone visitor actually has, answered with the scope
-    // (device-local workspace, Ask agent) and the cause (no shell, so no
-    // terminal and no file-changing builds).
+    // The question a phone visitor actually has. The answer is "most of it",
+    // not the unqualified "Yes" it used to open with, and it gives both
+    // causes: no shell for the terminal, no Node for the file-changing tools.
     expect(prose).toContain('Does the Android build include the IDE?');
     expect(prose).toMatch(/device-local workspace/);
-    expect(prose).toMatch(/no shell/);
+    expect(prose).toMatch(/webview has no shell to run/);
+    expect(prose).toMatch(/cannot load in a browser/);
+    // The old answer opened with a bare affirmative that overstated it.
+    expect(prose).not.toMatch(/Does the Android build include the IDE\?\s*Yes\./);
   });
 });
 
@@ -405,7 +456,7 @@ describe('harness feature claims', () => {
     ['the CLI gates operations behind approval', 'packages/cli/src/bin.ts', /case 'approve'/],
     ['the CLI probes model health', 'packages/cli/src/bin.ts', /case 'health'/],
     ['the app surfaces health too', 'apps/desktop/src/renderer.ts', /showHealth/],
-    ['feedback retrains the learned classifier', 'packages/core/src/defaults.ts', /learned_model\.json/],
+    ['the learned classifier trains from recorded feedback', 'packages/core/src/defaults.ts', /learned_model\.json/],
     ['training runs from recorded feedback', 'gearvane/learned_classifier.py', /train_from_feedback/],
     ['the app wires first-run onboarding', 'apps/desktop/src/renderer.ts', /openAppearance\('onboarding'\)/],
     ['the look is stored on the device', 'apps/desktop/src/renderer.ts', /appearanceStorage/],
@@ -512,6 +563,39 @@ describe('security and hygiene', () => {
       expect(text).not.toMatch(/ghp_/);
       expect(text).not.toMatch(/github_pat_/);
     }
+  });
+
+  it('does not claim the app learns from outcomes', () => {
+    // Ground truth: recordRunFeedback is called from the CLI
+    // (packages/cli/src/bin.ts) and nowhere in apps/, so the desktop app a
+    // visitor downloads never learns anything. The card used to advertise
+    // the capability outright.
+    expect(html).not.toContain('Learns from outcomes');
+    expect(prose).toMatch(/does not yet record outcomes, so it does not learn/);
+    expect(prose).toMatch(/always routes on the heuristic/);
+    // The capability that does ship is still claimed.
+    expect(html).toContain('Reasons, not verdicts');
+  });
+
+  it('describes key storage the way the app now works', () => {
+    // Regression: the FAQ said the vault "lives only on that device, in its
+    // own storage", which described the old localStorage vault. It is now
+    // encrypted by the OS secret store, and the page had to stop implying
+    // plaintext is fine.
+    expect(prose).toMatch(/encrypted by your operating system secret store/);
+    expect(prose).toMatch(/DPAPI on Windows, Keychain on macOS/);
+    expect(prose).toMatch(
+      /the keys stay in memory for that session only/,
+    );
+    expect(prose).not.toContain('in its own storage;');
+  });
+
+  it('scopes spend ceilings to hosted models', () => {
+    // Spend limits were removed for local models because they cost nothing.
+    // Promising per-task/session/day ceilings without saying which tier they
+    // apply to implies a cap on local runs that does not exist.
+    expect(prose).toMatch(/a dollar ceiling on them would be meaningless/);
+    expect(prose).toMatch(/Hosted models are the ones that bill you/);
   });
 
   it('leaves no placeholder text', () => {

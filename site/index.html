@@ -48,23 +48,28 @@
       <section class="hero" id="top">
         <div class="wrap">
           <p class="eyebrow">Open source AI harness, MIT licensed</p>
-          <h1>Stop paying frontier prices for a typo fix.</h1>
+          <h1>The AI coding harness that starts free.</h1>
           <p class="lede">
-            GearVane is an AI harness: it classifies what you asked for, runs
-            the task through a tool-using agent loop with budgets and
-            approvals, and picks the cheapest model tier that can do the job,
-            escalating only when a cheaper model fails.
+            Four models are ready the moment you install. Fifty more are one
+            click away. GearVane classifies what you asked for, runs it through
+            a tool-using agent loop with approvals and diff review, and picks
+            the cheapest tier that can do the job. No account, no API key, and
+            in Local-only mode nothing leaves your machine.
           </p>
           <div class="hero-actions">
             <a class="button" href="#download">Download</a>
-            <a class="button button-ghost" href="#demos">See it decide</a>
+            <a class="button button-ghost" href="#playground">Try the router</a>
           </div>
           <p class="hero-note">
-            Works on Windows, Linux, macOS, and Android - as a CLI, a VS Code
-            extension, and a full IDE on desktop and Android alike. Android runs the app
-            itself in a webview, where the IDE works over a device-local workspace.
-            Bring your own keys, or run entirely on
-            your own machine.
+            Windows, Linux, macOS, and Android. One engine behind four
+            surfaces: a <strong>CLI</strong>, a <strong>VS Code
+            extension</strong>, the <strong>desktop app</strong>, and the
+            <strong>Android build</strong>. Android runs the same IDE - editor,
+            file tree, search, and the Ask-mode agent - over a workspace stored
+            on the device. It has no terminal, because a webview has no shell
+            to run, and no file-changing Build mode, because the tool layer
+            needs Node. Bring your own keys for hosted models, or run entirely
+            on your own machine.
           </p>
         </div>
       </section>
@@ -74,8 +79,8 @@
         <div class="wrap">
           <h2>How it works</h2>
           <p class="section-lede">
-            Three tiers, classified per request, with escalation on real
-            failure rather than guesswork.
+            Three tiers, classified per request, with escalation on real failure
+            rather than guesswork.
           </p>
 
           <ol class="steps">
@@ -98,11 +103,17 @@
             </li>
             <li>
               <span class="step-number">3</span>
-              <h3>Escalate only if it fails</h3>
+              <h3>Escalate when a cheap model cannot answer</h3>
               <p>
-                Failures feed back into the next decision. A local model that
-                cannot do the job moves the task up a tier, bounded so an
-                impossible task cannot burn every model in sequence.
+                If the model errors, times out, or returns nothing usable, the
+                failure is fed into the next decision and the task moves up a
+                tier. Escalation is bounded, so a task that genuinely cannot be
+                done will not march through every model in sequence.
+              </p>
+              <p class="step-caveat">
+                This is escalation on an <em>error</em>, not on a verified
+                failure. GearVane does not yet run your tests to decide the
+                answer is wrong; that is named work, not a current capability.
               </p>
             </li>
           </ol>
@@ -114,8 +125,9 @@
         <div class="wrap">
           <h2>Tiers</h2>
           <p class="section-lede">
-            Configure one, two, or all three. Local-only works with no API key
-            at all.
+            GearVane runs the weights itself. Every model below is a file you
+            download and run on your own machine, so a local run costs nothing
+            and works offline.
           </p>
 
           <div class="tier-grid">
@@ -124,7 +136,7 @@
                 <h3>local</h3>
                 <span class="tier-cost">free</span>
               </header>
-              <p>Ollama, LM Studio, llama.cpp, vLLM, LocalAI, GPT4All, oobabooga</p>
+              <p>Small weights, up to about 2 GB. Qwen, SmolLM2, Llama 3.2, TinyLlama, Phi.</p>
               <ul>
                 <li>Typos, formatting, renames</li>
                 <li>Small mechanical refactors</li>
@@ -135,9 +147,9 @@
             <article class="tier tier-mid">
               <header>
                 <h3>mid</h3>
-                <span class="tier-cost">low</span>
+                <span class="tier-cost">free</span>
               </header>
-              <p>Haiku, Flash, GPT-4o-mini, and similar</p>
+              <p>Mid-size weights, roughly 2 to 6 GB. Qwen 3, Mistral, Falcon3, DeepSeek R1 distills.</p>
               <ul>
                 <li>Multi-file changes</li>
                 <li>Adding an endpoint or a test</li>
@@ -148,9 +160,9 @@
             <article class="tier tier-frontier">
               <header>
                 <h3>frontier</h3>
-                <span class="tier-cost">billed</span>
+                <span class="tier-cost">free</span>
               </header>
-              <p>Claude Sonnet and Opus, GPT-4o, o3</p>
+              <p>The heaviest local weights, over about 6 GB. Qwen 3 8B, Llama 3.3, DeepSeek R1 distills.</p>
               <ul>
                 <li>Architecture and design</li>
                 <li>Concurrency and debugging</li>
@@ -160,8 +172,20 @@
           </div>
 
           <p class="note">
-            Cost is checked against your own limits before a request runs. A
-            task that cannot fit the budget never reaches a provider.
+            <strong>Read those names as size bands, not as a capability
+              ranking.</strong> <code>frontier</code> means "the heaviest weights
+              in the catalog" - an 8B model on your own hardware, not a hosted
+              frontier model. Tiering by measured capability is not done yet, so
+              the labels are provisional, and the app says so beside them. A
+              benchmark that measures the tiers is on the list.
+            </p>
+
+            <p class="note">
+              Hosted models are supported too, and they are the only tier that
+              can cost you money: bring a key for Anthropic, OpenAI, Gemini,
+              Mistral, xAI, DeepSeek, Groq, and others, and GearVane routes to
+              them when a task warrants it. Local models carry no spend
+              ceilings, because they cost nothing.
           </p>
         </div>
       </section>
@@ -256,11 +280,14 @@
             </article>
 
             <article class="feature">
-              <h3>Learns from outcomes</h3>
+              <h3>Reasons, not verdicts</h3>
               <p>
-                Recorded feedback retrains the learned classifier, which
-                refines the heuristic choice and always defers to it when
-                the two disagree.
+                Every routing decision lists the signals behind it - the
+                keywords, the files, the confidence - so you can see why a
+                tier was chosen and pin a different one. The learned
+                classifier and its training loop exist and are tested in the
+                CLI, and the desktop app does not yet record outcomes, so it
+                does not learn from your runs yet.
               </p>
             </article>
 
@@ -329,9 +356,11 @@
               <h3>Android</h3>
               <p>
                 Debug APK, built from the same renderer bundle and run in a
-                webview: onboarding, settings, chat, and the IDE over a
-                device-local workspace. The terminal and file-changing
-                builds stay desktop-only.
+                webview: onboarding, settings, chat, and the IDE - editor,
+                file tree, search, and the Ask-mode agent - over a workspace
+                stored on the device. There is no terminal, because a webview
+                has no shell, and no file-changing Build mode, because the
+                tool layer needs Node.
               </p>
               <a
                 class="button button-small"
@@ -472,7 +501,7 @@ code --install-extension gearvane-0.3.0.vsix</code></pre>
                   <ul class="limitation-list">
                     <li>Artifacts are <strong>unsigned</strong></li>
                     <li>APK is debug-signed, not Play-Store ready</li>
-                    <li>Android build is webview-only: no IDE, files, or terminal</li>
+                    <li>Android runs the IDE in a webview over a device-local workspace, but has no terminal and no file-changing Build mode</li>
                     <li>AppImage is x64 only; <code>.deb</code> covers both architectures</li>
                     <li>New providers need your keys and are unverified live</li>
                     <li>GPT-6 Astra needs the Responses API for tool calling</li>
@@ -701,9 +730,14 @@ code --install-extension gearvane-0.3.0.vsix</code></pre>
               In your shell environment, and nowhere else. GearVane reads
               <code>ANTHROPIC_API_KEY</code> and similar variables, and never
               writes a credential to a config file, a log, or the dashboard.
-              The desktop and Android apps additionally offer a Keys dialog
-              whose vault lives only on that device, in its own storage;
-              entries are sent solely to their own provider. Local model
+              The desktop app additionally offers a Keys dialog, and its vault
+              is encrypted by your operating system secret store - DPAPI on Windows,
+              Keychain on macOS, libsecret or kwallet on Linux - so the file on
+              disk is ciphertext only your login can open. Where the
+              platform has no secret store the keys stay in memory for
+              that session only, and the app says so rather than quietly
+              writing plaintext. Entries are sent solely to their own
+              provider. Local model
               servers are never sent a key at all.
             </p>
           </details>
@@ -723,9 +757,10 @@ code --install-extension gearvane-0.3.0.vsix</code></pre>
               The heuristic classifier is deterministic and shows its reasons,
               so you can argue with it. Accuracy depends on your keywords and
               file patterns, which you control. Once you have recorded enough
-              outcomes you can train the learned classifier, which
-              refines the choice but always defers to the heuristic on
-              disagreement.
+              outcomes recorded through the CLI you can train the learned
+              classifier, which refines the choice but always defers to the
+              heuristic on disagreement. The desktop app does not record
+              outcomes yet, so today it always routes on the heuristic.
             </p>
           </details>
 
@@ -742,10 +777,13 @@ code --install-extension gearvane-0.3.0.vsix</code></pre>
           <details class="faq-item">
             <summary>Can I control the cost?</summary>
             <p>
-              Yes. Set per-task, per-session, and per-day ceilings. Budget is
-              checked before tokens are spent, so a task that would exceed the
-              limit is refused rather than truncated. The app shows session
-              spend as a live meter.
+              Local models cost nothing per token, so a dollar ceiling on them would
+              be meaningless; GearVane spends no budget on a local run.
+              Hosted models are the ones that bill you, and for those it
+              still supports per-task, per-session, and per-day ceilings,
+              checked before tokens are
+              spent, so a task that would exceed the limit is refused
+              rather than truncated.
             </p>
           </details>
 
@@ -798,12 +836,15 @@ code --install-extension gearvane-0.3.0.vsix</code></pre>
           <details class="faq-item">
             <summary>Does the Android build include the IDE?</summary>
             <p>
-              Yes. The APK runs the same renderer in a webview, and the IDE
-              mounts over a device-local workspace kept in the app's own
-              storage: editor, file tree, search, and the Ask-mode agent all
-              work there. A webview has no shell, so there is no terminal,
-              and file-changing builds stay desktop-only. The workspace
-              README created on first launch says exactly this.
+              Most of it, and the two gaps are real rather than
+              oversights. The APK runs the same renderer in a webview, and the
+              IDE mounts over a workspace kept in the app's own storage: the
+              editor, file tree, search, and the Ask-mode agent all work, and
+              files you create persist between launches. What is missing is
+              the terminal, because a webview has no shell to run, and the
+              file-changing Build mode, because the agent's tool layer needs
+              Node and cannot load in a browser. The workspace README created
+              on first launch says exactly this.
             </p>
           </details>
         </div>

@@ -563,6 +563,22 @@ pre {
 
 /* --- tiers ----------------------------------------------------------------- */
 
+/* A caveat attached to a numbered step. Quieter than the step it sits under,
+   and left-aligned with the step text rather than the number gutter, so it
+   reads as an aside rather than a fourth step. */
+.step-caveat {
+  margin-top: 0.5rem;
+  padding-left: 0.75rem;
+  border-left: 2px solid var(--border-strong);
+  color: var(--text-dim);
+  font-size: 0.9rem;
+}
+
+.step-caveat em {
+  color: var(--text);
+  font-style: italic;
+}
+
 .tier-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
