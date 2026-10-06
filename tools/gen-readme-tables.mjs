@@ -134,7 +134,15 @@ function applyBlocks(markdown) {
   return result;
 }
 
-const current = readFileSync(README, 'utf8');
+// Read with CRLF collapsed, so the generated blocks cannot reintroduce mixed
+// line endings into a file that had none.
+//
+// This matters more than it looks. Git checks the README out with the
+// platform's line endings, and the generator emits LF. Splicing LF blocks into
+// a CRLF file leaves the file with both, so re-running the generator after a
+// Windows checkout makes the README dirty without changing a single word - and
+// the drift check then fails on a file that is textually identical.
+const current = readFileSync(README, 'utf8').replace(/\r\n/g, '\n');
 const updated = applyBlocks(current);
 
 if (process.argv.includes('--check')) {

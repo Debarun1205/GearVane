@@ -134,7 +134,11 @@ export const MODELS = ${JSON.stringify(rows, null, 2)};
 `;
 
 if (process.argv.includes('--check')) {
-  const current = readFileSync(TARGET, 'utf8');
+  // Normalised before comparison: git checks text out with the platform's line
+  // endings, so on Windows the committed file arrives as CRLF while this
+  // generator writes LF, and a byte-exact comparison fails forever on a file
+  // that is current in every meaningful sense.
+  const current = readFileSync(TARGET, 'utf8').replace(/\r\n/g, '\n');
   if (current !== body) {
     console.error(
       'site/assets/catalog-data.js is out of date.\n' +

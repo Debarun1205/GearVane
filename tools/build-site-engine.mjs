@@ -15,10 +15,19 @@
  * which is worse than not having one.
  */
 
-import { execFileSync } from 'node:child_process';
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+// esbuild's JS API, not its command line.
+//
+// The previous version ran `node node_modules/esbuild/bin/esbuild`. That path is
+// a JavaScript shim on Windows and a native executable on Linux and macOS, so
+// node tried to parse an ELF header as JavaScript and CI failed on both:
+// "SyntaxError: Invalid or unexpected token". Which of the two you get depends
+// on the platform and the esbuild version, which is exactly the sort of
+// assumption a committed build artifact cannot rest on.
+import { build } from 'esbuild';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO = join(HERE, '..');
@@ -36,30 +45,44 @@ const BANNER = [
   ' */',
 ].join('\n');
 
-if (!existsSync(join(REPO, 'node_modules', 'esbuild', 'bin', 'esbuild'))) {
-  console.error('esbuild is not installed; run npm install at the repo root first');
+// Normalised before comparison. Git checks text files out with the platform's
+// line endings, so on Windows the committed artifact arrives as CRLF while
+// esbuild emits LF - and a byte-exact comparison then fails forever on a
+// platform where the file is, in every meaningful sense, current. The
+// generator writes LF; .gitattributes keeps it that way in the repository; this
+// comparison tolerates the checkout rather than requiring it.
+const normalizeEol = (text) => text.replace(/\r\n/g, '\n');
+
+const buildOptions = {
+  entryPoints: [ENTRY],
+  bundle: true,
+  format: 'esm',
+  target: 'es2022',
+  platform: 'browser',
+  minify: true,
+  legalComments: 'none',
+  write: false,
+  absWorkingDir: REPO,
+};
+
+let output;
+try {
+  const result = await build(buildOptions);
+  output = result.outputFiles?.[0]?.text ?? '';
+} catch (error) {
+  // esbuild throws a rich Error with its own message. Printing it beats a
+  // stack trace pointing at this file.
+  const message = error && typeof error === 'object' && 'message' in error
+    ? String(error.message)
+    : String(error);
+  console.error(`bundling failed: ${message}`);
   process.exit(1);
 }
 
-const output = execFileSync(
-  process.execPath,
-  [
-    join(REPO, 'node_modules', 'esbuild', 'bin', 'esbuild'),
-    ENTRY,
-    '--bundle',
-    '--format=esm',
-    '--target=es2022',
-    '--platform=browser',
-    '--minify',
-    '--legal-comments=none',
-  ],
-  { cwd: REPO, encoding: 'buffer' },
-);
-
-const body = `${BANNER}\nexport ${output.toString('utf8').trim()}\n`;
+const body = `${BANNER}\nexport ${output.trim()}\n`;
 
 if (process.argv.includes('--check')) {
-  const current = readFileSync(TARGET, 'utf8');
+  const current = normalizeEol(readFileSync(TARGET, 'utf8'));
   if (current !== body) {
     console.error(
       'site/assets/engine.js is out of date.\n' +
