@@ -136,7 +136,7 @@ gearvane --help
 <!-- BEGIN catalog-summary -->
 **50 weights, 36 of them in the default tiers.**
 
-Four ship in the installer (`qwen2.5-coder-0.5b-instruct-q4_0`, `smollm2-360m-instruct.q4_k_m`, `qwen2.5-7b-instruct-q4_k_m`, `qwen3-8b.q4_k_m`) and work offline at first launch. The rest are one click
+Four ship in the installer (`smollm2-360m-instruct.q4_k_m`) and work offline at first launch. The rest are one click
 away. Every one is a downloadable file you run on your own machine, so a
 local run costs nothing and needs no account. The catalog as a whole is
 449.7 GiB if you wanted all of it; nobody does.
@@ -155,7 +155,7 @@ and the app says so next to the picker.
 <!-- BEGIN catalog-table -->
 | Model | Tier | Size | Licence | In installer |
 | --- | --- | --- | --- | --- |
-| `qwen2.5-coder-0.5b-instruct-q4_0` | `local` | 0.4 GiB | Apache-2.0 | yes |
+| `qwen2.5-coder-0.5b-instruct-q4_0` | `local` | 0.4 GiB | Apache-2.0 |  |
 | `smollm2-360m-instruct.q4_k_m` | `local` | 0.3 GiB | Apache-2.0 | yes |
 | `qwen2.5-1.5b-instruct-q4_0` | `mid` | 1.0 GiB | Apache-2.0 |  |
 | `llama-3.2-1b-instruct-q4_k_m` | on request | 0.8 GiB | custom |  |
@@ -172,7 +172,7 @@ and the app says so next to the picker.
 | `phi-3-mini-4k-instruct-q4` | `mid` | 2.2 GiB | MIT |  |
 | `qwen2.5-3b-instruct-q4_0` | `mid` | 1.9 GiB | custom |  |
 | `qwen2.5-0.5b-instruct-q4_0` | on request | 0.4 GiB | Apache-2.0 |  |
-| `qwen2.5-7b-instruct-q4_k_m` | `mid` | 4.4 GiB | Apache-2.0 | yes |
+| `qwen2.5-7b-instruct-q4_k_m` | `mid` | 4.4 GiB | Apache-2.0 |  |
 | `mistral-7b-instruct-v0.3-q4_k_m` | `mid` | 4.1 GiB | Apache-2.0 |  |
 | `deepseek-r1-distill-qwen-7b-q4_k_m` | `mid` | 4.4 GiB | MIT |  |
 | `falcon3-7b-instruct-q4_k_m` | `mid` | 4.3 GiB | custom |  |
@@ -187,7 +187,7 @@ and the app says so next to the picker.
 | `mistral-nemo-instruct-2407-q4_k_m` | `frontier` | 7.0 GiB | Apache-2.0 |  |
 | `falcon3-10b-instruct-q4_k_m` | `frontier` | 5.9 GiB | custom |  |
 | `qwen2.5-coder-14b-instruct-q4_k_m` | `frontier` | 8.4 GiB | Apache-2.0 |  |
-| `qwen3-8b.q4_k_m` | `frontier` | 4.7 GiB | Apache-2.0 | yes |
+| `qwen3-8b.q4_k_m` | `frontier` | 4.7 GiB | Apache-2.0 |  |
 | `starcoder2-15b-q4_k_m` | `frontier` | 9.2 GiB | custom |  |
 | `phi-4-q4_k` | `frontier` | 8.4 GiB | MIT |  |
 | `llama-3.1-8b-instruct-q4_k_m` | on request | 4.6 GiB | custom |  |

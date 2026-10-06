@@ -88,12 +88,10 @@ describe('model catalog', () => {
     });
   });
 
-  it('flags exactly the four bundled weights', () => {
+  it('flags the bundled weight', () => {
+    // Only smollm2-360m ships in the installer; the rest download on first run.
     expect(ENTRIES.filter((entry) => entry.bundled).map((entry) => entry.id)).toEqual([
-      'qwen2.5-coder-0.5b-instruct-q4_0',
       'smollm2-360m-instruct.q4_k_m',
-      'qwen2.5-7b-instruct-q4_k_m',
-      'qwen3-8b.q4_k_m',
     ]);
   });
 

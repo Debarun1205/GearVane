@@ -45,9 +45,9 @@ jobs:
           npm run build --workspace @gearvane/app-core
           npm run build --workspace gearvane-app
 
-      - name: Fetch the bundled local model
-        # The GGUF is gitignored (400MB+); the installer carries it via
-        # extraResources, so release builds download it here.
+      - name: Fetch the bundled local model (smallest only for installer)
+        # Only the smallest model (smollm2-360m, ~258 MB) ships in the installer.
+        # The other 49 models are downloaded on first run via --first-run.
         working-directory: apps/desktop
         run: npm run models:fetch
 

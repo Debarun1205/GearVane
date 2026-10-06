@@ -99,11 +99,9 @@ describe('site tier bands', () => {
     const generated = await import('../site/assets/catalog-data.js');
     const bundled = generated.MODELS.filter((r: { bundled: boolean }) => r.bundled);
 
-    expect(bundled).toHaveLength(4);
-    // These four are what a first launch can actually use, so the site must be
-    // able to place every one of them.
-    for (const row of bundled) {
-      expect(row.tier, `${row.id} is bundled but in no tier`).not.toBeNull();
-    }
+    // Only smollm2-360m is bundled now (shipped in installer)
+    expect(bundled).toHaveLength(1);
+    expect(bundled[0].id).toBe('smollm2-360m-instruct.q4_k_m');
+    expect(bundled[0].tier).not.toBeNull();
   });
 });

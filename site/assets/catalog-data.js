@@ -17,7 +17,7 @@ export const MODELS = [
     "id": "qwen2.5-coder-0.5b-instruct-q4_0",
     "bytes": 428730240,
     "use": "Code: typos, refactors, boilerplate",
-    "bundled": true,
+    "bundled": false,
     "license": "Apache-2.0",
     "licenseUrl": "https://www.apache.org/licenses/LICENSE-2.0",
     "tier": "local"
@@ -170,7 +170,7 @@ export const MODELS = [
     "id": "qwen2.5-7b-instruct-q4_k_m",
     "bytes": 4683074240,
     "use": "Mid all-rounder, needs 8GB RAM",
-    "bundled": true,
+    "bundled": false,
     "license": "Apache-2.0",
     "licenseUrl": "https://www.apache.org/licenses/LICENSE-2.0",
     "tier": "mid"
@@ -305,7 +305,7 @@ export const MODELS = [
     "id": "qwen3-8b.q4_k_m",
     "bytes": 5027783872,
     "use": "Frontier chat, needs 16GB RAM",
-    "bundled": true,
+    "bundled": false,
     "license": "Apache-2.0",
     "licenseUrl": "https://www.apache.org/licenses/LICENSE-2.0",
     "tier": "frontier"

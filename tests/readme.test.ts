@@ -248,12 +248,13 @@ describe('generated tables', () => {
     }
   });
 
-  it('mark the four bundled weights as in the installer', () => {
+  it('mark the bundled weight as in the installer', () => {
     const catalog = JSON.parse(
       read(REPO, 'apps', 'desktop', 'src', 'models.json'),
     ) as Array<{ id: string; bundled: boolean }>;
     const bundled = catalog.filter((e) => e.bundled).map((e) => e.id);
-    expect(bundled).toHaveLength(4);
+    expect(bundled).toHaveLength(1);
+    expect(bundled[0]).toBe('smollm2-360m-instruct.q4_k_m');
 
     for (const id of bundled) {
       const pattern = new RegExp('^\\| `' + id + '` \\|.*\\|$', 'm');
