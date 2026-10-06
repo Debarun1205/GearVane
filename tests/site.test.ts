@@ -32,12 +32,15 @@ describe('site structure', () => {
     expect(existsSync(join(ASSETS, 'demos.js'))).toBe(true);
     expect(existsSync(join(ASSETS, 'catalog.js'))).toBe(true);
     expect(existsSync(join(ASSETS, 'catalog-data.js'))).toBe(true);
+    expect(existsSync(join(ASSETS, 'playground.js'))).toBe(true);
+    expect(existsSync(join(ASSETS, 'engine.js'))).toBe(true);
   });
 
   it('links the stylesheet and script', () => {
     expect(html).toMatch(/href="\.\/assets\/styles\.css"/);
     expect(html).toMatch(/src="\.\/assets\/demos\.js"/);
     expect(html).toMatch(/src="\.\/assets\/catalog\.js"/);
+    expect(html).toMatch(/src="\.\/assets\/playground\.js"/);
   });
 
   it('needs no build step', () => {
@@ -65,6 +68,7 @@ describe('sections', () => {
   it.each([
     ['how', 'How it works'],
     ['tiers', 'Tiers'],
+    ['playground', 'Ask the router yourself'],
     ['models', 'Every model, in full'],
     ['demos', 'See it decide'],
     ['harness', 'Inside the harness'],
@@ -81,6 +85,7 @@ describe('sections', () => {
     for (const anchor of [
       '#how',
       '#tiers',
+      '#playground',
       '#models',
       '#demos',
       '#harness',
@@ -519,6 +524,111 @@ describe('files served to the browser', () => {
     expect(code).not.toMatch(/<[A-Z][A-Za-z]*>\(/);
     expect(code).not.toMatch(/\binterface\s+\w+/);
     expect(code).not.toMatch(/^\s*(export\s+)?type\s+\w+\s*=/m);
+  });
+});
+
+describe('the router playground', () => {
+  // The whole point of the box is that it is the real engine, so the claims
+  // pinned here are about provenance rather than appearance.
+  it('runs the shipped classifier, not a reimplementation', async () => {
+    const entry = await import('../site/assets/engine-entry.js');
+    const { TaskClassifier } = await import('@gearvane/core');
+
+    const cases = [
+      { prompt: 'Fix the typo in the second paragraph of README.md', files: [] },
+      { prompt: 'Investigate an intermittent race condition in the cache writer', files: [] },
+      { prompt: 'Design the architecture for a multi-tenant billing system', files: ['billing.ts'] },
+      { prompt: 'do something', files: [] },
+    ];
+
+    const classifier = new TaskClassifier();
+    for (const testCase of cases) {
+      const expected = classifier.classify({
+        description: testCase.prompt,
+        filesTouched: testCase.files,
+        errorLoops: 0,
+        testFailures: 0,
+      });
+      const actual = entry.route({
+        prompt: testCase.prompt,
+        filesTouched: testCase.files,
+        errorLoops: 0,
+        testFailures: 0,
+      });
+
+      // Same tier, same confidence, same reasons: the playground is a view,
+      // not a second implementation that might drift from the first.
+      expect(actual.tier, testCase.prompt).toBe(expected.tier);
+      expect(actual.confidence, testCase.prompt).toBe(expected.confidence);
+      expect(actual.reasons, testCase.prompt).toEqual(expected.reasons);
+    }
+  });
+
+  it('ships an engine bundle that matches the source', async () => {
+    const { execFileSync } = await import('node:child_process');
+    // A playground running a stale classifier would demonstrate decisions the
+    // app no longer makes, which is worse than having no playground.
+    expect(() =>
+      execFileSync('node', [join(REPO, 'tools', 'build-site-engine.mjs'), '--check'], {
+        cwd: REPO,
+        stdio: 'pipe',
+      }),
+    ).not.toThrow();
+  });
+
+  it('keeps the engine small enough to be honest about being tiny', () => {
+    // Claiming a dependency-free engine and shipping a megabyte of it would
+    // make the claim hollow. 8 KiB is the whole classifier and its defaults.
+    const bytes = readFileSync(join(ASSETS, 'engine.js')).length;
+    expect(bytes).toBeLessThan(64 * 1024);
+  });
+
+  it('makes no network request', () => {
+    // The page promises nothing you type leaves it. Routing needs no I/O, so
+    // any fetch here would contradict that.
+    const playground = read(ASSETS, 'playground.js');
+    expect(playground).not.toMatch(/\bfetch\s*\(/);
+    expect(playground).not.toMatch(/XMLHttpRequest/);
+    expect(playground).not.toMatch(/EventSource|navigator\.sendBeacon/);
+  });
+
+  it('says it routes rather than runs a model', () => {
+    // A visitor could reasonably read a live box as "it does the work here".
+    expect(prose).toMatch(/It routes; it does not run a model/);
+    expect(prose).toMatch(/a token in browser JavaScript is a token shipped to every visitor/);
+  });
+
+  it('promises nothing is sent away', () => {
+    expect(prose).toMatch(/Nothing you type leaves the page/);
+  });
+
+  it('carries no TypeScript-only syntax in the browser-served module', () => {
+    // playground.js is served to the browser as-is, untranspiled, unlike
+    // engine.js which esbuild compiles.
+    const code = read(ASSETS, 'playground.js')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/^\s*\/\/.*$/gm, '');
+    expect(code).not.toMatch(/:\s*(void|string|number|boolean)\b/);
+    expect(code).not.toMatch(/\bas\s+[A-Z][A-Za-z]*\b/);
+    expect(code).not.toMatch(/<[A-Z][A-Za-z]*>/);
+  });
+
+  it('shows the reasoning rather than only the verdict', () => {
+    // "Reasons, not verdicts" is the claim; the panel has to match it.
+    expect(html).toContain('play-output');
+    expect(read(ASSETS, 'playground.js')).toMatch(/play-reasons/);
+    expect(read(ASSETS, 'playground.js')).toMatch(/play-score/);
+  });
+
+  it('announces its output politely to assistive tech', () => {
+    // The panel updates on every keystroke, so it must not interrupt a
+    // screen reader mid-sentence.
+    expect(html).toMatch(/id="play-output"[^>]*aria-live="polite"/);
+  });
+
+  it('labels both inputs', () => {
+    expect(html).toMatch(/<label class="play-label" for="play-prompt">/);
+    expect(html).toMatch(/<label class="play-label" for="play-files">/);
   });
 });
 

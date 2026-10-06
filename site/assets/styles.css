@@ -917,6 +917,215 @@ pre {
   border: 0;
 }
 
+/* --- router playground ------------------------------------------------------ */
+
+/* Two columns on a wide screen, stacked below. The output panel holds its
+   own space rather than the page jumping as the visitor types. */
+.play {
+  display: grid;
+  gap: 1.25rem;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: start;
+}
+
+@media (max-width: 60rem) {
+  .play {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.play-inputs {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.play-label {
+  color: var(--text-dim);
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.play-hint {
+  color: var(--text-dim);
+  font-size: 0.75rem;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  opacity: 0.75;
+}
+
+.play-textarea,
+.play-input {
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.9rem;
+  padding: 0.5rem 0.65rem;
+  resize: vertical;
+  width: 100%;
+}
+
+.play-textarea:focus-visible,
+.play-input:focus-visible {
+  border-color: var(--accent);
+}
+
+.play-run {
+  align-self: flex-start;
+  margin-top: 0.25rem;
+}
+
+.play-examples {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin-top: 0.35rem;
+}
+
+.play-example {
+  background: none;
+  border: 0;
+  border-left: 2px solid var(--border-strong);
+  color: var(--text-dim);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.78rem;
+  padding: 0.2rem 0.55rem;
+  text-align: left;
+  transition: border-color var(--ease), color var(--ease);
+}
+
+.play-example:hover {
+  border-left-color: var(--accent);
+  color: var(--text);
+}
+
+.play-output {
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  box-shadow: var(--card-shadow);
+  min-height: 14rem;
+  padding: 1rem 1.1rem;
+}
+
+.play-head {
+  align-items: baseline;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-bottom: 0.4rem;
+}
+
+.play-tier {
+  border-radius: 999px;
+  font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 0.15rem 0.6rem;
+}
+
+.play-tier-local {
+  background: rgb(34 197 94 / 0.16);
+  color: var(--local);
+}
+
+.play-tier-mid {
+  background: rgb(245 158 11 / 0.16);
+  color: var(--mid);
+}
+
+.play-tier-frontier {
+  background: rgb(244 114 182 / 0.16);
+  color: var(--frontier);
+}
+
+.play-confidence {
+  color: var(--text-dim);
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.play-blurb {
+  color: var(--text-dim);
+  font-size: 0.85rem;
+  margin-bottom: 0.5rem;
+}
+
+.play-model {
+  font-size: 0.85rem;
+  margin-bottom: 0.75rem;
+}
+
+.play-scores {
+  border-top: 1px solid var(--border);
+  margin-bottom: 0.75rem;
+  padding-top: 0.6rem;
+}
+
+.play-score {
+  align-items: center;
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: 4.5rem 1fr 2.5rem;
+  margin-bottom: 0.3rem;
+}
+
+.play-score-label,
+.play-score-value {
+  color: var(--text-dim);
+  font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 0.72rem;
+}
+
+.play-score-value {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.play-score-track {
+  background: rgb(255 255 255 / 0.06);
+  border-radius: 999px;
+  height: 6px;
+  overflow: hidden;
+}
+
+.play-score-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width var(--ease);
+}
+
+.play-score-local { background: var(--local); }
+.play-score-mid { background: var(--mid); }
+.play-score-frontier { background: var(--frontier); }
+
+.play-reasons {
+  color: var(--text-dim);
+  font-size: 0.84rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.play-reasons li {
+  border-left: 2px solid var(--border-strong);
+  margin-bottom: 0.25rem;
+  padding-left: 0.55rem;
+}
+
+.play-reasons-empty {
+  color: var(--text-dim);
+  font-size: 0.85rem;
+}
+
 .download-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));

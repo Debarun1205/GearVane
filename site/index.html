@@ -27,6 +27,7 @@
         <nav aria-label="Main">
           <a href="#how">How it works</a>
           <a href="#tiers">Tiers</a>
+          <a href="#playground">Try it</a>
           <a href="#models">Models</a>
           <a href="#demos">Demos</a>
           <a href="#harness">Harness</a>
@@ -45,7 +46,6 @@
     </header>
 
     <main id="main">
-      <!-- hero ------------------------------------------------------------ -->
       <section class="hero" id="top">
         <div class="wrap">
           <p class="eyebrow">Open source AI harness, MIT licensed</p>
@@ -75,7 +75,6 @@
         </div>
       </section>
 
-      <!-- how it works ---------------------------------------------------- -->
       <section class="section" id="how">
         <div class="wrap">
           <h2>How it works</h2>
@@ -121,7 +120,6 @@
         </div>
       </section>
 
-      <!-- tiers ----------------------------------------------------------- -->
       <section class="section section-alt" id="tiers">
         <div class="wrap">
           <h2>Tiers</h2>
@@ -191,7 +189,68 @@
         </div>
       </section>
 
-      <!-- models ---------------------------------------------------------- -->
+      <!-- playground ---------------------------------------------------- -->
+      <section class="section section-alt" id="playground">
+        <div class="wrap">
+          <h2>Ask the router yourself</h2>
+        <p class="section-lede">
+          This box runs the real classifier - the same code the CLI, the
+          desktop app, and the VS Code extension use - in your browser. It
+          shows which tier would handle your task and every signal behind
+          that choice. Nothing you type leaves the page.
+        </p>
+
+        <div class="play">
+          <div class="play-inputs">
+            <label class="play-label" for="play-prompt">What do you want done?</label>
+            <textarea
+              id="play-prompt"
+              class="play-textarea"
+              rows="3"
+              spellcheck="false"
+              placeholder="Add a paginated GET endpoint for user activity, wired to the existing router and tests"
+            ></textarea>
+
+            <label class="play-label" for="play-files">
+              Files it touches
+              <span class="play-hint">optional, space separated</span>
+            </label>
+            <input
+              id="play-files"
+              class="play-input"
+              type="text"
+              spellcheck="false"
+              autocomplete="off"
+              placeholder="router.ts activity.test.ts"
+            />
+
+            <button id="play-run" class="button play-run" type="button">Route it</button>
+
+            <div id="play-examples" class="play-examples">
+              <span class="play-hint">Try one:</span>
+            </div>
+          </div>
+
+          <div
+            id="play-output"
+            class="play-output"
+            role="status"
+            aria-live="polite"
+          ></div>
+        </div>
+
+        <p class="note">
+          <strong>It routes; it does not run a model.</strong> Deciding a
+          tier needs no network and no credential, which is why this works
+          with nothing behind it. Actually executing a prompt would need an
+          API key in the page, and a token in browser JavaScript is a token
+          shipped to every visitor - so that part stays in the app, where
+          your key stays on your machine.
+        </p>
+       </div>
+     </section>
+
+     <!-- models --------------------------------------------------------- -->
       <section class="section" id="models">
         <div class="wrap">
           <h2>Every model, in full</h2>
@@ -255,7 +314,7 @@
           </div>
         </section>
 
-      <!-- demos ----------------------------------------------------------- -->
+      <!-- demos --------------------------------------------------------- -->
       <section class="section" id="demos">
         <div class="wrap">
           <h2>See it decide</h2>
@@ -264,12 +323,10 @@
             same examples shipped in the app.
           </p>
           <div class="demo-list" id="demo-list">
-            <!-- populated by demos.js from a single shared data file -->
           </div>
         </div>
       </section>
 
-      <!-- inside the harness ---------------------------------------------- -->
       <section class="section section-alt" id="harness">
         <div class="wrap">
           <h2>Inside the harness</h2>
@@ -375,7 +432,6 @@
         </div>
       </section>
 
-      <!-- download -------------------------------------------------------- -->
       <section class="section" id="download">
         <div class="wrap">
           <h2>Download</h2>
@@ -517,7 +573,6 @@ code --install-extension gearvane-0.3.0.vsix</code></pre>
         </div>
       </section>
 
-      <!-- version history --------------------------------------------------- -->
       <section class="section section-alt" id="versions">
         <div class="wrap">
           <h2>Version history</h2>
@@ -663,7 +718,6 @@ code --install-extension gearvane-0.3.0.vsix</code></pre>
         </div>
       </section>
 
-      <!-- about -------------------------------------------------------------- -->
       <section class="section" id="about">
         <div class="wrap">
           <h2>About GearVane</h2>
@@ -763,7 +817,6 @@ code --install-extension gearvane-0.3.0.vsix</code></pre>
         </div>
       </section>
 
-      <!-- faq ------------------------------------------------------------- -->
       <section class="section section-alt" id="faq">
         <div class="wrap">
           <h2>FAQ</h2>
@@ -915,7 +968,6 @@ code --install-extension gearvane-0.3.0.vsix</code></pre>
         </div>
       </section>
 
-      <!-- closing --------------------------------------------------------- -->
       <section class="section section-cta">
         <div class="wrap cta">
           <h2>Try it on one real task</h2>
@@ -952,5 +1004,6 @@ code --install-extension gearvane-0.3.0.vsix</code></pre>
 
     <script type="module" src="./assets/demos.js"></script>
     <script type="module" src="./assets/catalog.js"></script>
+    <script type="module" src="./assets/playground.js"></script>
   </body>
 </html>
