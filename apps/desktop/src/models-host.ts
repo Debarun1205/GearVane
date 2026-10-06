@@ -145,9 +145,20 @@ export async function downloadModel(
     // embedded server serves every GGUF in this directory. Removing it is
     // what stops a cancelled download becoming a corrupt model that loads
     // like real corruption.
-    try {
-      unlinkSync(partial);
-    } catch {
+    //
+    // On Windows the write stream may still hold a lock when we reach here,
+    // so unlinkSync fails with EPERM. Retry a few times with a small delay.
+    let unlinked = false;
+    for (let i = 0; i < 5 && !unlinked; i++) {
+      try {
+        unlinkSync(partial);
+        unlinked = true;
+      } catch (e) {
+        if ((e as NodeJS.ErrnoException).code !== 'EPERM') break;
+        await new Promise((r) => setTimeout(r, 10 * (i + 1)));
+      }
+    }
+    if (!unlinked) {
       // Best effort: a stale .part is ignored on the next attempt.
     }
     detach();
