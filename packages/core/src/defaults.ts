@@ -328,6 +328,9 @@ export function defaultConfig(env: Record<string, string | undefined> = {}): Gea
         'deploy_production',
         'merge_pr',
         'delete_branch',
+        // A nested interpreter re-parses its argument, so the gate sees a
+        // different string than the shell executes. Always consequential.
+        'shell_injection',
       ],
       sandboxAllowed: ['git status', 'git log', 'git diff', 'ls', 'cat', 'pytest'],
       blockedCommands: ['rm -rf', 'sudo', 'chmod 777', 'dd if='],

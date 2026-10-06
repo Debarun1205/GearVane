@@ -100,6 +100,12 @@ export {
   type HealthResult,
   type HealthStatus,
 } from './health.js';
+export {
+  isSimpleCommand,
+  matchesAllowlist,
+  parseCommand,
+  rejoinArgv,
+} from './command-parse.js';
 export { defaultConfig } from './defaults.js';
 
 export const VERSION = '0.3.0';

@@ -1,3 +1,4 @@
+import { matchesAllowlist } from './command-parse.js';
 import type { SafetyConfig } from './types.js';
 import type { Tier } from './types.js';
 
@@ -39,6 +40,15 @@ export class SafetyManager {
    */
   static classifyOperation(command: string): string {
     const normalized = command.toLowerCase();
+
+    // A nested interpreter re-parses its argument, so the gate sees a
+    // different string than the shell executes: `bash -c "git' 'push"`
+    // classifies as an ordinary shell command but runs a push. Quoting
+    // tricks defeat every substring check, so the construct itself is
+    // consequential and always requires approval.
+    if (/(^|\s)(\S*\/)?(bash|sh|zsh|ksh|cmd|powershell|pwsh)(\s+[^\s]+)*\s+(-c\b|-encodedcommand\b|\/c\b)/.test(normalized)) {
+      return 'shell_injection';
+    }
 
     // "git push --delete" removes a remote branch, so it must be classified as
     // a deletion rather than a push. Order matters.
@@ -86,15 +96,16 @@ export class SafetyManager {
       }
     }
 
-    for (const allowed of this.sandboxAllowed) {
-      if (command.trimStart().startsWith(allowed)) {
-        return {
-          operation: 'sandbox',
-          command,
-          reason: 'Command is in the sandbox allowlist',
-          status: 'auto_approved',
-        };
-      }
+    // Exact argv match, never a prefix: `git status; rm -rf /` starts with
+    // `git status` but is not it, and a compound command must never ride
+    // the allowlist past the approval gate.
+    if (matchesAllowlist(command, this.sandboxAllowed)) {
+      return {
+        operation: 'sandbox',
+        command,
+        reason: 'Command is in the sandbox allowlist',
+        status: 'auto_approved',
+      };
     }
 
     const operation = SafetyManager.classifyOperation(command);
