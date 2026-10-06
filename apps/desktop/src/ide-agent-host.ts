@@ -29,6 +29,7 @@ import {
   type AgentModel,
   type AgentResult,
   type AgentStep,
+  type TaintWarning,
   type Tool,
 } from '@gearvane/harness';
 
@@ -133,6 +134,14 @@ export interface AgentRunResponse {
    * Present only on success; the renderer offers accept/revert per file.
    */
   changed?: FileChange[];
+  /**
+   * Files whose contents tried to instruct the model.
+   *
+   * The text was framed as data before the model saw it, so nothing ran. The
+   * warning is here so the user learns their workspace contains an attempt
+   * rather than having it silently absorbed.
+   */
+  taintWarnings?: TaintWarning[];
 }
 
 /** One file the agent created or modified. */
@@ -361,6 +370,11 @@ export async function runIdeAgent(
 
   const before = await snapshotWorkspace(request.root);
 
+  // An injection attempt is a fact about the workspace worth reporting even
+  // though nothing acted on it: a file in the user's project just tried to
+  // steer the agent, and the user is the one who can act on that.
+  const taintWarnings: TaintWarning[] = [];
+
   const result = await runAgent(request.prompt, {
     model: model.client,
     registry,
@@ -369,13 +383,21 @@ export async function runIdeAgent(
     maxIterations,
     signal,
     onStep,
+    onTaint: (warning: TaintWarning) => taintWarnings.push(warning),
   });
 
   // Snapshotted before, compared after: the user reviews what actually
   // changed on disk, not what the transcript claims changed.
   const changed = await diffSnapshot(request.root, before);
 
-  return { ok: true, result, changed, provider: model.provider, model: model.model };
+  return {
+    ok: true,
+    result,
+    changed,
+    provider: model.provider,
+    model: model.model,
+    ...(taintWarnings.length > 0 ? { taintWarnings } : {}),
+  };
 }
 
 export function registerIdeAgentHandlers(

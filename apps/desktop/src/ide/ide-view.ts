@@ -59,6 +59,17 @@ export interface FileChange {
 }
 
 /**
+ * A file whose contents tried to instruct the model.
+ *
+ * The text was framed as data before the model saw it, so nothing ran. The
+ * renderer reports it so the user learns their workspace contains an attempt.
+ */
+export interface TaintWarning {
+  tool: string;
+  signals: string[];
+}
+
+/**
  * A file open in the editor.
  *
  * `savedValue` is what the file looked like the last time it was read or
@@ -97,6 +108,7 @@ export interface AgentBridge {
     provider?: string;
     model?: string;
     changed?: FileChange[];
+    taintWarnings?: TaintWarning[];
   }>;
   cancel(): void;
   onStep(handler: (step: AgentStep) => void): () => void;
@@ -1002,6 +1014,13 @@ export class IdeView {
       if (response.changed && response.changed.length > 0) {
         this.renderChanges(response.changed);
       }
+
+      // A file in the workspace tried to instruct the model. Nothing acted on
+      // it, and saying so is the point: the user is the one who can decide
+      // whether that file belongs in the project at all.
+      if (response.taintWarnings && response.taintWarnings.length > 0) {
+        this.renderTaintWarnings(response.taintWarnings);
+      }
     } finally {
       this.agentUnsubscribe?.();
       this.agentUnsubscribe = undefined;
@@ -1064,6 +1083,43 @@ export class IdeView {
       'Review covers files the run created or changed, within snapshot caps. ' +
       `Showing ${changed.length} file(s).`;
     return note;
+  }
+
+  /**
+   * Report files whose contents tried to steer the model.
+   *
+   * Kept separate from the change review and deliberately alarming in wording:
+   * no command ran and nothing was sent anywhere, and the log says exactly
+   * that, because a warning that could mean "your machine is compromised" is
+   * worse than useless. What it means is that this workspace contains text
+   * shaped like an instruction to an agent.
+   */
+  private renderTaintWarnings(warnings: TaintWarning[]): void {
+    const section = document.createElement('div');
+    section.className = 'ide-taint';
+
+    const title = document.createElement('div');
+    title.className = 'ide-taint-title';
+    title.textContent = `Injection attempt in ${warnings.length} file read(s)`;
+    section.append(title);
+
+    const body = document.createElement('div');
+    body.className = 'ide-taint-body';
+    body.textContent =
+      'The file text below was treated as data, not as instructions. Nothing ' +
+      'in it was executed and nothing was sent anywhere. You may want to look ' +
+      'at the file yourself.';
+    section.append(body);
+
+    for (const warning of warnings) {
+      const row = document.createElement('div');
+      row.className = 'ide-taint-row';
+      // textContent, not innerHTML: this text came from a file.
+      row.textContent = `${warning.tool} — matched ${warning.signals.join(', ')}`;
+      section.append(row);
+    }
+
+    this.agentLog?.append(section);
   }
 
   private renderChangeRow(change: FileChange, onDone: () => void): HTMLElement {

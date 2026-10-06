@@ -75,6 +75,14 @@ export {
   type ToolCalling,
 } from './context/switch.js';
 
+export {
+  isTainted,
+  scan,
+  warningText,
+  wrap,
+  type TaintReport,
+} from './context/taint.js';
+
 import type {
   CompleteOptions,
   ConversationMessage,
@@ -85,6 +93,7 @@ import {
   type CompactionResult,
   type ContextBudget,
 } from './context/budget.js';
+import { scan, wrap } from './context/taint.js';
 import type { ToolRegistry } from './tools/registry.js';
 import type { ToolContext } from './tools/types.js';
 
@@ -115,6 +124,20 @@ export interface AgentStep {
   results: Array<{ name: string; ok: boolean; content: string }>;
   tokensIn: number;
   tokensOut: number;
+}
+
+/**
+ * A file whose contents tried to instruct the model.
+ *
+ * Surfaced so the user can see the attempt. The content was framed as data
+ * before the model saw it, so nothing ran; this exists so the attempt is
+ * visible rather than silently absorbed.
+ */
+export interface TaintWarning {
+  /** The tool that read it, with the path it was given. */
+  tool: string;
+  /** Which of the injection patterns matched. */
+  signals: string[];
 }
 
 export type StopReason =
@@ -188,10 +211,45 @@ export interface AgentOptions {
 
   /** Called when history is trimmed, so a UI can tell the user. */
   onCompact?: (result: CompactionResult) => void;
+
+  /**
+   * Called when a tool returned text that looked like an injection attempt.
+   *
+   * The text was framed as untrusted before the model saw it, so this is a
+   * report, not a failure: nothing from the file reached the gate as an
+   * instruction. Useful for showing the user that a file in the workspace is
+   * trying to steer the agent.
+   */
+  onTaint?: (warning: TaintWarning) => void;
+
+  /**
+   * Frame untrusted tool output before the model sees it.
+   *
+   * Defaults to true. Off is for callers that have already framed the content
+   * themselves, or that genuinely need the raw bytes — nothing about the
+   * framing sanitizes the text, so turning it off removes the labelling and
+   * the warning, not a filter.
+   */
+  taintUntrusted?: boolean;
 }
 
 const DEFAULT_MAX_ITERATIONS = 25;
 const DEFAULT_REPEAT_LIMIT = 3;
+
+/**
+ * The path or name a tool call targeted, for the taint label.
+ *
+ * Best-effort by design: the label is a human-readable description of where
+ * untrusted text came from, and a call with no recognisable path argument
+ * still gets a useful tool name.
+ */
+function describeCallTarget(args: Record<string, unknown>): string {
+  for (const key of ['path', 'file', 'directory', 'query']) {
+    const value = args[key];
+    if (typeof value === 'string' && value.trim() !== '') return `${key}=${value}`;
+  }
+  return '';
+}
 
 /** A stable key for detecting a repeated call. */
 function callKey(call: { name: string; arguments: Record<string, unknown> }): string {
@@ -370,9 +428,27 @@ export async function runAgent(
           error: result.error ?? result.content,
         });
       }
+      // Successful tool output is text from the workspace, which is where an
+      // injection arrives. Failed output is our own wording, so it is left
+      // alone: wrapping it would add framing to messages that contain no
+      // untrusted text at all.
+      let content = result?.content ?? 'no result';
+      if (options.taintUntrusted !== false && result?.ok) {
+        const report = scan(content);
+        if (report.tainted) {
+          options.onTaint?.({
+            tool: `${call.name} ${describeCallTarget(call.arguments)}`.trim(),
+            signals: report.signals,
+          });
+        }
+        // Framed whether or not anything matched. A pattern list is a
+        // blacklist, and the payload that gets through is the one nobody
+        // thought of; the delimiters are what hold for that case.
+        content = wrap(content, `${call.name} ${describeCallTarget(call.arguments)}`.trim());
+      }
       messages.push({
         role: 'tool',
-        content: result?.content ?? 'no result',
+        content,
         name: call.name,
         toolCallId: `call_${index}`,
       });

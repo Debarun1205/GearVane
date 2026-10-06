@@ -837,6 +837,39 @@ html[data-bg='grid'] .ambience::after {
   white-space: nowrap;
 }
 
+/* --- injection warning ----------------------------------------------------- */
+/* Amber, not red: nothing ran. Overstating this would train the user to
+   ignore the next one that does matter. */
+
+.ide-taint {
+  background: rgb(217 155 43 / 0.08);
+  border: 1px solid rgb(217 155 43 / 0.4);
+  border-radius: 8px;
+  margin-top: 0.75rem;
+  padding: 0.6rem 0.7rem;
+}
+
+.ide-taint-title {
+  color: var(--tier-mid);
+  font-size: 0.82rem;
+  font-weight: 600;
+  margin-bottom: 0.3rem;
+}
+
+.ide-taint-body {
+  color: var(--text-dim);
+  font-size: 0.78rem;
+  margin-bottom: 0.4rem;
+}
+
+.ide-taint-row {
+  color: var(--text-dim);
+  font-family: var(--mono, ui-monospace, monospace);
+  font-size: 0.74rem;
+  overflow-wrap: anywhere;
+  padding: 0.1rem 0;
+}
+
 .ide-diff-dialog { min-width: min(70rem, 96vw); }
 
 .ide-diff-title {
