@@ -211,6 +211,24 @@ test('dashboard shell: sidebar, effort, and approval revise', async ({ page }) =
   expect(errors).toEqual([]);
 });
 
+test('switching models shows a context-carried notice', async ({ page }) => {
+  const errors = trackErrors(page);
+  await page.goto('/');
+  await page.locator('#appearance-cancel').click();
+
+  // Pick a specific model in the header picker.
+  await page.locator('#model-picker-host').click();
+  const row = page.locator('.model-picker-row', { hasText: 'qwen2.5-7b-instruct-q4_k_m' }).first();
+  await row.click();
+
+  const toast = page.locator('#toast');
+  await expect(toast).toBeVisible();
+  await expect(toast).toContainText('Switched to qwen2.5-7b-instruct-q4_k_m');
+  await expect(toast).toContainText('Context carried over');
+
+  expect(errors).toEqual([]);
+});
+
 test('models dialog lists the catalog without host bridges', async ({ page }) => {
   // No bridge, so no downloads: the catalog rows still render from
   // the bundled list, with the note saying where fetching works.

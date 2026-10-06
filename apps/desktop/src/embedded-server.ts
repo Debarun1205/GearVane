@@ -120,9 +120,9 @@ function tokenMatches(presented: string, expected: string): boolean {
  * anything but 127.0.0.1/localhost breaks the attack even when the Origin
  * header is absent. Takes the headers record so the rule tests directly.
  */
-export function hostAllowed(headers: Record<string, string | undefined>): boolean {
+export function hostAllowed(headers: Record<string, string | string[] | undefined>): boolean {
   const host = headers.host;
-  if (!host) return false;
+  if (typeof host !== 'string') return false;
   const hostname = host.split(':')[0]?.toLowerCase() ?? '';
   return hostname === '127.0.0.1' || hostname === 'localhost';
 }
@@ -132,9 +132,12 @@ export function hostAllowed(headers: Record<string, string | undefined>): boolea
  * (what file:// renderers send). Any other origin — a web page, a malicious
  * site — is rejected. Non-browser clients send no Origin and pass.
  */
-export function originAllowed(headers: Record<string, string | undefined>): boolean {
+export function originAllowed(headers: Record<string, string | string[] | undefined>): boolean {
   const origin = headers.origin;
-  if (!origin || origin === 'null') return true;
+  if (!origin) return true;
+  // A non-string Origin is malformed; fail closed.
+  if (typeof origin !== 'string') return false;
+  if (origin === 'null') return true;
   try {
     const url = new URL(origin);
     if (url.protocol !== 'http:') return false;

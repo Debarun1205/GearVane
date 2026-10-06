@@ -570,6 +570,27 @@ html[data-bg='grid'] .ambience::after {
   color: var(--tier-mid);
 }
 
+/* Brief, non-blocking notice (model switches, saves). */
+.toast {
+  position: fixed;
+  bottom: 1.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: min(36rem, 90vw);
+  padding: 0.6rem 1rem;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--bg-raised);
+  color: var(--text);
+  font-size: 0.8rem;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.4);
+  z-index: 40;
+}
+
+.toast[hidden] {
+  display: none;
+}
+
 /* --- dialog -------------------------------------------------------------- */
 
 .dialog {

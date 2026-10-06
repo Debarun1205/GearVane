@@ -14,6 +14,7 @@ import {
   initialState,
   nextId,
   reducer,
+  transcriptText,
   type Action,
   type AppState,
 } from '@gearvane/app-core';
@@ -458,14 +459,44 @@ async function mountPicker(): Promise<void> {
     selected: modelPin,
     autoLabel: 'Auto',
     handlers: pickerHandlers,
-    onSelect: (id) => {
-      modelPin = id;
-      saveModelPin();
-      syncRunReadout();
-    },
+    onSelect: pinModel,
   });
   els.modelPickerHost.append(instance.root);
   picker = instance;
+}
+
+/**
+ * Pin the chat to a model, from either picker.
+ *
+ * The transcript is owned by the app and stored provider-agnostically, so a
+ * switch never loses it: the next turn simply routes to the new model with
+ * the full history available. The notice says exactly that, with the
+ * transcript's estimated size.
+ */
+function pinModel(id: string): void {
+  if (id === modelPin) return;
+  modelPin = id;
+  saveModelPin();
+  syncRunReadout();
+  const tokens = Math.max(1, Math.ceil(transcriptText(state).length / 4));
+  showNotice(`Switched to ${id || 'Auto'}. Context carried over (≈${tokens} tokens).`);
+}
+
+/** Brief, non-blocking notice. Replaces any notice still on screen. */
+function showNotice(text: string): void {
+  const toast = document.getElementById('toast');
+  if (!toast) return;
+  toast.textContent = text;
+  toast.hidden = false;
+  // Restart the fade timer so consecutive notices each get the full delay.
+  const timer = Number(toast.dataset.timer ?? 0);
+  if (timer) clearTimeout(timer);
+  toast.dataset.timer = String(
+    setTimeout(() => {
+      toast.hidden = true;
+      toast.dataset.timer = '0';
+    }, 4000),
+  );
 }
 
 // --- state ------------------------------------------------------------------
@@ -1185,11 +1216,7 @@ async function mountOnboardingPicker(host: HTMLElement): Promise<void> {
     selected: modelPin,
     autoLabel: 'Auto',
     handlers: pickerHandlers,
-    onSelect: (id) => {
-      modelPin = id;
-      saveModelPin();
-      syncRunReadout();
-    },
+    onSelect: pinModel,
   });
   host.textContent = '';
   host.append(instance.root);

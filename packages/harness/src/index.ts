@@ -67,6 +67,14 @@ export {
   type FitResult,
 } from './context/budget.js';
 
+export {
+  flattenToolHistory,
+  switchModelContext,
+  type ModelContextSpec,
+  type SwitchResult,
+  type ToolCalling,
+} from './context/switch.js';
+
 import type {
   CompleteOptions,
   ConversationMessage,
