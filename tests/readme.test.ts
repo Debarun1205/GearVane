@@ -132,6 +132,114 @@ describe('claims are qualified', () => {
       expect(mention.toLowerCase()).toMatch(/sandbox/);
     }
   });
+
+  it('does not claim escalation is verified by tests', () => {
+    // The core pitch of the project is escalation on an external signal. That
+    // is not built: the orchestrator retries on a model or provider error. A
+    // README that implied otherwise would be the single most damaging claim
+    // it could make, so the absence of a test is stated in both the summary
+    // and the status list.
+    expect(readme).toMatch(/does \*not\* yet run your tests/);
+    expect(readme).toMatch(/It does not verify that a\s+result is wrong by running your tests/);
+    expect(readme).not.toMatch(/checks the result against your tests/i);
+    expect(readme).not.toMatch(/verified escalation/i);
+  });
+
+  it('says tier assignment is not measured', () => {
+    // The catalog tiers are provisional and size-influenced. Calling frontier
+    // a capability ranking over an 8B local weight is the marketing risk the
+    // README has to name rather than hide.
+    expect(readme).toMatch(/size bands, not a capability ranking/);
+    expect(readme).toMatch(/not\s+measured/i);
+  });
+
+  it('flags the installer-size blocker instead of hiding it', () => {
+    // The release workflow packages every bundled weight, which is over the
+    // GitHub per-asset limit. A README that said nothing would let someone
+    // cut a release that fails at upload.
+    expect(readme).toMatch(/known blocker/i);
+    expect(readme).toMatch(/9\.7 GiB/);
+    expect(readme).toMatch(/2 GiB per-asset limit/);
+  });
+
+  it('explains why the download filenames say Waypoint', () => {
+    // v0.3.0 predates the rename, so the published artifacts carry the old
+    // product name. Without this the table reads as a mistake.
+    expect(readme).toMatch(/filenames say Waypoint/i);
+    expect(readme).toMatch(/built before the rename/);
+  });
+
+  it('does not quote test counts', () => {
+    // A count in prose rots on every commit that adds a test, and a reviewer
+    // skimming a diff will not catch a stale number. The README points at CI
+    // instead; this asserts it stays that way.
+    expect(readme).not.toMatch(/\d{3,} (?:package|repository|Python) tests/);
+    expect(readme).toMatch(/CI runs the Python suite/);
+  });
+
+  it('does not quote installer sizes it has not verified', () => {
+    // The sizes are the published asset sizes, read from the releases API.
+    // Pin the three that a reader is most likely to act on.
+    expect(readme).toMatch(/`Waypoint\.Setup\.0\.3\.0\.exe` \| 93 MB/);
+    expect(readme).toMatch(/`Waypoint-0\.3\.0\.AppImage` \| 123 MB/);
+    expect(readme).toMatch(/`app-debug\.apk` \| 5 MB/);
+  });
+});
+
+describe('generated tables', () => {
+  it('are current with the catalog', async () => {
+    // The model table and summary are owned by
+    // tools/gen-readme-tables.mjs. A hand-edited row would make the README
+    // disagree with what the app ships.
+    const { execFileSync } = await import('node:child_process');
+    expect(() =>
+      execFileSync('node', [join(REPO, 'tools', 'gen-readme-tables.mjs'), '--check'], {
+        cwd: REPO,
+        stdio: 'pipe',
+      }),
+    ).not.toThrow();
+  });
+
+  it('list every catalog weight exactly once', () => {
+    const catalog = JSON.parse(
+      read(REPO, 'apps', 'desktop', 'src', 'models.json'),
+    ) as Array<{ id: string }>;
+
+    const table = readme.slice(
+      readme.indexOf('<!-- BEGIN catalog-table -->'),
+      readme.indexOf('<!-- END catalog-table -->'),
+    );
+
+    for (const entry of catalog) {
+      // Built by concatenation rather than a template literal: the pattern
+      // contains backticks, which cannot nest inside one.
+      const escaped = entry.id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const pattern = new RegExp('^\\| `' + escaped + '`', 'gm');
+      const rows = table.match(pattern);
+      expect(rows, entry.id + ' missing from the README table').toHaveLength(1);
+    }
+  });
+
+  it('mark the four bundled weights as in the installer', () => {
+    const catalog = JSON.parse(
+      read(REPO, 'apps', 'desktop', 'src', 'models.json'),
+    ) as Array<{ id: string; bundled: boolean }>;
+    const bundled = catalog.filter((e) => e.bundled).map((e) => e.id);
+    expect(bundled).toHaveLength(4);
+
+    for (const id of bundled) {
+      const pattern = new RegExp('^\\| `' + id + '` \\|.*\\|$', 'm');
+      const row = readme.match(pattern)?.[0] ?? '';
+      expect(row, id + ' not marked bundled').toMatch(/\| yes \|$/);
+    }
+  });
+
+  it('flag a weight the tiers do not name as on request', () => {
+    // 14 of the 50 are downloadable but absent from the shipped tier lists.
+    // Labelling them with a tier would describe a classification the app does
+    // not perform.
+    expect(readme).toMatch(/on request/);
+  });
 });
 
 describe('no credentials or placeholders', () => {
