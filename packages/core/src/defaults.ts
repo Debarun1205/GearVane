@@ -101,6 +101,7 @@ export function defaultConfig(env: Record<string, string | undefined> = {}): Gea
         ],
         maxRetries: 2,
         costPerToken: 0,
+        costClass: 'free',
       },
       mid: {
         name: 'mid',
@@ -190,6 +191,7 @@ export function defaultConfig(env: Record<string, string | undefined> = {}): Gea
         ],
         maxRetries: 2,
         costPerToken: 0.0001,
+        costClass: 'metered',
       },
       frontier: {
         name: 'frontier',
@@ -250,6 +252,7 @@ export function defaultConfig(env: Record<string, string | undefined> = {}): Gea
         ],
         maxRetries: 3,
         costPerToken: 0.005,
+        costClass: 'premium',
       },
     },
     router: {

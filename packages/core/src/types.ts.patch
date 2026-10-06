@@ -1,0 +1,26 @@
+--- a/packages/core/src/types.ts
++++ b/packages/core/src/types.ts
+@@ -1,4 +1,9 @@
+ /**
+  * Shared types for the GearVane core.
+  *
+  * These mirror the Python dataclasses so behaviour stays comparable across
+  * the two implementations. Where Python was permissive with `Any` config
+  * access, the TypeScript port is deliberately stricter: an unknown tier or
+  * provider name is a type error rather than a runtime surprise.
+  */
++
++export { COST_CLASSES, type CostClass } from './cost-classes.js';
+ 
+ /** Model tiers, ordered from cheapest to most capable. */
+ export const TIERS = ['local', 'mid', 'frontier'] as const;
+@@ -45,6 +50,9 @@ export interface TierConfig {
+   maxRetries: number;
+   /** USD per token. Zero for local models. */
+   costPerToken: number;
++  /** Cost class: 'free' | 'metered' | 'capped' | 'premium'.
++   *  Determines billing behaviour independent of capability tier. */
++  costClass?: CostClass;
+ }
+ 
+ export interface EscalationConfig {

@@ -1,5 +1,5 @@
 import { parseYaml, YamlError } from './yaml.js';
-import type { GearVaneConfig } from './types.js';
+import type { GearVaneConfig, CostClass } from './types.js';
 
 /**
  * Loads and validates configuration.
@@ -69,6 +69,9 @@ export function parseConfig(
       providers: normaliseProviders(tier['providers']),
       maxRetries: num(tier['max_retries'] ?? tier['maxRetries'], 2),
       costPerToken: num(tier['cost_per_token'] ?? tier['costPerToken'], 0),
+      // Cost class: 'free' | 'metered' | 'capped' | 'premium'.
+      // Falls back to tier-based default when omitted.
+      costClass: (tier['cost_class'] ?? tier['costClass']) as CostClass | undefined,
     };
   }
 

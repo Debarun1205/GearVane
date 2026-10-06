@@ -16,6 +16,14 @@ export {
 export { parseYaml, parseScalar, YamlError } from './yaml.js';
 export { ConfigError, parseConfig, TIER_NAMES } from './config.js';
 export {
+  COST_CLASSES,
+  DEFAULT_COST_CLASSES,
+  defaultCostClassForTier,
+  getCostClassConfig,
+  type CostClass,
+  type CostClassConfig,
+} from './types.js';
+export {
   DEFAULT_COMPLEX_FILE_PATTERNS,
   DEFAULT_COMPLEX_KEYWORDS,
   DEFAULT_SIMPLE_KEYWORDS,

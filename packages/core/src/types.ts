@@ -7,12 +7,114 @@
  * provider name is a type error rather than a runtime surprise.
  */
 
+
+
 /** Model tiers, ordered from cheapest to most capable. */
 export const TIERS = ['local', 'mid', 'frontier'] as const;
 export type Tier = (typeof TIERS)[number];
 
 export function isTier(value: string): value is Tier {
   return (TIERS as readonly string[]).includes(value);
+}
+
+/**
+ * Cost classes: a granular cost classification independent of capability tiers.
+ *
+ * A tier (local/mid/frontier) describes capability. A cost class describes
+ * billing characteristics. They are orthogonal:
+ *
+ * - A local model might be free (cost_class: 'free') or require a license fee
+ * - A mid-tier model might be pay-per-token (cost_class: 'metered') or have a
+ *   monthly cap (cost_class: 'capped')
+ * - A frontier model might be expensive pay-per-token (cost_class: 'premium')
+ *
+ * This allows the router to make cost-aware decisions without conflating
+ * capability with cost.
+ */
+
+export const COST_CLASSES = ['free', 'metered', 'capped', 'premium'] as const;
+export type CostClass = (typeof COST_CLASSES)[number];
+
+export function isCostClass(value: string): value is CostClass {
+  return (COST_CLASSES as readonly string[]).includes(value);
+}
+
+/** Default cost class for a tier when not explicitly configured. */
+export function defaultCostClassForTier(tier: string): CostClass {
+  switch (tier) {
+    case 'local':
+      return 'free';
+    case 'mid':
+      return 'metered';
+    case 'frontier':
+      return 'premium';
+    default:
+      return 'metered';
+  }
+}
+
+/** Configuration for a cost class. */
+export interface CostClassConfig {
+  /** Human-readable name. */
+  label: string;
+  /** Whether this class can ever bill the user. */
+  billable: boolean;
+  /** Whether usage should be tracked even if not billed. */
+  trackUsage: boolean;
+  /** Default rate in USD per token (for metered/premium). */
+  defaultRate?: number;
+  /** Optional cap for capped classes (USD per session). */
+  capPerSession?: number;
+  /** Optional cap for capped classes (USD per day). */
+  capPerDay?: number;
+  /** Optional cap for capped classes (USD per task). */
+  capPerTask?: number;
+}
+
+/** Default cost class configs. */
+export const DEFAULT_COST_CLASSES: Record<CostClass, CostClassConfig> = {
+  free: {
+    label: 'Free',
+    billable: false,
+    trackUsage: true,
+  },
+  metered: {
+    label: 'Pay-per-token',
+    billable: true,
+    trackUsage: true,
+    defaultRate: 0.0001,
+  },
+  capped: {
+    label: 'Capped monthly',
+    billable: true,
+    trackUsage: true,
+    defaultRate: 0.001,
+    capPerSession: 10.0,
+    capPerDay: 50.0,
+    capPerTask: 5.0,
+  },
+  premium: {
+    label: 'Premium',
+    billable: true,
+    trackUsage: true,
+    defaultRate: 0.005,
+  },
+};
+
+/**
+ * Get the cost class configuration, falling back to the tier default.
+ */
+export function getCostClassConfig(
+  tierConfig: { costClass?: CostClass; costPerToken: number; name: string },
+): CostClassConfig {
+  const costClass = tierConfig.costClass ?? defaultCostClassForTier(tierConfig.name);
+  const base = DEFAULT_COST_CLASSES[costClass];
+
+  // If the tier specifies a custom rate, merge it in.
+  if (tierConfig.costPerToken !== undefined && tierConfig.costPerToken !== base.defaultRate) {
+    return { ...base, defaultRate: tierConfig.costPerToken };
+  }
+  return base;
 }
 
 export interface ProviderConfig {
@@ -52,6 +154,9 @@ export interface TierConfig {
   maxRetries: number;
   /** USD per token. Zero for local models. */
   costPerToken: number;
+  /** Cost class: 'free' | 'metered' | 'capped' | 'premium'.
+   *  Determines billing behaviour independent of capability tier. */
+  costClass?: CostClass;
 }
 
 export interface EscalationConfig {
