@@ -12,6 +12,7 @@ import { access, mkdir, readFile, readdir, stat, writeFile } from 'node:fs/promi
 import { dirname, relative } from 'node:path';
 
 import { ContainmentError, InvalidPathError } from '../workspace/containment.js';
+import { readDenied } from '../workspace/sensitive.js';
 import { failure, type Tool, type ToolContext, type ToolResult } from './types.js';
 
 /** Turn a containment failure into something a model can act on. */
@@ -30,6 +31,34 @@ async function exists(path: string): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+/**
+ * Refuse a read of a credential-shaped path unless the user granted it.
+ *
+ * Takes the *resolved* absolute path, not the string the caller supplied:
+ * classification has to see the path the filesystem will actually open, so
+ * `config/../.env` is judged as `.env`. Resolving `../` here would be a
+ * containment bug, not just a classification one.
+ *
+ * Checked after containment and before the file is opened, so the refusal does
+ * not depend on the file existing: a model cannot learn whether `.env` exists
+ * by asking and watching whether it is refused differently from a missing
+ * file. The message names the reason and tells the model what to do instead,
+ * so it can carry on with the rest of the task rather than retrying.
+ */
+function sensitiveRefusal(absolute: string, ctx: ToolContext): ToolResult | null {
+  // Classified on the workspace-relative form: containment has already proven
+  // the absolute path is inside, and the same file must classify identically
+  // however it was reached. toRelative uses the native separator, which
+  // classifySensitive normalises.
+  const relative = ctx.workspace.toRelative(absolute);
+  const denial = readDenied(relative, ctx.allowSensitive ?? []);
+  if (!denial) return null;
+  return failure(
+    `${relative} was not read: ${denial.message} ` +
+      'Ask the user to confirm reading it if you genuinely need it.',
+  );
 }
 
 /** Default cap on a single read, in bytes. */
@@ -78,6 +107,9 @@ export const readFileTool: Tool = {
     } catch (error) {
       return pathError(error) ?? failure(`could not resolve ${target}`);
     }
+
+    const refusal = sensitiveRefusal(absolute, ctx);
+    if (refusal) return refusal;
 
     let raw: Buffer;
     try {

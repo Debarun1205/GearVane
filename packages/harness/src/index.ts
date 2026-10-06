@@ -18,6 +18,15 @@ export {
 } from './workspace/containment.js';
 
 export {
+  classifySensitive,
+  granted,
+  isSensitive,
+  readDenied,
+  type Denial,
+  type DenialReason,
+} from './workspace/sensitive.js';
+
+export {
   ToolArgumentError,
   failure,
   validateArgs,

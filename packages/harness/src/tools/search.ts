@@ -13,6 +13,7 @@
 import { readFile, readdir, stat } from 'node:fs/promises';
 import { join, relative, sep } from 'node:path';
 
+import { readDenied } from '../workspace/sensitive.js';
 import { failure, type Tool, type ToolContext, type ToolResult } from './types.js';
 
 /**
@@ -111,6 +112,7 @@ export const searchFilesTool: Tool = {
     const matches: SearchMatch[] = [];
     let truncated = false;
     let skipped = 0;
+    let withheld = 0;
 
     const walk = async (absolute: string): Promise<void> => {
       if (matches.length >= maxResults) {
@@ -156,6 +158,16 @@ export const searchFilesTool: Tool = {
       }
       if (!info.isFile() || info.size > MAX_FILE_BYTES || info.size === 0) return;
 
+      // The same refusal read_file applies, and for the same reason: a grep
+      // that skipped the deny-list would return the credential a direct read
+      // correctly refused, with the path attached. Silent rather than loud,
+      // because one unsearchable file must not fail the whole search.
+      const rel = relative(ctx.workspace.root, absolute).split(sep).join('/');
+      if (readDenied(rel, ctx.allowSensitive ?? [])) {
+        withheld += 1;
+        return;
+      }
+
       let content: string;
       try {
         content = await readFile(absolute, 'utf8');
@@ -166,7 +178,6 @@ export const searchFilesTool: Tool = {
       // model cannot use, at context cost.
       if (content.includes('\0')) return;
 
-      const rel = relative(ctx.workspace.root, absolute).split(sep).join('/');
       const lines = content.split('\n');
       for (let index = 0; index < lines.length; index += 1) {
         if (matches.length >= maxResults) {
@@ -195,6 +206,15 @@ export const searchFilesTool: Tool = {
     }
     if (skipped > 0) {
       rendered.push(`(skipped ${skipped} dependency/build directories)`);
+    }
+    // Said rather than hidden: a search that quietly returned nothing for
+    // `.env` reads as "not there", and the user should know the difference
+    // between a file with no match and a file nobody looked in.
+    if (withheld > 0) {
+      rendered.push(
+        `(withheld ${withheld} credential-shaped file(s) from this search; ` +
+          'ask the user if you need one)',
+      );
     }
 
     return { ok: true, content: rendered.join('\n') };

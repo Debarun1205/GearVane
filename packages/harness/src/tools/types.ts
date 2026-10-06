@@ -58,6 +58,19 @@ export interface ToolContext {
    * which costs real money and breaks every later turn.
    */
   maxReadBytes: number;
+
+  /**
+   * Sensitive paths the user has explicitly allowed this run to read.
+   *
+   * The read tools refuse credential-shaped paths by default — `.env`,
+   * `.ssh/`, `*.pem`, browser profiles — because containment answers "is this
+   * inside the project", not "should this be read". Projects contain secrets
+   * by accident often enough that the question has to be asked separately.
+   *
+   * Populated from a real user decision, never from model output. There is no
+   * wildcard: an entry covers one path or one directory prefix.
+   */
+  allowSensitive?: string[];
 }
 
 export interface ToolResult {
