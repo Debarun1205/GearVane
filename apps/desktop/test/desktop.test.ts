@@ -312,3 +312,52 @@ describe('repository layout', () => {
     expect(lock.workspaces).toContain('apps/*');
   });
 });
+
+
+describe('stylesheet', () => {
+  const css = read(RENDERER, 'styles.css');
+
+  it('makes the hidden attribute beat an author display rule', () => {
+    // An author `display` declaration has no UA counterpart to lose to once
+    // specificity is equal, so the reset must be important. Without it, any
+    // element this file gives a display to cannot be hidden at all.
+    expect(css).toMatch(/\[hidden\]\s*\{\s*display:\s*none\s*!important;?\s*\}/);
+
+    // And it must exist rather than merely be permitted: several toggled
+    // elements depend on it, and the picker panel is the one that bit.
+    const rule = css.match(/\[hidden\]\s*\{[^{}]*\}/)?.[0] ?? '';
+    expect(rule).not.toBe('');
+  });
+
+  it('defines the class the picker search label relies on', () => {
+    // The label is built with className = 'visually-hidden' and had no rule
+    // anywhere in the tree, which would have left a real label on screen
+    // reading "Search models" above the box.
+    expect(css).toMatch(/\.visually-hidden\s*\{/);
+  });
+
+  it('styles every class the model picker creates', () => {
+    // A class the component emits but the stylesheet never mentions is a
+    // silently unstyled element - unstyled, not invisible, which is how the
+    // search input ended up covering the onboarding Save button.
+    const component = read(APP, 'src', 'model-picker.ts');
+    const classes = new Set();
+    for (const match of component.matchAll(/className\s*=\s*'([^']+)'/g)) {
+      for (const name of (match[1] ?? '').split(/\s+(?![^']*')/)) {
+        if (name) classes.add(name);
+      }
+    }
+    // Concatenated conditionally, so picked up from the other pattern too.
+    for (const match of component.matchAll(/'(model-[a-z-]+)'/g)) {
+      classes.add(match[1] ?? '');
+    }
+
+    expect(classes.size).toBeGreaterThan(5);
+    for (const name of classes) {
+      if (name === '') continue;
+      expect(css, `${name} is emitted by the picker but never styled`).toMatch(
+        new RegExp('\\.' + name.replace(/[-]/g, '\\-') + '[\\s,{:.]'),
+      );
+    }
+  });
+});

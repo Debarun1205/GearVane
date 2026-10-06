@@ -128,6 +128,18 @@ export interface IdeModelPickerOptions {
   install(id: string): Promise<boolean>;
   /** Ask permission before a large download. */
   confirmInstall(entry: ModelPickerEntry): Promise<boolean>;
+  /**
+   * Per-transfer progress, returning the unsubscribe function.
+   *
+   * Optional: without it the chip shows an indeterminate state rather than a
+   * percentage it cannot compute, and no cancel button appears.
+   */
+  subscribe?(
+    id: string,
+    onProgress: (progress: { done: number; total: number }) => void,
+  ): () => void;
+  /** Stop a transfer. Optional for the same reason as subscribe. */
+  cancel?(id: string): Promise<boolean>;
 }
 
 export interface IdeViewOptions {
@@ -926,7 +938,8 @@ export class IdeView {
       entries.push({
         id: `${entry.provider}/${entry.model}`,
         label: `${entry.provider}/${entry.model}`,
-        detail: entry.tier,
+        group: `${entry.tier} tier`,
+        detail: 'uses your provider key',
         present: local?.present,
         ...(local?.download
           ? { download: local.download, downloadId: entry.model }
@@ -942,6 +955,18 @@ export class IdeView {
       handlers: {
         install: (picked) => wiring.install(picked.downloadId ?? picked.id),
         confirmInstall: (picked) => wiring.confirmInstall(picked),
+        ...(wiring.subscribe
+          ? {
+              subscribe: (picked: ModelPickerEntry, onProgress) =>
+                wiring.subscribe?.(picked.downloadId ?? picked.id, onProgress) ?? (() => {}),
+            }
+          : {}),
+        ...(wiring.cancel
+          ? {
+              cancel: (picked: ModelPickerEntry) =>
+                wiring.cancel?.(picked.downloadId ?? picked.id) ?? false,
+            }
+          : {}),
       },
       onSelect: (id) => {
         this.agentModelPin = id;

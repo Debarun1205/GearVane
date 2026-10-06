@@ -56,6 +56,7 @@ import { hostedModelRows } from './hosted-models.js';
 import MODEL_CATALOG from './models.json';
 import {
   createModelPicker,
+  type InstallProgress,
   type ModelPicker,
   type ModelPickerEntry,
 } from './model-picker.js';
@@ -132,8 +133,16 @@ interface HostBridge {
     list(): Promise<
       Array<{ id: string; file: string; use: string; bytes: number; present: boolean }>
     >;
-    fetch(id: string): Promise<{ ok: boolean; error?: string }>;
+    fetch(id: string): Promise<{ ok: boolean; error?: string; cancelled?: boolean }>;
     onProgress(handler: (progress: { id: string; done: number; total: number }) => void): () => void;
+    /**
+     * Stop a transfer in progress.
+     *
+     * Returns whether anything was running, so a cancel click on a finished
+     * download reports that it did nothing rather than pretending it stopped
+     * one. Absent on hosts with no transfer to cancel.
+     */
+    cancel?(id: string): Promise<{ ok: boolean }>;
   };
 
   /**
@@ -378,12 +387,15 @@ async function catalogEntries(): Promise<ModelPickerEntry[]> {
     }
   }
 
+  // Grouped by `use`, which the catalog already carries: general, code,
+  // small. Fifty flat rows are a list to scroll, not to choose from.
   return (MODEL_CATALOG as CatalogEntry[]).map((entry) =>
     bridge.models
       ? {
           id: entry.id,
           label: entry.id,
-          detail: `${entry.use} · ${formatMB(entry.bytes)}`,
+          group: entry.use,
+          detail: `${formatMB(entry.bytes)}`,
           present: present.has(entry.id),
           download: { bytes: entry.bytes },
           license: entry.license,
@@ -392,7 +404,8 @@ async function catalogEntries(): Promise<ModelPickerEntry[]> {
       : {
           id: entry.id,
           label: entry.id,
-          detail: `${entry.use} · desktop app only`,
+          group: entry.use,
+          detail: 'desktop app only',
         },
   );
 }
@@ -420,7 +433,10 @@ async function pickerEntries(): Promise<ModelPickerEntry[]> {
       entries.push({
         id: row.label,
         label: row.label,
-        detail: row.tier,
+        // Grouped with the rest so the panel has no orphan heading; the
+        // config's tier is what distinguishes them from local weights.
+        group: `Hosted (${row.tier})`,
+        detail: 'uses your provider key',
       });
     }
   }
@@ -432,11 +448,32 @@ const pickerHandlers = {
   install: async (entry: ModelPickerEntry): Promise<boolean> => {
     if (!bridge.models) return false;
     try {
-      const result = await bridge.models.fetch(entry.id);
+      // downloadId rather than id: a hosted row's id is qualified as
+      // provider/model, which is not what the catalog is keyed by.
+      const result = await bridge.models.fetch(entry.downloadId ?? entry.id);
       return result.ok;
     } catch {
       return false;
     }
+  },
+  /**
+   * Per-transfer progress.
+   *
+   * The bridge broadcasts every model's ticks on one channel, so this filters
+   * to the one being installed. Without the filter a second download's bytes
+   * would appear on the first model's chip.
+   */
+  subscribe: (entry: ModelPickerEntry, onProgress: (p: InstallProgress) => void): (() => void) => {
+    const target = entry.downloadId ?? entry.id;
+    if (!bridge.models?.onProgress) return () => {};
+    return bridge.models.onProgress((progress) => {
+      if (progress.id === target) onProgress({ done: progress.done, total: progress.total });
+    });
+  },
+  cancel: async (entry: ModelPickerEntry): Promise<boolean> => {
+    if (!bridge.models?.cancel) return false;
+    const result = await bridge.models.cancel(entry.downloadId ?? entry.id);
+    return result.ok === true;
   },
   confirmInstall: (entry: ModelPickerEntry): Promise<boolean> =>
     new Promise<boolean>((resolve) => {
@@ -2454,6 +2491,15 @@ async function main(): Promise<void> {
                   }
                 },
                 confirmInstall: (entry) => pickerHandlers.confirmInstall(entry),
+                // Same progress and cancel the chat header gets, so "silent"
+                // means no dialog in both places rather than no feedback in
+                // one of them.
+                subscribe: (id, onProgress) =>
+                  pickerHandlers.subscribe(
+                    { id, label: id, download: { bytes: 0 } },
+                    onProgress,
+                  ),
+                cancel: async (id) => pickerHandlers.cancel?.({ id, label: id }) ?? false,
               }
             : undefined,
           maxIterations: () => maxIterationsFor(effortId),

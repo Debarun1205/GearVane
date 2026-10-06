@@ -37,6 +37,24 @@
   padding: 0;
 }
 
+/*
+ * Make the hidden attribute work.
+ *
+ * The UA stylesheet hides [hidden] elements with display:none, but that rule
+ * has no specificity and any author `display` declaration beats it. So
+ * setting .hidden = true on an element this file also gives a display to is
+ * silently ignored, and the element stays on screen, visible and intercepting
+ * clicks for whatever sits under it.
+ *
+ * This is not hypothetical: the model picker panel is display:flex, and when
+ * it stopped hiding, its search box sat on top of the onboarding dialog and
+ * made the Save button unclickable. !important is the point - this has to beat
+ * the author rule it is correcting.
+ */
+[hidden] {
+  display: none !important;
+}
+
 html,
 body {
   height: 100%;
@@ -275,15 +293,165 @@ html[data-bg='grid'] .ambience::after {
   top: calc(100% + 6px);
   right: 0;
   z-index: 40;
+  display: flex;
+  flex-direction: column;
   min-width: 340px;
   max-width: 420px;
   max-height: min(480px, 70vh);
-  overflow-y: auto;
   background: var(--bg-raised);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius);
   box-shadow: 0 12px 32px rgb(0 0 0 / 0.45);
   padding: 0.35rem;
+}
+
+/*
+ * Present to a screen reader, absent from the screen. Clipped rather than
+ * hidden with display:none, which would remove it from the accessibility tree
+ * along with the visual box.
+ */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.model-picker-search {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 0.15rem 0.15rem 0.4rem;
+  background: var(--bg-raised);
+}
+
+.model-picker-search-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.4rem 0.55rem;
+  font: inherit;
+  font-size: 0.8rem;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--border-strong);
+  border-radius: calc(var(--radius) - 3px);
+}
+
+.model-picker-search-input::placeholder {
+  color: var(--text-dim);
+}
+
+.model-picker-search-input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.model-picker-rows {
+  overflow-y: auto;
+  min-height: 0;
+}
+
+/*
+ * Group headings. The catalog carries a `use` field, so the panel groups rows
+ * by it rather than by size, and fifty entries become six short lists.
+ */
+.model-picker-group {
+  padding: 0.5rem 0.55rem 0.25rem;
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.model-picker-empty {
+  padding: 0.9rem 0.55rem;
+  font-size: 0.78rem;
+  color: var(--text-dim);
+  text-align: center;
+}
+
+/*
+ * The installed mark. A green dot alone is invisible to a screen reader, on a
+ * monochrome display, and to anyone who cannot separate those two greens, so
+ * the dot is decorative and the word carries the meaning.
+ */
+.model-installed-mark {
+  flex-shrink: 0;
+  font-size: 0.64rem;
+  color: var(--tier-local);
+  border: 1px solid color-mix(in srgb, var(--tier-local) 45%, transparent);
+  border-radius: 999px;
+  padding: 0 0.4rem;
+}
+
+.model-picker-licence {
+  flex-shrink: 0;
+  font-size: 0.62rem;
+  color: var(--text-dim);
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  padding: 0 0.4rem;
+}
+
+/* Custom terms need a visible difference, not just a tooltip. */
+.model-picker-licence-custom {
+  color: #f0b866;
+  border-color: color-mix(in srgb, #f0b866 45%, transparent);
+}
+
+/*
+ * The install chip. It sits outside the panel so a transfer stays visible
+ * after the menu closes, and it is a role="status" region so the progress is
+ * announced without stealing focus.
+ */
+.model-picker-chip {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 41;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  max-width: 420px;
+  padding: 0.45rem 0.6rem;
+  font-size: 0.74rem;
+  color: var(--text);
+  background: var(--bg-raised);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  box-shadow: 0 12px 32px rgb(0 0 0 / 0.45);
+}
+
+.model-picker-chip-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.model-picker-chip-cancel {
+  flex-shrink: 0;
+  font: inherit;
+  font-size: 0.72rem;
+  color: var(--text);
+  background: transparent;
+  border: 1px solid var(--border-strong);
+  border-radius: calc(var(--radius) - 3px);
+  padding: 0.2rem 0.55rem;
+  cursor: pointer;
+}
+
+.model-picker-chip-cancel:hover {
+  background: var(--bg-soft);
+}
+
+.model-picker-chip-cancel:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
 }
 
 .model-picker-row {

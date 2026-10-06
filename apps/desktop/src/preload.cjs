@@ -105,6 +105,7 @@ const api = {
   models: {
     list: () => ipcRenderer.invoke('models:list'),
     fetch: (id) => ipcRenderer.invoke('models:fetch', id),
+    cancel: (id) => ipcRenderer.invoke('models:cancel', id),
     onProgress: (handler) => {
       const listener = (_event, progress) => handler(progress);
       ipcRenderer.on('models:progress', listener);
