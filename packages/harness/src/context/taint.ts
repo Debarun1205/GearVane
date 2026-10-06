@@ -69,7 +69,7 @@ const INJECTION_PATTERNS: ReadonlyArray<{ name: string; re: RegExp }> = [
     // because the wrappers differ: a bracketed or tagged header, a Markdown
     // heading, or a bare `system:` starting a line.
     re:
-      /^\s*(?:[\[<]\s*(?:system|developer)\b\s*[\]>]?|#{1,6}\s*(?:system|developer)\b|(?:system|developer)\s*[:：])/im,
+      /^\s*(?:[[<]\s*(?:system|developer)\b\s*[\]>]?|#{1,6}\s*(?:system|developer)\b|(?:system|developer)\s*[:：])/im,
   },
   {
     name: 'tool-coercion',
