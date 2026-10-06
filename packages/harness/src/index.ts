@@ -104,7 +104,7 @@ import {
 } from './context/budget.js';
 import { scan, wrap } from './context/taint.js';
 import type { ToolRegistry } from './tools/registry.js';
-import type { ToolContext } from './tools/types.js';
+import type { TaintedWriteRequest, ToolContext } from './tools/types.js';
 
 /**
  * What the agent loop needs from a model.
@@ -171,6 +171,14 @@ export interface AgentResult {
    * nothing overflowed, and when no budget was supplied at all.
    */
   compactions: number;
+  /**
+   * True when some file read during this run looked like an injection attempt.
+   *
+   * The writes that followed were gated on a human. A host that supplied no
+   * `confirmTaintedWrite` means they were all refused, which is worth knowing
+   * when reading a run that reported no edits.
+   */
+  tainted?: boolean;
 }
 
 export interface AgentOptions {
@@ -230,6 +238,16 @@ export interface AgentOptions {
    * trying to steer the agent.
    */
   onTaint?: (warning: TaintWarning) => void;
+
+  /**
+   * Approves a write that arrived after untrusted content was read.
+   *
+   * Absent means the write is refused, not allowed: an unattended agent must
+   * not be able to get past this by having nobody watching. The request names
+   * the tool, the workspace-relative path, and the model's most recent prose,
+   * so the decision is decidable.
+   */
+  confirmTaintedWrite?: (request: TaintedWriteRequest) => Promise<boolean> | boolean;
 
   /**
    * Frame untrusted tool output before the model sees it.
@@ -295,6 +313,35 @@ export async function runAgent(
   let compactions = 0;
 
   /**
+   * Whether untrusted content has been read since the user's last message.
+   *
+   * Mirrored into the tool context so the write tools can refuse, and exposed
+   * on the result so a host can show what happened. Only ever set, never
+   * cleared mid-run: the loop's window is one task, and a fresh task starts a
+   * fresh run.
+   */
+  let tainted = options.context.tainted === true;
+  const toolContext: ToolContext = {
+    ...options.context,
+    // The approver is a host concern, like onTaint and onCompact, so it is
+    // declared on AgentOptions; the write tools read it off the context. Kept
+    // undefined when the host supplied none, which is what makes their refusal
+    // unconditional rather than default-allow.
+    ...(options.confirmTaintedWrite
+      ? { confirmTaintedWrite: options.confirmTaintedWrite }
+      : {}),
+    get tainted() {
+      return tainted;
+    },
+    get modelSaid() {
+      return lastProse;
+    },
+  };
+
+  /** The model's most recent prose, for the approval prompt. */
+  let lastProse = '';
+
+  /**
    * Fit the history to the budget before a request.
    *
    * The full history stays in `messages` for reporting; only the copy handed to
@@ -328,6 +375,7 @@ export async function runAgent(
         tokensOut,
         failedToolCalls,
         compactions,
+        tainted: tainted || undefined,
       };
     }
 
@@ -355,6 +403,7 @@ export async function runAgent(
         tokensOut,
         failedToolCalls,
         compactions,
+        tainted: tainted || undefined,
       };
     }
 
@@ -383,6 +432,7 @@ export async function runAgent(
         tokensOut,
         failedToolCalls,
         compactions,
+        tainted: tainted || undefined,
       };
     }
 
@@ -393,6 +443,10 @@ export async function runAgent(
       content: completion.content,
       toolCalls: completion.toolCalls,
     });
+    // Kept for the approval prompt: a human deciding whether to allow a write
+    // needs to know what the model claimed it was doing, not just which path
+    // it wants to touch.
+    if (completion.content.trim()) lastProse = completion.content.trim();
 
     const key = callKey(completion.toolCalls[0] ?? { name: '', arguments: {} });
     repeats = key === previousKey ? repeats + 1 : 0;
@@ -421,12 +475,13 @@ export async function runAgent(
         tokensOut,
         failedToolCalls,
         compactions,
+        tainted: tainted || undefined,
       };
     }
 
     const results = await options.registry.executeAll(
       completion.toolCalls,
-      options.context,
+      toolContext,
     );
 
     completion.toolCalls.forEach((call, index) => {
@@ -449,6 +504,10 @@ export async function runAgent(
             tool: `${call.name} ${describeCallTarget(call.arguments)}`.trim(),
             signals: report.signals,
           });
+          // The loop is what turns detection into enforcement: the write tools
+          // read this flag and stop asking. Kept on the context the caller
+          // supplied, so a host can watch it change.
+          tainted = true;
         }
         // Framed whether or not anything matched. A pattern list is a
         // blacklist, and the payload that gets through is the one nobody
@@ -485,6 +544,7 @@ export async function runAgent(
       'The last thing the model did was call a tool.',
     stopReason: 'max_iterations',
     iterations: steps.length,
+    tainted: tainted || undefined,
     steps,
     tokensIn,
     tokensOut,

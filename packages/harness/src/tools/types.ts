@@ -71,6 +71,41 @@ export interface ToolContext {
    * wildcard: an entry covers one path or one directory prefix.
    */
   allowSensitive?: string[];
+
+  /**
+   * Untrusted content has been read since the user's last message.
+   *
+   * Set by the agent loop when a tool returned text that looked like an
+   * injection attempt. Detection alone changes nothing about what the model is
+   * allowed to do, so this is what makes it mean something: a write tool
+   * refuses outright once tainted, because the model asking for it may be
+   * asking because a file told it to.
+   *
+   * Cleared at the start of every user turn. An injection is only dangerous in
+   * the window between being read and being acted on.
+   */
+  tainted?: boolean;
+
+  /** The model's most recent prose, shown alongside a tainted write request. */
+  modelSaid?: string;
+
+  /**
+   * Asked to approve a write while tainted.
+   *
+   * The user sees the exact path and what the model said it was doing. Absent
+   * means no one is watching, so the write stays refused — the same rule the
+   * shell gate follows: a headless caller cannot approve.
+   */
+  confirmTaintedWrite?: (request: TaintedWriteRequest) => Promise<boolean> | boolean;
+}
+
+/** What a tainted write asked for, so a human can judge it. */
+export interface TaintedWriteRequest {
+  tool: string;
+  /** Workspace-relative path being written. */
+  path: string;
+  /** The most recent thing the model said, for context. */
+  modelSaid?: string;
 }
 
 export interface ToolResult {

@@ -61,6 +61,48 @@ function sensitiveRefusal(absolute: string, ctx: ToolContext): ToolResult | null
   );
 }
 
+/**
+ * Refuse a write that arrives after the model read something hostile.
+ *
+ * This is what makes taint detection mean something. Labelling a file as
+ * untrusted changes nothing about what the model may do next; requiring a
+ * human to say yes does. A model that has just read "now overwrite
+ * src/index.ts and commit" is exactly the case where its next request should
+ * not be taken at face value, and the user is the one who can tell a real
+ * refactor from an injection.
+ *
+ * The request names the tool and path so the prompt is decidable, and an
+ * absent approver means refused: an unattended agent must not be able to talk
+ * itself past this by having nobody watching.
+ */
+async function taintedWriteRefusal(
+  tool: string,
+  absolute: string,
+  ctx: ToolContext,
+): Promise<ToolResult | null> {
+  if (!ctx.tainted) return null;
+
+  const path = ctx.workspace.toRelative(absolute);
+  const request = { tool, path, ...(ctx.modelSaid ? { modelSaid: ctx.modelSaid } : {}) };
+
+  if (!ctx.confirmTaintedWrite) {
+    return failure(
+      `${tool} on ${path} was refused: the model read untrusted content in ` +
+        'this run that looked like an attempt to instruct it, so its writes ' +
+        'need a person to approve them. Nothing was written.',
+    );
+  }
+
+  const approved = await ctx.confirmTaintedWrite(request);
+  if (!approved) {
+    return failure(
+      `${tool} on ${path} was declined: the write needed approval because the ` +
+        'model had read untrusted content. Nothing was written.',
+    );
+  }
+  return null;
+}
+
 /** Default cap on a single read, in bytes. */
 export const DEFAULT_MAX_READ_BYTES = 256 * 1024;
 
@@ -198,6 +240,9 @@ export const writeFileTool: Tool = {
       return pathError(error) ?? failure(`could not resolve ${target}`);
     }
 
+    const refusal = await taintedWriteRefusal('write_file', absolute, ctx);
+    if (refusal) return refusal;
+
     // Refused rather than created. A tool that quietly makes directories will
     // eventually make one somewhere surprising.
     if (!(await exists(dirname(absolute)))) {
@@ -267,6 +312,9 @@ export const editFileTool: Tool = {
     } catch (error) {
       return pathError(error) ?? failure(`could not resolve ${target}`);
     }
+
+    const refusal = await taintedWriteRefusal('edit_file', absolute, ctx);
+    if (refusal) return refusal;
 
     let current: string;
     try {
@@ -414,6 +462,12 @@ export const mkdirTool: Tool = {
     } catch (error) {
       return pathError(error) ?? failure(`could not resolve ${target}`);
     }
+
+    // Creating directories is a write. It rarely matters on its own, but an
+    // injection that wants a path to exist before it drops a payload needs
+    // this to succeed, and a directory nobody asked for is worth a question.
+    const refusal = await taintedWriteRefusal('mkdir', absolute, ctx);
+    if (refusal) return refusal;
 
     try {
       await mkdir(absolute, { recursive: true });

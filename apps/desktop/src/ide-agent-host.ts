@@ -384,6 +384,10 @@ export async function runIdeAgent(
     signal,
     onStep,
     onTaint: (warning: TaintWarning) => taintWarnings.push(warning),
+    // Nothing here approves writes: the loop's tool context is built before
+    // this callback exists, so a tainted write is refused and reported. The
+    // desktop approval modal arrives with the agent-approval work rather than
+    // as a second, parallel dialog mechanism.
   });
 
   // Snapshotted before, compared after: the user reviews what actually
