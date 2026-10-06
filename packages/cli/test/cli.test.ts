@@ -85,11 +85,39 @@ describe('CLI end to end', () => {
     expect(result.stderr).toMatch(/Unknown command/);
   });
 
-  it('reports safety status', () => {
+  it('reports a real spend summary rather than nothing', () => {
+    // Regression: removing spend limits was fixed by making this command
+    // return 0 with empty output, and the test pinned that. "Exit 0" was
+    // half the requirement; the other half was a real summary, and an empty
+    // stdout tells a user asking about spend nothing at all.
     const result = run(['safety', 'spend']);
     expect(result.code).toBe(0);
-    // Spend limits removed; command should succeed with empty output
-    expect(result.stdout).toBe('');
+
+    // One line per tier, naming what it can cost.
+    expect(result.stdout).toMatch(/^local\s+unlimited, \$0\.00/m);
+    expect(result.stdout).toMatch(/^mid\s+metered/m);
+    expect(result.stdout).toMatch(/^frontier\s+metered/m);
+
+    // And the reason, so the absence of a ceiling is explained rather than
+    // looking like an oversight.
+    expect(result.stdout).toMatch(/cost nothing per token/i);
+  });
+
+  it('reports spend as machine-readable JSON', () => {
+    const result = run(['safety', 'spend', '--json']);
+    expect(result.code).toBe(0);
+
+    const payload = JSON.parse(result.stdout) as {
+      enforced: boolean;
+      tiers: Array<{ tier: string; free: boolean }>;
+    };
+    // Nothing is enforced: a dollar ceiling on a local model is a ceiling on
+    // zero. Saying so in the payload is what stops a script assuming
+    // otherwise.
+    expect(payload.enforced).toBe(false);
+    expect(payload.tiers.map((t) => t.tier)).toEqual(['local', 'mid', 'frontier']);
+    // The local tier cannot bill anyone, whatever a run does.
+    expect(payload.tiers.find((t) => t.tier === 'local')?.free).toBe(true);
   });
 
   it('checks a command against the gates', () => {

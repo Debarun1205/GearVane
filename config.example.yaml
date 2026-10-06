@@ -336,8 +336,12 @@ safety:
     - delete_branch
     - merge_pr
 
-  # Hard spend ceilings in USD. The orchestrator checks the tier's
-  # cost_per_token against these before spending anything.
+  # Spend ceilings in USD. These apply to hosted models, which are the
+  # only runs that bill you: a tier with cost_per_token 0 is free whatever
+  # it does, so a ceiling there would gate nothing.
+  #
+  # The TypeScript engine records usage but does not enforce these; the
+  # Python reference engine checks them. `gearvane cost` reports either.
   spend_limits:
     per_session: 10.0
     per_day: 50.0

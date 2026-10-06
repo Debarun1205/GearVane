@@ -393,6 +393,72 @@ function cmdCost(args: ParsedArgs, config: GearVaneConfig, json: boolean): numbe
   return 0;
 }
 
+/**
+ * What `safety spend` reports.
+ *
+ * The tracker records usage but enforces nothing, because a dollar ceiling on
+ * a local model is a ceiling on $0. What a user actually wants to know is
+ * which tiers can bill them and what the ceilings are for those, so that is
+ * what this prints. An earlier version returned 0 with no output at all,
+ * which passed an exit-code check while telling the user nothing.
+ */
+function reportSpend(config: GearVaneConfig, json: boolean): number {
+  const tiers = (['local', 'mid', 'frontier'] as const).map((tier) => {
+    const tierConfig = config.tiers[tier];
+    const metered = tierConfig.costPerToken > 0;
+    const providers = tierConfig.providers
+      .map((provider) => provider.name)
+      .filter((name, index, all) => all.indexOf(name) === index);
+    return {
+      tier,
+      // A zero rate means the run cannot cost money, whatever the token count.
+      free: !metered,
+      costPerToken: tierConfig.costPerToken,
+      meteredProviders: metered ? providers : [],
+      localProviders: metered ? [] : providers,
+    };
+  });
+
+  const hosted = tiers.filter((tier) => !tier.free);
+  const payload = {
+    spend: { sessionUsd: 0, dayUsd: 0, taskUsd: 0 },
+    enforced: false,
+    tiers,
+    note:
+      'Local models cost nothing per token, so no ceiling is enforced on them. ' +
+      'Usage is tracked and reported by `gearvane cost`.',
+  };
+
+  if (json) {
+    process.stdout.write(`${JSON.stringify(payload, null, 2)}\n`);
+    return 0;
+  }
+
+  const lines: string[] = [];
+  for (const tier of tiers) {
+    if (tier.free) {
+      lines.push(
+        `${tier.tier.padEnd(9)} unlimited, $0.00  (${tier.localProviders.join(', ')})`,
+      );
+      continue;
+    }
+    const names = tier.meteredProviders.length > 0
+      ? tier.meteredProviders.join(', ')
+      : 'no hosted provider configured';
+    lines.push(`${tier.tier.padEnd(9)} metered, $${tier.costPerToken}/token  (${names})`);
+  }
+
+  if (hosted.length === 0) {
+    lines.push('');
+    lines.push('Cloud: not configured. Every configured tier is local and free.');
+  }
+
+  lines.push('');
+  lines.push(payload.note);
+  process.stdout.write(`${lines.join('\n')}\n`);
+  return 0;
+}
+
 function cmdSafety(args: ParsedArgs, config: GearVaneConfig, json: boolean): number {
   const manager = new SafetyManager(config.safety);
   const action = args.positionals[0];
@@ -432,7 +498,7 @@ function cmdSafety(args: ParsedArgs, config: GearVaneConfig, json: boolean): num
 
     case 'spend':
     case undefined: {
-      return 0;
+      return reportSpend(config, json);
     }
 
     default:
