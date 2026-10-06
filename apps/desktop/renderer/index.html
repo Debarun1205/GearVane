@@ -77,6 +77,14 @@
       </aside>
 
       <div class="app">
+      <!--
+        What this host can do. Empty and hidden on the desktop app; populated in
+        the Android webview, which mounts the same IDE and answers Ask requests
+        but has no shell and cannot load the tool layer. Hidden by default so a
+        script-less load does not show an empty strip.
+      -->
+      <p id="capability-banner" class="capability-banner" role="status" hidden></p>
+
       <header class="topbar">
         <div class="brand">
           <button id="sidebar-toggle" class="ghost-button" type="button" aria-label="Toggle sidebar">Menu</button>

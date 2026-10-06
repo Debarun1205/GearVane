@@ -10,7 +10,16 @@
      through as a faint glow instead of being masked by flat colour. */
   --bg-soft: rgb(255 255 255 / 0.045);
   --border: #24304a;
-  --border-strong: #33415e;
+  /*
+   * The strong border is the only thing identifying most inputs and buttons, so
+   * it is a UI component boundary under WCAG 1.4.11 and has to clear 3:1 against
+   * every background it can sit on. It sat at 1.85:1 on --bg and 1.66:1 on a
+   * raised panel, which is decorative-looking rather than invalid - the fields
+   * are still findable by their background and label. Raised until it passes on
+   * all three: 3.39, 3.05, 3.22. tests/contrast.test.ts recomputes this and
+   * fails if the value is lowered again.
+   */
+  --border-strong: #526896;
   --text: #e2e8f0;
   --text-dim: #8494b0;
   --accent: #38bdf8;
@@ -55,6 +64,21 @@
   display: none !important;
 }
 
+/*
+ * Baseline focus ring for every focusable element.
+ *
+ * Component rules refine this where a specific look is wanted, but a default
+ * means a control nobody styled still has a visible ring. Without it, keyboard
+ * users are invisible to the app in exactly the places someone forgot.
+ *
+ * :focus-visible, not :focus, so a mouse click does not leave a ring on every
+ * button in the interface.
+ */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
 html,
 body {
   height: 100%;
@@ -72,7 +96,12 @@ body {
   color: var(--text);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Ubuntu,
     'Helvetica Neue', sans-serif;
-  font-size: 15px;
+  /*
+   * 15px in rem rather than in px. A px base pins every rem child to a fixed
+   * size relative to it, so the whole app ignored the browser/OS text-size
+   * setting; a rem base scales with it.
+   */
+  font-size: 0.9375rem;
   line-height: 1.55;
   -webkit-font-smoothing: antialiased;
 }
@@ -362,7 +391,7 @@ html[data-bg='grid'] .ambience::after {
  */
 .model-picker-group {
   padding: 0.5rem 0.55rem 0.25rem;
-  font-size: 0.66rem;
+  font-size: 0.7rem;
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -383,7 +412,7 @@ html[data-bg='grid'] .ambience::after {
  */
 .model-installed-mark {
   flex-shrink: 0;
-  font-size: 0.64rem;
+  font-size: 0.7rem;
   color: var(--tier-local);
   border: 1px solid color-mix(in srgb, var(--tier-local) 45%, transparent);
   border-radius: 999px;
@@ -392,7 +421,7 @@ html[data-bg='grid'] .ambience::after {
 
 .model-picker-licence {
   flex-shrink: 0;
-  font-size: 0.62rem;
+  font-size: 0.7rem;
   color: var(--text-dim);
   border: 1px solid var(--border-strong);
   border-radius: 999px;
@@ -488,7 +517,7 @@ html[data-bg='grid'] .ambience::after {
 
 .model-picker-detail {
   flex-shrink: 0;
-  font-size: 0.68rem;
+  font-size: 0.7rem;
   color: var(--text-dim);
   margin-left: auto;
 }
@@ -690,9 +719,19 @@ html[data-bg='grid'] .ambience::after {
   line-height: 1.5;
 }
 
-.input:focus {
-  outline: none;
-  border-color: var(--accent-dim);
+/*
+ * The composer focused.
+ *
+ * This used to be `outline: none` with a border-colour change instead, which is
+ * the usual way focus rings get lost. --accent-dim on --bg-input is about 1.1:1,
+ * so for a keyboard user the caret was the only visible indication of where
+ * they were typing. :focus-visible rather than :focus so a mouse click does not
+ * leave a ring on the most-used control in the app.
+ */
+.input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  border-color: var(--accent);
 }
 
 .send-button {
@@ -1218,6 +1257,24 @@ html[data-bg='grid'] .ambience::after {
 
 .builder-help { color: var(--text-dim); font-size: 0.8rem; }
 
+/*
+ * The capability banner.
+ *
+ * Border-left rather than a filled background: it sits above the topbar on
+ * every screen, and a solid block there would compete with the transcript for
+ * attention it does not deserve. Amber-on-dark is above 4.5:1, and it states
+ * a limitation rather than an error, so it must not read as a failure.
+ */
+.capability-banner {
+  margin: 0;
+  padding: 0.5rem 0.9rem;
+  font-size: 0.76rem;
+  line-height: 1.45;
+  color: #f0b866;
+  background: color-mix(in srgb, #f0b866 8%, transparent);
+  border-left: 3px solid #f0b866;
+}
+
 .builder-actions {
   align-items: center;
   display: flex;
@@ -1372,7 +1429,7 @@ html[data-bg='grid'] .ambience::after {
   border: 1px solid color-mix(in srgb, var(--accent) 55%, transparent);
   border-radius: 999px;
   color: var(--accent);
-  font-size: 0.6rem;
+  font-size: 0.7rem;
   font-weight: 700;
   letter-spacing: 0.06em;
   padding: 0.02rem 0.4rem;
@@ -1674,7 +1731,7 @@ html[data-motion='calm'] *::after {
 
 .sidebar-tag {
   margin-left: auto;
-  font-size: 0.65rem;
+  font-size: 0.7rem;
   color: var(--text-dim);
   border: 1px solid var(--border);
   border-radius: 999px;

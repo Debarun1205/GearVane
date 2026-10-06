@@ -173,6 +173,19 @@ test('ide mounts the device-local workspace without host bridges', async ({ page
   await page.goto('/');
   await page.locator('#appearance-cancel').click();
 
+  // The capability banner states what this host cannot do. Without it a
+  // Build-mode refusal and a missing terminal both read as bugs rather than as
+  // a webview's limits, because everything visible works.
+  const banner = page.locator('#capability-banner');
+  await expect(banner).toBeVisible();
+  await expect(banner).toContainText('Chat, routing, the editor, and search all work here');
+  // The terminal claim, specifically: a webview has no shell.
+  await expect(banner).toContainText('Terminal');
+  // And Build mode, the other Android limitation the site documents.
+  await expect(banner).toContainText('Build mode');
+  // It must not claim the thing that does work is missing.
+  await expect(banner).not.toContainText(/Not available:[^.]*\bChat\b/);
+
   await expect(page.locator('#ide-toggle')).toBeVisible();
   await page.locator('#ide-toggle').click();
   await expect(page.locator('#ide-root')).toBeVisible();

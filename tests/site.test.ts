@@ -347,6 +347,11 @@ describe('platform claims are scoped to what ships', () => {
     expect(prose).toMatch(
       /There is no terminal, because a webview has no shell/,
     );
+    // The app itself now states the limitation on its first screen, so the
+    // user is not left inferring it from a missing button.
+    expect(prose).toMatch(
+      /app says so on its first screen rather than leaving you to work out why a button is missing/,
+    );
   });
 
   it('lists the Android scope among the known limitations', () => {

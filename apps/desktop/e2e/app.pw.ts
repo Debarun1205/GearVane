@@ -112,6 +112,12 @@ test('boots chat with onboarding, then opens the IDE', async () => {
   const workspace = join(HERE, 'fixture-workspace');
   await page.evaluate((root) => localStorage.setItem('gearvane.ide.root', root), workspace);
 
+  // With every host bridge present the capability banner has nothing to warn
+  // about, so it stays hidden. A banner that appeared here would be claiming a
+  // limitation on the platform where nothing is missing - and it would push
+  // the topbar down on every desktop screen.
+  await expect(page.locator('#capability-banner')).toBeHidden();
+
   // The IDE toggle exists only where all three bridges do - inside the
   // desktop app that is exactly where it must exist.
   await expect(page.locator('#ide-toggle')).toBeVisible();

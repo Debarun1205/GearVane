@@ -53,6 +53,7 @@ import type { TerminalBridge } from './ide/terminal.js';
 import type { AgentResult, AgentStep } from '@gearvane/harness';
 import { createWebBackend, type WebFsStorage } from './web-backend.js';
 import { hostedModelRows } from './hosted-models.js';
+import { capabilitySummary, isFullFeatured } from './capabilities.js';
 import MODEL_CATALOG from './models.json';
 import {
   assessFit,
@@ -319,6 +320,7 @@ const els = {
   appearanceBack: byId<HTMLButtonElement>('appearance-back'),
   appearanceNext: byId<HTMLButtonElement>('appearance-next'),
   appearanceSave: byId<HTMLButtonElement>('appearance-save'),
+  capabilityBanner: byId('capability-banner'),
   onboardingSteps: byId('onboarding-steps'),
   onboardingContent: byId('onboarding-content'),
   sidebar: byId('sidebar'),
@@ -2607,6 +2609,34 @@ async function main(): Promise<void> {
   const builderHost = document.getElementById('builder');
   if (!bridge.builder && builderToggle instanceof HTMLButtonElement) {
     builderToggle.hidden = true;
+  }
+
+  // Say what this host can do, when it cannot do everything.
+  //
+  // The Android build mounts the same IDE and answers Ask requests, so nothing
+  // on screen distinguished it from desktop. A Build-mode refusal read as a
+  // bug and a missing terminal read as an oversight. One line stating both
+  // halves - what works, and what is absent - beats hiding the absences and
+  // leaving the user to guess which are deliberate.
+  if (els.capabilityBanner) {
+    // Built once: the two calls below read the same bridges, and passing
+    // different subsets to each is how the summary and the hidden flag would
+    // come to disagree.
+    const host = {
+      terminal: bridge.terminal,
+      builder: bridge.builder,
+      models: bridge.models,
+      keys: bridge.keys,
+      hardware: bridge.hardware,
+      // Installing needs the catalog bridge and a writable model directory,
+      // which arrive together on desktop and are both absent here.
+      modelsInstall: bridge.models,
+    };
+    const summary = capabilitySummary(host);
+    els.capabilityBanner.textContent = summary;
+    // Empty rather than "everything works": on the platform where that is
+    // assumed it is noise, and an empty banner reads as nothing to say.
+    els.capabilityBanner.hidden = summary === '' || isFullFeatured(host);
   }
   if (builderHost && bridge.builder) {
     try {
