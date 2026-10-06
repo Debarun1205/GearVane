@@ -579,6 +579,28 @@ pre {
   font-style: italic;
 }
 
+/* Inline code inside a caveat. Monospace at the caveat's own size rather than
+   a fixed one, so it stays proportional when the reader scales the page. */
+.step-caveat code {
+  font-size: 0.95em;
+}
+
+/* The command a step recommends, next to the caveat limiting it. Wraps rather
+   than scrolling: a horizontal scrollbar inside a prose column is worse than a
+   second line. */
+.step-code {
+  margin: 0.6rem 0 0.75rem;
+  padding: 0.7rem 0.85rem;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: var(--text);
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+
 .tier-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));

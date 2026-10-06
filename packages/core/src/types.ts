@@ -175,6 +175,8 @@ export interface ToolCall {
   arguments: Record<string, unknown>;
 }
 
+import type { VerificationSummary } from './verification.js';
+
 export interface AttemptRecord {
   attempt: number;
   tier: Tier;
@@ -182,6 +184,14 @@ export interface AttemptRecord {
   success: boolean;
   costUsd?: number;
   error?: string;
+  /**
+   * Whether this attempt's answer passed an injected verifier.
+   *
+   * Absent means no verifier ran, which is not the same as false. `false` is a
+   * failed check and is recorded as a failed attempt; absent means nothing
+   * checked it.
+   */
+  verified?: boolean;
 }
 
 export interface ExecutionResult {
@@ -201,4 +211,12 @@ export interface ExecutionResult {
   reasons: string[];
   error?: string;
   history: AttemptRecord[];
+  /**
+   * The verifier's verdict, when one ran.
+   *
+   * Absent means no verifier was supplied - not that the answer was confirmed.
+   * `outcome: 'unknown'` means a check was attempted and could not conclude,
+   * which is deliberately distinct from a pass.
+   */
+  verification?: VerificationSummary;
 }

@@ -133,16 +133,27 @@ describe('claims are qualified', () => {
     }
   });
 
-  it('does not claim escalation is verified by tests', () => {
-    // The core pitch of the project is escalation on an external signal. That
-    // is not built: the orchestrator retries on a model or provider error. A
-    // README that implied otherwise would be the single most damaging claim
-    // it could make, so the absence of a test is stated in both the summary
-    // and the status list.
-    expect(readme).toMatch(/does \*not\* yet run your tests/);
-    expect(readme).toMatch(/It does not verify that a\s+result is wrong by running your tests/);
-    expect(readme).not.toMatch(/checks the result against your tests/i);
+  it('claims verification only as far as it is built', () => {
+    // This flipped when verification shipped. The claim is still bounded, and
+    // the bounds are the point: opt-in per run, CLI only, and unknown reported
+    // as unknown. Each is asserted so the description cannot drift into "it
+    // verifies your work".
+    expect(readme).toMatch(/--verify "npm test"/);
+    // The prose wraps mid-phrase, so these tolerate whitespace rather than
+    // asserting a line break - otherwise the test describes the formatting.
+    expect(readme).toMatch(/stronger tier with the failure output as context/);
+    expect(readme).toMatch(/Verification is opt-in/);
+
+    // The three limits, named rather than implied.
+    expect(readme).toMatch(/Verification is real but narrow/);
+    expect(readme).toMatch(/opt-in per run\s+rather than configured\s+once/);
+    expect(readme).toMatch(/desktop app does not yet offer a verifier/);
+    expect(readme).toMatch(/`unknown` rather than being treated as a pass or a failure/);
+
+    // And no unqualified version of the old pitch.
+    expect(readme).not.toMatch(/does \*not\* yet run your tests/);
     expect(readme).not.toMatch(/verified escalation/i);
+    expect(readme).not.toMatch(/checks the result against your tests/i);
   });
 
   it('says tier assignment is not measured', () => {

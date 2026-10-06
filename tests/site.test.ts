@@ -147,15 +147,31 @@ describe('version history', () => {
     expect(prose).toMatch(/no earlier version to install/i);
   });
 
-  it('says escalation happens on an error, not a verified failure', () => {
-    // The orchestrator retries and escalates when a model call errors or
-    // returns nothing usable. It does not run the user's tests to decide an
-    // answer is wrong, so a page implying it does is claiming a capability
-    // that does not exist. The step names the work as future rather than
-    // shipping the implication.
-    expect(prose).toContain('Escalate when a cheap model cannot answer');
-    expect(prose).toMatch(/escalation on an <em>error<\/em>, not on a verified/);
-    expect(prose).toMatch(/does not yet run your tests/);
+  it('claims verification with its actual limits', () => {
+    // This flipped when verification shipped: the page used to promise nothing
+    // and then disclaim it. It now claims the capability, and the limits are
+    // asserted individually - opt-in, per run, CLI-only, unknown reported as
+    // unknown - because a visitor deciding whether to trust the tool is exactly
+    // the audience those qualifications are for.
+    expect(prose).toContain('Check the answer, not just the request');
+    expect(prose).toMatch(/retried on a stronger tier, with the failure\s+output handed to the next attempt/);
+    expect(prose).toMatch(/--verify "npm test"/);
+
+    // The limits, named rather than implied.
+    expect(prose).toMatch(/Verification is opt-in and per run/);
+    expect(prose).toMatch(/only the CLI offers it/);
+    // `prose` is the HTML with whitespace collapsed, not tag-stripped, so the
+    // inline <code> sits between the words it wraps.
+    expect(prose).toMatch(
+      /<code>unknown<\/code>\s+rather than being counted as a pass or a\s+failure/,
+    );
+    expect(prose).toMatch(/same safety gate/);
+
+    // And the older signal still exists, so the page does not imply the error
+    // path was replaced rather than added to.
+    expect(prose).toMatch(/Errors and timeouts still escalate on their own/);
+    expect(prose).not.toMatch(/does not yet run your tests/);
+    expect(prose).not.toMatch(/escalation on an <em>error<\/em>, not on a verified/);
   });
 
   it('pairs each version with what shipped and what was broken', () => {

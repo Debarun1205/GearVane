@@ -22,6 +22,7 @@ import {
 } from './args.js';
 import { loadConfig } from './config-loader.js';
 import { cmdFeedback, cmdTrain, loadLearnedModel, recordRunFeedback } from './feedback-commands.js';
+import { commandVerifier, inferVerifyCommand } from './command-verifier.js';
 import {
   AGENT_HELP,
   BUILD_HELP,
@@ -43,6 +44,14 @@ Usage:
   gearvane cost [--json]
   gearvane stats
   gearvane safety <spend|pending|check> [--command "<cmd>"] [--json]
+
+  Verification (opt-in). Without --verify, escalation is driven by model and
+  provider errors and the run reports that nothing was checked. With it, an
+  answer is checked by running your command; a failed check retries on a
+  stronger tier with the failure output as context.
+  --verify                    infer a project command, or say none was found
+  --verify "<command>"        run this command to check the answer
+  --verify-timeout <seconds>  give up on the check after this long
   gearvane approve [--command "<cmd>" | --all]
   gearvane deploy <github|docker> <action> [options] [--dry-run]
   gearvane agent --task "<what you want done>" [options]
@@ -200,6 +209,15 @@ async function cmdRun(
     env: process.env as Record<string, string | undefined>,
   });
 
+  // Verification is opt-in. With no flag the run behaves exactly as it did
+  // before and reports no verdict, rather than quietly executing a command
+  // nobody asked for.
+  const verifyCommand = resolveVerifyCommand(args);
+  const safety = new SafetyManager(config.safety);
+  if (verifyCommand && verifyCommand.notice) {
+    process.stderr.write(`${verifyCommand.notice}\n`);
+  }
+
   const options = {
     filesTouched: flagList(args, 'files'),
     errorLoops: flagNumber(args, 'error-loops') ?? 0,
@@ -207,6 +225,16 @@ async function cmdRun(
     system: flagString(args, 'system'),
     temperature: flagNumber(args, 'temperature') ?? 0,
     maxTokens: flagNumber(args, 'max-tokens') ?? 2048,
+    ...(verifyCommand?.command
+      ? {
+          verify: commandVerifier({
+            command: verifyCommand.command,
+            safety,
+            cwd: process.cwd(),
+            ...(verifyCommand.timeoutMs ? { timeoutMs: verifyCommand.timeoutMs } : {}),
+          }),
+        }
+      : {}),
   };
 
   const taskId = `cli-${Date.now().toString(36)}`;
@@ -238,11 +266,51 @@ async function cmdRun(
     return result.success ? 0 : 1;
   }
 
-  printExecution(result);
+  printExecution(result, Boolean(verifyCommand?.command));
   return result.success ? 0 : 1;
 }
 
-function printExecution(result: ExecutionResult): void {
+/**
+ * Work out what to verify with, from the flags.
+ *
+ * `--verify "npm test"` names the command. A bare `--verify` infers one from
+ * markers in the working directory, and says so when it cannot: a guess that is
+ * wrong is worse than being asked, because a wrong guess fails the check and
+ * escalates for no reason.
+ */
+function resolveVerifyCommand(args: ParsedArgs): {
+  command?: string;
+  timeoutMs?: number;
+  notice?: string;
+} {
+  // flags is a Record of parsed values, not a Set: --verify may carry a string
+  // (the command) or be a bare true.
+  if (!('verify' in args.flags)) return {};
+
+  const explicit = flagString(args, 'verify');
+  if (explicit && explicit !== '') {
+    const timeout = flagNumber(args, 'verify-timeout');
+    return {
+      command: explicit,
+      ...(timeout ? { timeoutMs: timeout * 1000 } : {}),
+    };
+  }
+
+  const inferred = inferVerifyCommand(process.cwd());
+  if (!inferred) {
+    return {
+      notice:
+        'verify: no project command found here. Pass one explicitly, ' +
+        'for example: --verify "npm test"',
+    };
+  }
+  return {
+    command: inferred,
+    notice: `verify: using ${inferred}`,
+  };
+}
+
+function printExecution(result: ExecutionResult, verifyRequested = false): void {
   const status = result.success ? 'ok' : 'FAILED';
   process.stdout.write(`${status}  ${result.taskId}\n`);
 
@@ -255,6 +323,30 @@ function printExecution(result: ExecutionResult): void {
   process.stdout.write(`tokens    ${result.tokensIn} in / ${result.tokensOut} out\n`);
   process.stdout.write(`cost      $${result.costUsd.toFixed(4)}\n`);
   process.stdout.write(`duration  ${result.durationMs}ms\n`);
+
+  // The verdict, and its absence. Printing nothing would let a reader assume
+  // the answer was checked.
+  //
+  // Two different reasons for no verdict, and conflating them would misinform.
+  // Without a verifier configured, nothing could check the answer. With one
+  // configured and no verdict, the check was never reached - usually because
+  // every attempt failed at the provider, so no answer existed to check.
+  if (!result.verification) {
+    process.stdout.write(
+      verifyRequested
+        ? 'verified  not reached (every attempt failed before an answer existed)\n'
+        : 'verified  not checked (pass --verify to enable)\n',
+    );
+  } else if (result.verification.outcome === 'pass') {
+    process.stdout.write('verified  passed\n');
+  } else if (result.verification.outcome === 'fail') {
+    process.stdout.write(`verified  FAILED (${result.verification.detail ?? 'no detail'})\n`);
+  } else {
+    // Unknown is not a pass and must not read like one.
+    process.stdout.write(
+      `verified  unknown (${result.verification.detail ?? 'check could not run'})\n`,
+    );
+  }
 
   if (result.error) process.stderr.write(`error     ${result.error}\n`);
   if (result.success) {

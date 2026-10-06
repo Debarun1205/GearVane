@@ -103,17 +103,23 @@
             </li>
             <li>
               <span class="step-number">3</span>
-              <h3>Escalate when a cheap model cannot answer</h3>
+              <h3>Check the answer, not just the request</h3>
               <p>
-                If the model errors, times out, or returns nothing usable, the
-                failure is fed into the next decision and the task moves up a
-                tier. Escalation is bounded, so a task that genuinely cannot be
-                done will not march through every model in sequence.
+                Point GearVane at your project's test command and a run that
+                fails the check is retried on a stronger tier, with the failure
+                output handed to the next attempt. That is the difference
+                between a harness that knows the request was refused and one that
+                knows the work was wrong.
               </p>
+              <pre class="step-code">gearvane run --task "fix the failing parser test" \
+  --verify "npm test"</pre>
               <p class="step-caveat">
-                This is escalation on an <em>error</em>, not on a verified
-                failure. GearVane does not yet run your tests to decide the
-                answer is wrong; that is named work, not a current capability.
+                Verification is opt-in and per run, and only the CLI offers it
+                so far. A check that cannot run reports
+                <code>unknown</code> rather than being counted as a pass or a
+                failure, and your command goes through the same safety gate as
+                any other. Errors and timeouts still escalate on their own; the
+                two signals are independent.
               </p>
             </li>
           </ol>

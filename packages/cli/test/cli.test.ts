@@ -3,6 +3,9 @@ import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import { describe, expect, it } from 'vitest';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -118,6 +121,40 @@ describe('CLI end to end', () => {
     expect(payload.tiers.map((t) => t.tier)).toEqual(['local', 'mid', 'frontier']);
     // The local tier cannot bill anyone, whatever a run does.
     expect(payload.tiers.find((t) => t.tier === 'local')?.free).toBe(true);
+  });
+
+  it('says when nothing checked the answer', async () => {
+    // Regression risk: with no verifier the run must still state that the
+    // answer went unchecked. Omitting the line would let a reader assume it
+    // was verified, which is the one thing this feature must never imply.
+    const result = run(['run', '--task', 'fix a typo in README.md']);
+    expect(result.stdout).toMatch(/^verified\s+not checked/m);
+    // And the hint for turning it on.
+    expect(result.stdout).toMatch(/pass --verify/);
+  });
+
+  it('distinguishes "no verifier" from "never reached"', () => {
+    // Two different facts about the run. Printing one line for both made a run
+    // with --verify tell the user to pass --verify.
+    const withoutFlag = 'verified  not checked (pass --verify to enable)';
+    const neverReached =
+      'verified  not reached (every attempt failed before an answer existed)';
+    expect(withoutFlag).not.toBe(neverReached);
+    // Both must actually appear in the built output.
+    const bin = readFileSync(
+      join(import.meta.dirname, '..', 'src', 'bin.ts'),
+      'utf8',
+    );
+    expect(bin).toContain(withoutFlag);
+    expect(bin).toContain(neverReached);
+  });
+
+  it('documents the verification flags', () => {
+    const result = run(['--help']);
+    expect(result.stdout).toMatch(/--verify\s+"<command>"/);
+    expect(result.stdout).toMatch(/--verify-timeout/);
+    // And says what the default is, so nobody assumes it is on.
+    expect(result.stdout).toMatch(/Without --verify/);
   });
 
   it('checks a command against the gates', () => {

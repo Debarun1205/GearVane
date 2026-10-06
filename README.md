@@ -25,11 +25,20 @@ MIT licensed. **Alpha, and honest about it** — see [Status](#status).
 
 ## Why it is different
 
-1. **Escalation on a real error, not a guess.** If a model errors, times out,
-   or returns nothing usable, the failure feeds the next decision and the task
-   moves up a tier. Bounded, so a task that cannot be done will not march
-   through every model in sequence. It does *not* yet run your tests to decide
-   an answer is wrong; that is named work, not a current capability.
+1. **Escalation on a check that failed, not a guess.** If a model errors or
+   times out, the failure feeds the next decision and the task moves up a tier.
+   More importantly, you can make it check the *answer* instead: point GearVane
+   at your project's test command, and a run that fails the check is retried on
+   a stronger tier with the failure output as context. That is the difference
+   between a harness that knows the request was refused and one that knows the
+   work was wrong.
+
+   ```bash
+   gearvane run --task "fix the failing parser test" --verify "npm test"
+   ```
+
+   Verification is opt-in, because only you know what "correct" means for your
+   project. Without `--verify` nothing runs and the output says so.
 2. **Auto routing with reasons.** Every decision lists the signals behind it —
    keywords, files touched, file count, error loops — so you can see why a tier
    was chosen and pin a different one. Try it on the
@@ -404,9 +413,16 @@ Alpha, and honest about it:
 
 - The router, escalation, budget gates, provider clients, and both CLIs are
   tested end to end.
-- **Escalation fires on a model or provider error.** It does not verify that a
-  result is wrong by running your tests; that is the core idea of the project
-  and it is still to build.
+- **Verification is real but narrow.** A failed check retries on a stronger tier
+  with the failure output in the prompt, and a check that could not run returns
+  `unknown` rather than being treated as a pass or a failure. It runs your
+  command through the safety gate, so a command needing approval reports that
+  instead of running. The limits: it is opt-in per run rather than configured
+  once, the desktop app does not yet offer a verifier, and a verifier that
+  cannot tell is reported honestly rather than guessed at.
+- **Escalation also fires on a model or provider error**, which is the older
+  and cruder signal. The two are independent: a transport failure and a failed
+  check both promote a task.
 - Tier assignment is provisional and size-influenced, not measured. No
   benchmark exists yet.
 - RAM fit and tokens-per-second estimates are absent, and the RAM hints that

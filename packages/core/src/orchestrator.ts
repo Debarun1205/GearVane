@@ -1,6 +1,12 @@
 import { ProviderError, ProviderFactory } from './providers.js';
 import { RetryExhaustedError, withRetry, type RetryConfig } from './retry.js';
 import { TierRouter } from './router.js';
+import {
+  runVerifier,
+  retryPrompt,
+  type VerificationSummary,
+  type Verifier,
+} from './verification.js';
 import type { SerializedWeights } from './learned-classifier.js';
 import type {
   AttemptRecord,
@@ -170,6 +176,16 @@ export interface ExecuteOptions {
   filesTouched?: string[];
   errorLoops?: number;
   testFailures?: number;
+
+  /**
+   * Decides whether an answer is actually right.
+   *
+   * Supplied by the host, because only the host knows what "right" means for a
+   * project - a passing suite, a clean typecheck, a file existing - and running
+   * those needs a subprocess. Absent means no verification is claimed and
+   * escalation stays driven by model and provider errors alone.
+   */
+  verify?: Verifier;
 }
 
 export interface OrchestratorOptions {
@@ -253,6 +269,12 @@ export class Orchestrator {
     let totalOut = 0;
     let errorLoops = options.errorLoops ?? 0;
     let escalatedAny = false;
+    // The prompt for the next attempt. Starts as the caller's, and after a
+    // failed check becomes a prompt carrying what the verifier found.
+    let attemptPrompt = prompt;
+    // The most recent verdict, so the returned result can say whether the
+    // answer was actually checked rather than leaving the caller to guess.
+    let verification: VerificationSummary | undefined;
 
     for (let attempt = 0; attempt <= this.maxEscalations; attempt += 1) {
       const context: TaskContext = {
@@ -288,11 +310,12 @@ export class Orchestrator {
           reasons: decision.reasons,
           error: `Budget exceeded: $${estimated.toFixed(4)} would exceed the limit`,
           history,
+          ...(verification ? { verification } : {}),
         };
       }
 
       try {
-        const completion = await this.callWithRetry(decision, prompt, options);
+        const completion = await this.callWithRetry(decision, attemptPrompt, options);
 
         const cost = unitCost * (completion.usage.tokensIn + completion.usage.tokensOut);
         totalCost += cost;
@@ -306,7 +329,62 @@ export class Orchestrator {
           completion.usage.tokensOut,
         );
         this.spend.recordSpend(cost, taskId);
+        // Cost and tokens are recorded above, before this point, because they
+        // were spent regardless of whether the answer turns out to be right.
+
+        // Verify before declaring success. Without this the loop returned on
+        // the first completion that did not throw, so a confidently wrong
+        // answer from a cheap tier ended the run reporting success.
+        const verdict = options.verify
+          ? await runVerifier(options.verify, completion.content, {
+              taskId,
+              prompt: attemptPrompt,
+              tier: decision.tier,
+              model: decision.model,
+              attempt: attempt + 1,
+              ...(options.signal ? { signal: options.signal } : {}),
+            })
+          : undefined;
+
+        if (verdict && verdict.outcome === 'fail') {
+          // A failed check is a failure of the task, not of the transport. The
+          // router's counter is what promotes the next attempt, and skipping
+          // reportFailure here would route the retry at the same tier.
+          this.router.reportFailure(taskId);
+          verification = {
+            outcome: 'fail',
+            ...(verdict.detail ? { detail: verdict.detail } : {}),
+            attempt: attempt + 1,
+            tier: decision.tier,
+            model: decision.model,
+          };
+          history.push({
+            attempt: attempt + 1,
+            tier: decision.tier,
+            model: decision.model,
+            success: false,
+            costUsd: round(cost),
+            error: verdict.detail
+              ? `verification failed: ${verdict.detail}`
+              : 'verification failed',
+          });
+          errorLoops += 1;
+          // Prompt the retry with what actually broke.
+          attemptPrompt = retryPrompt(prompt, verification);
+          continue;
+        }
+
         this.router.reportSuccess(taskId);
+
+        if (verdict) {
+          verification = {
+            outcome: verdict.outcome,
+            ...(verdict.detail ? { detail: verdict.detail } : {}),
+            attempt: attempt + 1,
+            tier: decision.tier,
+            model: decision.model,
+          };
+        }
 
         history.push({
           attempt: attempt + 1,
@@ -314,6 +392,11 @@ export class Orchestrator {
           model: decision.model,
           success: true,
           costUsd: round(cost),
+          ...(verdict && verdict.outcome === 'fail'
+            ? {}
+            : verdict
+              ? { verified: verdict.outcome === 'pass' }
+              : {}),
         });
 
         return {
@@ -332,6 +415,7 @@ export class Orchestrator {
           confidence: decision.confidence,
           reasons: decision.reasons,
           history,
+          ...(verification ? { verification } : {}),
         };
       } catch (error) {
         // An abort is the caller cancelling, not a provider fault. Retrying
@@ -362,6 +446,7 @@ export class Orchestrator {
             reasons: decision.reasons,
             error: 'cancelled',
             history,
+            ...(verification ? { verification } : {}),
           };
         }
 
@@ -394,8 +479,13 @@ export class Orchestrator {
       durationMs: Date.now() - startedAt,
       confidence: 0,
       reasons: [],
-      error: 'All attempts failed',
+      error: verification?.outcome === 'fail'
+        ? `Verification failed on every attempt${
+            verification.detail ? `: ${verification.detail}` : ''
+          }`
+        : 'All attempts failed',
       history,
+      ...(verification ? { verification } : {}),
     };
   }
 

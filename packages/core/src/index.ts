@@ -89,6 +89,16 @@ export {
   type TierAccuracy,
 } from './feedback.js';
 export {
+  MAX_VERIFIER_DETAIL,
+  retryPrompt,
+  runVerifier,
+  trimDetail,
+  type VerificationOutcome,
+  type VerificationResult,
+  type VerificationSummary,
+  type Verifier,
+} from './verification.js';
+export {
   SafetyManager,
   type ApprovalRequest,
   type ApprovalStatus,
