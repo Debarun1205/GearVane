@@ -16,7 +16,12 @@ import { fileURLToPath } from 'node:url';
 import { parseConfig, defaultConfig, type GearVaneConfig } from '@gearvane/core';
 
 import { registerBuilderHandlers } from './builder-host.js';
-import { EMBEDDED_MODEL_DIR_ENV, startEmbeddedServer } from './embedded-server.js';
+import {
+  EMBEDDED_MODEL_DIR_ENV,
+  generateToken,
+  startEmbeddedServer,
+  type EmbeddedServer,
+} from './embedded-server.js';
 import { registerIdeAgentHandlers } from './ide-agent-host.js';
 import { registerIdeFsHandlers } from './ide-fs-host.js';
 import { registerModelsHandlers } from './models-host.js';
@@ -158,22 +163,75 @@ export function findModelDir(): string {
   return join(process.resourcesPath, 'models');
 }
 
+/**
+ * The embedded server's runtime coordinates, or null when it is down.
+ *
+ * The port is OS-assigned per launch and the token is generated per launch,
+ * so neither can be guessed by a local process or a web page. Both are
+ * injected into every config the app serves, which is the only place the
+ * renderer learns them; nothing writes them to disk.
+ */
+type EmbeddedHandle = { port: number; token: string } | null;
+
+let embedded: Promise<EmbeddedHandle> | null = null;
+
+function embeddedHandle(): Promise<EmbeddedHandle> {
+  if (!embedded) {
+    embedded = startEmbeddedServer({
+      port: 0,
+      modelDir: findModelDir(),
+      token: generateToken(),
+      onLog: (message) => console.log(`[gearvane] ${message}`),
+    }).then(
+      (server: EmbeddedServer) =>
+        server.started && server.token ? { port: server.port, token: server.token } : null,
+      (startupError: unknown) => {
+        // A missing model, a taken port, or an unloadable native module only
+        // logs, never stops the app booting.
+        console.log(
+          `[gearvane] embedded model failed to start: ${startupError instanceof Error ? startupError.message : String(startupError)}`,
+        );
+        return null;
+      },
+    );
+  }
+  return embedded;
+}
+
+/**
+ * Point every embedded provider at the bound port and attach the per-launch
+ * token. Applied to a fresh copy on each call: the parsed config is never
+ * mutated, and a config read before the server is ready still gets the
+ * rewrite because this awaits the same promise.
+ */
+async function serveConfig(): Promise<GearVaneConfig> {
+  const { config } = loadConfigFile();
+  const handle = await embeddedHandle();
+  if (!handle) return config;
+  const tiers = { ...config.tiers };
+  for (const tierName of ['local', 'mid', 'frontier'] as const) {
+    const tier = tiers[tierName];
+    tiers[tierName] = {
+      ...tier,
+      providers: tier.providers.map((provider) =>
+        provider.name === 'embedded'
+          ? { ...provider, baseUrl: `http://127.0.0.1:${handle.port}`, apiKey: handle.token }
+          : provider,
+      ),
+    };
+  }
+  return { ...config, tiers };
+}
+
 app.whenReady().then(() => {
   const { error } = loadConfigFile();
 
   mainWindow = createWindow();
 
   // The bundled local model answers the local tier with nothing else to
-  // install. Fire-and-forget on purpose: a missing model, a taken port, or
-  // an unloadable native module only logs, never stops the app booting.
-  void startEmbeddedServer({
-    modelDir: findModelDir(),
-    onLog: (message) => console.log(`[gearvane] ${message}`),
-  }).catch((startupError: unknown) => {
-    console.log(
-      `[gearvane] embedded model failed to start: ${startupError instanceof Error ? startupError.message : String(startupError)}`,
-    );
-  });
+  // install. Fire-and-forget on purpose: a missing model or an unloadable
+  // native module only logs, never stops the app booting.
+  void embeddedHandle();
 
   if (error) {
     // Surface a bad config immediately rather than letting it look like a
@@ -208,8 +266,9 @@ app.on('web-contents-created', (_event, contents) => {
 
 ipcMain.handle('app:info', () => describePlatform());
 
-ipcMain.handle('config:read', () => {
-  const { config, path, error } = loadConfigFile();
+ipcMain.handle('config:read', async () => {
+  const { path, error } = loadConfigFile();
+  const config = await serveConfig();
   return { config, path, error: error ?? null };
 });
 
@@ -232,8 +291,10 @@ registerTerminalHandlers();
 registerIdeFsHandlers();
 
 // The IDE agent loop needs the harness tool layer, which the renderer cannot
-// load. See ide-agent-host.ts for why the split matters.
-registerIdeAgentHandlers(() => loadConfigFile().config);
+// load. See ide-agent-host.ts for why the split matters. It gets the same
+// rewritten config as the renderer, so the agent reaches the embedded server
+// on its bound port with the per-launch token.
+registerIdeAgentHandlers(async () => serveConfig());
 
 // Model downloads land in the same directory the embedded server serves,
 // so a finished fetch is usable without a restart. See models-host.ts.

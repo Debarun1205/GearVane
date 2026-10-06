@@ -8,6 +8,8 @@ import { describe, expect, it } from 'vitest';
 import {
   EMBEDDED_MODEL_ID,
   findModelFile,
+  hostAllowed,
+  originAllowed,
   startEmbeddedServer,
   type ChatBackend,
 } from '../src/embedded-server.js';
@@ -267,6 +269,97 @@ describe('startEmbeddedServer', () => {
       expect(await listed()).toEqual(['a']);
       writeFileSync(join(dir, 'b.gguf'), 'fake-gguf-bytes');
       expect(await listed()).toEqual(['a', 'b']);
+    } finally {
+      await server.stop();
+    }
+  });
+
+  it('binds an OS-assigned port when asked for port 0', async () => {
+    const server = await startEmbeddedServer({
+      port: 0,
+      modelDir: setupDir(['a.gguf']),
+      onLog: () => {},
+      loadLlama: () => Promise.resolve(stubBackend()),
+    });
+    expect(server.started).toBe(true);
+    expect(server.port).not.toBe(0);
+    try {
+      const models = (await (await fetch(`http://127.0.0.1:${server.port}/v1/models`)).json()) as {
+        data: Array<{ id: string }>;
+      };
+      expect(models.data).toEqual([{ id: 'a' }]);
+    } finally {
+      await server.stop();
+    }
+  });
+});
+
+describe('loopback hardening', () => {
+  const TOKEN = 'test-token';
+
+  async function authedServer(): Promise<{ server: Awaited<ReturnType<typeof startEmbeddedServer>>; port: number }> {
+    const server = await startEmbeddedServer({
+      port: 0,
+      modelDir: setupDir(['a.gguf']),
+      token: TOKEN,
+      onLog: () => {},
+      loadLlama: () => Promise.resolve(stubBackend()),
+    });
+    return { server, port: server.port };
+  }
+
+  it('rejects a request without the per-launch token', async () => {
+    const { server, port } = await authedServer();
+    try {
+      const res = await fetch(`http://127.0.0.1:${port}/v1/models`);
+      expect(res.status).toBe(401);
+    } finally {
+      await server.stop();
+    }
+  });
+
+  it('rejects a wrong token and accepts the right one', async () => {
+    const { server, port } = await authedServer();
+    try {
+      const wrong = await fetch(`http://127.0.0.1:${port}/v1/models`, {
+        headers: { Authorization: 'Bearer wrong-token' },
+      });
+      expect(wrong.status).toBe(401);
+      const right = await fetch(`http://127.0.0.1:${port}/v1/models`, {
+        headers: { Authorization: `Bearer ${TOKEN}` },
+      });
+      expect(right.status).toBe(200);
+    } finally {
+      await server.stop();
+    }
+  });
+
+  it('rejects a non-loopback Host header (DNS rebinding)', () => {
+    // fetch cannot set Host (forbidden header name), so the guard tests
+    // directly — a browser rebinding attack is exactly this input.
+    expect(hostAllowed({ host: 'evil.example.com' })).toBe(false);
+    expect(hostAllowed({ host: 'evil.example.com:8080' })).toBe(false);
+    expect(hostAllowed({ host: '127.0.0.1:11439' })).toBe(true);
+    expect(hostAllowed({ host: 'localhost' })).toBe(true);
+    expect(hostAllowed({})).toBe(false);
+  });
+
+  it('rejects a web-page Origin and accepts an opaque one', async () => {
+    const { server, port } = await authedServer();
+    try {
+      const evil = await fetch(`http://127.0.0.1:${port}/v1/models`, {
+        headers: { Authorization: `Bearer ${TOKEN}`, Origin: 'https://evil.example.com' },
+      });
+      expect(evil.status).toBe(403);
+      // file:// renderers send Origin: null; non-browser clients send none.
+      const opaque = await fetch(`http://127.0.0.1:${port}/v1/models`, {
+        headers: { Authorization: `Bearer ${TOKEN}`, Origin: 'null' },
+      });
+      expect(opaque.status).toBe(200);
+      const bare = await fetch(`http://127.0.0.1:${port}/v1/models`, {
+        headers: { Authorization: `Bearer ${TOKEN}` },
+      });
+      expect(bare.status).toBe(200);
     } finally {
       await server.stop();
     }

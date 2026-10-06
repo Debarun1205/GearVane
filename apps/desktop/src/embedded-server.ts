@@ -22,6 +22,7 @@
  */
 
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
+import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -62,7 +63,18 @@ export type LoadLlama = (
 
 export interface EmbeddedServerOptions {
   host?: string;
+  /**
+   * Port to bind. 0 picks a OS-assigned port per launch, so the endpoint
+   * cannot be predicted by a local process or a web page guessing 11439.
+   */
   port?: number;
+  /**
+   * Per-launch bearer token. When set, every request must present it as
+   * `Authorization: Bearer <token>`. The desktop main process generates one
+   * per launch and injects it into the config it serves to the renderer;
+   * tests omit it and run without authentication.
+   */
+  token?: string;
   /** Directory holding *.gguf files. Defaults to the bundled models dir. */
   modelDir?: string;
   /** Exact GGUF file name to prefer inside the dir. */
@@ -74,7 +86,7 @@ export interface EmbeddedServerOptions {
 }
 
 export interface EmbeddedServer {
-  /** Port actually serving (the requested one; no fallback port). */
+  /** Port actually serving (the bound one; the OS-assigned one when port was 0). */
   port: number;
   /** First model id; the full list is in modelIds. */
   modelId: string;
@@ -82,7 +94,55 @@ export interface EmbeddedServer {
   modelIds: string[];
   /** False when another server already answered on the port. */
   started: boolean;
+  /** The per-launch token, when one was configured. */
+  token?: string;
   stop(): Promise<void>;
+}
+
+/** Per-launch bearer token: 192 bits, URL-safe. */
+export function generateToken(): string {
+  return randomBytes(24).toString('base64url');
+}
+
+/**
+ * Constant-time token comparison. Both sides are hashed first so the compare
+ * length does not leak the token's length.
+ */
+function tokenMatches(presented: string, expected: string): boolean {
+  const a = createHash('sha256').update(presented).digest();
+  const b = createHash('sha256').update(expected).digest();
+  return timingSafeEqual(a, b);
+}
+
+/**
+ * Host header must name loopback. A DNS-rebinding attack points a domain at
+ * 127.0.0.1 and relies on the browser sending that domain in Host; rejecting
+ * anything but 127.0.0.1/localhost breaks the attack even when the Origin
+ * header is absent. Takes the headers record so the rule tests directly.
+ */
+export function hostAllowed(headers: Record<string, string | undefined>): boolean {
+  const host = headers.host;
+  if (!host) return false;
+  const hostname = host.split(':')[0]?.toLowerCase() ?? '';
+  return hostname === '127.0.0.1' || hostname === 'localhost';
+}
+
+/**
+ * Origin, when a browser sends one, must be loopback or an opaque `null`
+ * (what file:// renderers send). Any other origin — a web page, a malicious
+ * site — is rejected. Non-browser clients send no Origin and pass.
+ */
+export function originAllowed(headers: Record<string, string | undefined>): boolean {
+  const origin = headers.origin;
+  if (!origin || origin === 'null') return true;
+  try {
+    const url = new URL(origin);
+    if (url.protocol !== 'http:') return false;
+    const hostname = url.hostname.toLowerCase();
+    return hostname === '127.0.0.1' || hostname === 'localhost';
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -122,9 +182,10 @@ function modelIdFor(path: string): string {
   return stem.toLowerCase();
 }
 
-async function portAnswers(host: string, port: number): Promise<boolean> {
+async function portAnswers(host: string, port: number, token?: string): Promise<boolean> {
   try {
     const response = await fetch(`http://${host}:${port}/v1/models`, {
+      ...(token ? { headers: { Authorization: `Bearer ${token}` } } : {}),
       signal: AbortSignal.timeout(2000),
     });
     if (!response.ok) return false;
@@ -229,27 +290,31 @@ export async function defaultLoadLlama(
 export async function startEmbeddedServer(options: EmbeddedServerOptions = {}): Promise<EmbeddedServer> {
   const host = options.host ?? EMBEDDED_HOST;
   const port = options.port ?? EMBEDDED_PORT;
+  const token = options.token;
   const log = options.onLog ?? ((): void => {});
   const contextSize = options.contextSize ?? 4096;
   const loadLlama = options.loadLlama ?? defaultLoadLlama;
 
-  const idle = (modelIds: string[]): EmbeddedServer => ({
-    port,
+  const idle = (modelIds: string[], boundPort: number): EmbeddedServer => ({
+    port: boundPort,
     modelId: modelIds[0] ?? EMBEDDED_MODEL_ID,
     modelIds,
     started: false,
+    ...(token ? { token } : {}),
     stop: () => Promise.resolve(),
   });
 
-  if (await portAnswers(host, port)) {
+  // Port 0 means "OS-assigned": there is nothing to probe, because the OS
+  // hands out a fresh port that no other process is holding.
+  if (port !== 0 && (await portAnswers(host, port, token))) {
     log(`embedded model: ${host}:${port} already answers, leaving it alone`);
-    return idle([]);
+    return idle([], port);
   }
 
   const modelDir = options.modelDir;
   if (!modelDir) {
     log('embedded model: no model directory configured, embedded tier unavailable');
-    return idle([]);
+    return idle([], port);
   }
 
   const preferred = options.modelFile ?? process.env[EMBEDDED_MODEL_FILE_ENV];
@@ -305,6 +370,7 @@ export async function startEmbeddedServer(options: EmbeddedServerOptions = {}): 
       response,
       { listIds: () => [...discover().keys()], has: (id) => discover().has(id), getBackend },
       log,
+      token,
     );
   });
   await new Promise<void>((resolve, reject) => {
@@ -314,14 +380,20 @@ export async function startEmbeddedServer(options: EmbeddedServerOptions = {}): 
       resolve();
     });
   });
-  log(`embedded model: serving ${[...discover().keys()].join(', ')} on http://${host}:${port}`);
+  // With port 0 the bound port is the only truth: the renderer config is
+  // rewritten to this value before it can make a request.
+  const boundPort = typeof server.address() === 'object' && server.address() !== null
+    ? (server.address() as { port: number }).port
+    : port;
+  log(`embedded model: serving ${[...discover().keys()].join(', ')} on http://${host}:${boundPort}`);
 
   const snapshotIds = [...discover().keys()];
   return {
-    port,
+    port: boundPort,
     modelId: snapshotIds[0] as string,
     modelIds: snapshotIds,
     started: true,
+    ...(token ? { token } : {}),
     stop: () =>
       new Promise<void>((resolve) => {
         server.close(() => resolve());
@@ -340,8 +412,27 @@ async function handleRequest(
   response: ServerResponse,
   pool: ModelPool,
   log: (message: string) => void,
+  token?: string,
 ): Promise<void> {
   try {
+    // Loopback hardening, in order: the Host header must name loopback
+    // (kills DNS rebinding), a browser-supplied Origin must be loopback or
+    // opaque (kills malicious web pages), and the per-launch bearer token
+    // must match (kills every other local process). No CORS headers are
+    // ever sent, so cross-origin browser reads fail regardless.
+    if (!hostAllowed(request.headers) || !originAllowed(request.headers)) {
+      sendJson(response, 403, { error: 'forbidden' });
+      return;
+    }
+    if (token) {
+      const header = request.headers.authorization;
+      const presented = header && header.startsWith('Bearer ') ? header.slice(7) : '';
+      if (!tokenMatches(presented, token)) {
+        sendJson(response, 401, { error: 'unauthorized' });
+        return;
+      }
+    }
+
     const url = new URL(request.url ?? '/', 'http://localhost');
 
     if (request.method === 'GET' && url.pathname === '/v1/models') {

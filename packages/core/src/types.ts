@@ -20,6 +20,13 @@ export interface ProviderConfig {
   models: string[];
   /** Overrides the provider's default base URL. */
   baseUrl?: string;
+  /**
+   * A key carried in the config itself. Only the embedded provider uses
+   * this, for the per-launch loopback bearer token the desktop main
+   * process injects at runtime. Cloud providers keep using `apiKeyEnv`:
+   * a config file on disk must never hold a user secret.
+   */
+  apiKey?: string;
   /** Name of the env var holding the API key. Never the key itself. */
   apiKeyEnv?: string;
   /**

@@ -250,15 +250,25 @@ describe('ProviderFactory', () => {
     expect(client).toBeInstanceOf(OpenAICompatClient);
   });
 
-  it('routes the embedded provider to the loopback server without a key', () => {
+  it('keeps the embedded provider’s injected loopback token, but no environment key', () => {
+    // The desktop main process injects a per-launch bearer token into the
+    // embedded provider; it must reach the loopback server. Environment
+    // keys are still ignored — the token never comes from the shell.
     const factory = new ProviderFactory({ env: { EMBEDDED_API_KEY: 'should-be-ignored' } });
     const client = factory.create({
       name: 'embedded',
       models: ['qwen2.5-coder-0.5b-instruct-q4_0'],
+      apiKey: 'loopback-token',
     });
     expect(client).toBeInstanceOf(OpenAICompatClient);
     expect(client.baseUrl).toBe('http://127.0.0.1:11439');
-    expect((client as unknown as { apiKey: string | undefined }).apiKey).toBeUndefined();
+    expect((client as unknown as { apiKey: string | undefined }).apiKey).toBe('loopback-token');
+
+    const bare = factory.create({
+      name: 'embedded',
+      models: ['qwen2.5-coder-0.5b-instruct-q4_0'],
+    });
+    expect((bare as unknown as { apiKey: string | undefined }).apiKey).toBeUndefined();
   });
 
   it('refuses a provider with no base URL', () => {
@@ -275,7 +285,8 @@ describe('ProviderFactory', () => {
   });
 
   it('never embeds a key from config', () => {
-    // ProviderConfig has no key field at all; assert the shape stays that way.
+    // A provider literal carries no key unless one is explicitly injected;
+    // the optional embedded loopback field stays unset on this shape.
     const provider = { name: 'anthropic', models: ['m'] } as Record<string, unknown>;
     expect(provider['apiKey']).toBeUndefined();
   });

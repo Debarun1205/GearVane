@@ -378,8 +378,8 @@ export async function runIdeAgent(
   return { ok: true, result, changed, provider: model.provider, model: model.model };
 }
 
-export function registerIdeAgentHandlers(loadConfig: () => GearVaneConfig): void {
-  ipcMain.handle('agent:models', () => listIdeModels(loadConfig().tiers));
+export function registerIdeAgentHandlers(loadConfig: () => GearVaneConfig | Promise<GearVaneConfig>): void {
+  ipcMain.handle('agent:models', async () => listIdeModels((await loadConfig()).tiers));
 
   ipcMain.handle('agent:run', async (event, request: AgentRunRequest) => {
     if (active) {
@@ -406,7 +406,7 @@ export function registerIdeAgentHandlers(loadConfig: () => GearVaneConfig): void
         ...(process.env as Record<string, string | undefined>),
         ...sanitizeKeys(request.keys),
       };
-      return await runIdeAgent(request, loadConfig(), env, onStep, signal);
+      return await runIdeAgent(request, await loadConfig(), env, onStep, signal);
     } catch (error) {
       return {
         ok: false,

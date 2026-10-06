@@ -915,25 +915,33 @@ export class ProviderFactory {
     }
 
     let apiKey: string | undefined;
-    if (provider.apiKeyEnv) apiKey = this.env[provider.apiKeyEnv];
-    if (!apiKey && KEY_ENV_OVERRIDES[name]) {
-      apiKey = this.env[KEY_ENV_OVERRIDES[name]];
-    }
-    if (!apiKey) {
-      for (const candidate of [
-        `${name.toUpperCase().replace(/-/g, '_')}_API_KEY`,
-        'ANTHROPIC_API_KEY',
-        'OPENAI_API_KEY',
-      ]) {
-        const found = this.env[candidate];
-        if (found) {
-          apiKey = found;
-          break;
+    if (name === 'embedded') {
+      // The per-launch loopback bearer token arrives in the config itself,
+      // injected by the desktop main process. No environment variable can
+      // know it, so this provider does no env lookup at all.
+      apiKey = provider.apiKey;
+    } else {
+      if (provider.apiKeyEnv) apiKey = this.env[provider.apiKeyEnv];
+      if (!apiKey && KEY_ENV_OVERRIDES[name]) {
+        apiKey = this.env[KEY_ENV_OVERRIDES[name]];
+      }
+      if (!apiKey) {
+        for (const candidate of [
+          `${name.toUpperCase().replace(/-/g, '_')}_API_KEY`,
+          'ANTHROPIC_API_KEY',
+          'OPENAI_API_KEY',
+        ]) {
+          const found = this.env[candidate];
+          if (found) {
+            apiKey = found;
+            break;
+          }
         }
       }
-    }
 
-    if (LOCAL_PROVIDERS.has(name)) apiKey = undefined;
+      // Every other local provider is truly keyless.
+      if (LOCAL_PROVIDERS.has(name)) apiKey = undefined;
+    }
 
     const target = model ?? provider.models[0] ?? '';
     const ClientClass = REGISTRY[name] ?? OpenAICompatClient;
