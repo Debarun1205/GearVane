@@ -113,6 +113,19 @@ const api = {
   },
 
   /**
+   * Key vault.
+   *
+   * The file is owned and encrypted by the main process through the OS secret
+   * store; the renderer never touches it. Save is sanitized there too, so
+   * whatever this channel carries cannot widen the variable allowlist.
+   */
+  keys: {
+    read: () => ipcRenderer.invoke('keys:read'),
+    save: (keys) => ipcRenderer.invoke('keys:save', keys),
+    clear: () => ipcRenderer.invoke('keys:clear'),
+  },
+
+  /**
    * Subscribe to a main-process message.
    *
    * Returns an unsubscribe function so the renderer cannot leak listeners

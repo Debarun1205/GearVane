@@ -24,6 +24,7 @@ import {
 } from './embedded-server.js';
 import { registerIdeAgentHandlers } from './ide-agent-host.js';
 import { registerIdeFsHandlers } from './ide-fs-host.js';
+import { KeyVault, vaultPath } from './keys-host.js';
 import { registerModelsHandlers } from './models-host.js';
 import { registerTerminalHandlers } from './terminal-host.js';
 
@@ -278,6 +279,22 @@ ipcMain.handle('shell:open', (_event, url: unknown) => {
   return true;
 });
 
+// The vault file belongs to the main process and is encrypted by the OS, so
+// keys are not readable from the profile directory. The renderer gets values
+// through these handlers and nothing else. See keys-host.ts.
+const vault = new KeyVault(vaultPath());
+
+ipcMain.handle('keys:read', () => ({
+  keys: vault.keys(),
+  persistent: vault.persistent(),
+}));
+
+ipcMain.handle('keys:save', (_event, keys: unknown) => vault.save(keys));
+
+ipcMain.handle('keys:clear', () => {
+  vault.clear();
+});
+
 // The builder needs a filesystem, which the renderer does not have. See
 // builder-host.ts for why the split matters.
 registerBuilderHandlers();
@@ -294,7 +311,7 @@ registerIdeFsHandlers();
 // load. See ide-agent-host.ts for why the split matters. It gets the same
 // rewritten config as the renderer, so the agent reaches the embedded server
 // on its bound port with the per-launch token.
-registerIdeAgentHandlers(async () => serveConfig());
+registerIdeAgentHandlers(async () => serveConfig(), () => vault.env());
 
 // Model downloads land in the same directory the embedded server serves,
 // so a finished fetch is usable without a restart. See models-host.ts.

@@ -169,6 +169,58 @@ test('models dialog reports on-disk weights as ready', async () => {
   expect(errors).toEqual([]);
 });
 
+test('the key vault is encrypted by the OS, not stored in the renderer', async () => {
+  // This is the assertion the whole feature exists for: after saving a key,
+  // the profile on disk must not contain it. The old localStorage vault wrote
+  // the key in the clear, where any process reading the profile recovered it.
+  await app?.close();
+  const userData = await mkdtemp(join(tmpdir(), 'gearvane-e2e-'));
+  app = await electron.launch({
+    args: [MAIN, '--no-sandbox', '--disable-gpu', `--user-data-dir=${userData}`],
+  });
+
+  const page = await app!.firstWindow();
+  const errors = trackErrors(page);
+
+  await expect(page.locator('#transcript')).toBeVisible();
+  await page.locator('#appearance-cancel').click();
+
+  await page.locator('#keys-button').click();
+  await page.locator('#keys-fields input[aria-label="OpenAI API key"]').fill('sk-vault-e2e-secret');
+  await page.locator('#keys-save').click();
+  await expect(page.locator('#keys-dialog')).toBeHidden();
+
+  // The renderer keeps no copy: its storage is the mirror, not a vault.
+  expect(await page.evaluate(() => localStorage.getItem('gearvane.keys'))).toBeNull();
+
+  // The file the main process wrote holds ciphertext, never the key.
+  const vault = await readFile(join(userData, 'keys.vault'));
+  expect(vault.includes(Buffer.from('sk-vault-e2e-secret'))).toBe(false);
+  expect(vault.includes(Buffer.from('OPENAI_API_KEY'))).toBe(false);
+
+  // A relaunch reads it back through the OS keyring, so the field is prefilled.
+  await app.close();
+  app = await electron.launch({
+    args: [MAIN, '--no-sandbox', '--disable-gpu', `--user-data-dir=${userData}`],
+  });
+  const reopened = await app!.firstWindow();
+  await expect(reopened.locator('#transcript')).toBeVisible();
+  // No onboarding dialog this time: the profile already has it marked done,
+  // which is the point of reusing the same user-data directory.
+  await expect(reopened.locator('#appearance-dialog')).toBeHidden();
+  await reopened.locator('#keys-button').click();
+  await expect(
+    reopened.locator('#keys-fields input[aria-label="OpenAI API key"]'),
+  ).toHaveValue('sk-vault-e2e-secret');
+
+  // Clearing removes the file and the field.
+  await reopened.locator('#keys-clear').click();
+  await expect(reopened.locator('#keys-fields input[aria-label="OpenAI API key"]')).toHaveValue('');
+  await expect(readFile(join(userData, 'keys.vault'))).rejects.toThrow();
+
+  expect(errors).toEqual([]);
+});
+
 test('chat model picker lists models, marks installed, and pins a choice', async () => {
   // A seeded models dir gives one weight the green installed marker.
   const modelsDir = await mkdtemp(join(tmpdir(), 'gearvane-models-'));

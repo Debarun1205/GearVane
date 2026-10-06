@@ -378,7 +378,18 @@ export async function runIdeAgent(
   return { ok: true, result, changed, provider: model.provider, model: model.model };
 }
 
-export function registerIdeAgentHandlers(loadConfig: () => GearVaneConfig | Promise<GearVaneConfig>): void {
+export function registerIdeAgentHandlers(
+  loadConfig: () => GearVaneConfig | Promise<GearVaneConfig>,
+  /**
+   * Environment the hosted run should see, when the host owns one.
+   *
+   * The key vault lives in the main process (keys-host.ts), so main supplies
+   * it here instead of trusting the renderer to carry the values back across
+   * the IPC boundary. Keys still win over the shell: they were entered for
+   * this device after the process started.
+   */
+  extraEnv: () => Record<string, string | undefined> = () => ({}),
+): void {
   ipcMain.handle('agent:models', async () => listIdeModels((await loadConfig()).tiers));
 
   ipcMain.handle('agent:run', async (event, request: AgentRunRequest) => {
@@ -398,12 +409,13 @@ export function registerIdeAgentHandlers(loadConfig: () => GearVaneConfig | Prom
     };
 
     try {
-      // Renderer vault keys win over the shell: they were entered for this
-      // device after the process started. sanitizeKeys drops everything but
-      // known API key variables, so PATH and friends cannot be overridden
-      // across the IPC boundary.
+      // Host vault keys win over the shell, then renderer keys on top: the
+      // webview has no host vault and passes them through the request.
+      // sanitizeKeys drops everything but known API key variables, so PATH and
+      // friends cannot be overridden across the IPC boundary either way.
       const env = {
         ...(process.env as Record<string, string | undefined>),
+        ...extraEnv(),
         ...sanitizeKeys(request.keys),
       };
       return await runIdeAgent(request, await loadConfig(), env, onStep, signal);

@@ -39,6 +39,7 @@ import {
 } from './theme.js';
 import {
   KEY_FIELDS,
+  STORAGE_KEY,
   clearKeys,
   loadKeys,
   saveKeys,
@@ -133,6 +134,20 @@ interface HostBridge {
     >;
     fetch(id: string): Promise<{ ok: boolean; error?: string }>;
     onProgress(handler: (progress: { id: string; done: number; total: number }) => void): () => void;
+  };
+
+  /**
+   * Key vault bridge, present only in the desktop app.
+   *
+   * Where it exists the main process owns the file and encrypts it through the
+   * OS secret store, so keys are not readable from the profile directory.
+   * Absent in the webview, which has no secret store and falls back to
+   * localStorage — device-local either way, but not encrypted at rest.
+   */
+  keys?: {
+    read(): Promise<{ keys: Record<string, string>; persistent: boolean }>;
+    save(keys: Record<string, string>): Promise<Record<string, string>>;
+    clear(): Promise<void>;
   };
 }
 
@@ -265,6 +280,7 @@ const els = {
   keysButton: byId<HTMLButtonElement>('keys-button'),
   keysDialog: byId<HTMLDialogElement>('keys-dialog'),
   keysFields: byId('keys-fields'),
+  keysNote: byId('keys-note'),
   keysSave: byId<HTMLButtonElement>('keys-save'),
   keysClear: byId<HTMLButtonElement>('keys-clear'),
   tierBadge: byId('tier-badge'),
@@ -1396,7 +1412,18 @@ function syncKeysButton(): void {
   const count = Object.keys(loadKeys(keyStorage)).length;
   els.keysButton.title =
     count > 0 ? `API keys (${count} stored on this device)` : 'API keys (none stored)';
+  // Say so when the keys cannot be encrypted at rest, rather than implying
+  // a protection the platform did not provide.
+  els.keysNote.textContent = vaultPersistent
+    ? 'Keys stay on this device and are encrypted by your operating system.'
+    : 'Keys stay on this device for this session only. This system has no ' +
+      'secret store, so they are not written to disk and will be gone when ' +
+      'the app closes.';
+  els.keysNote.hidden = false;
 }
+
+/** False when the platform has no secret store: keys cannot be persisted. */
+let vaultPersistent = true;
 
 /**
  * Build the Keys dialog once and keep it fed from the vault.
@@ -1430,6 +1457,7 @@ function wireKeys(): void {
   const open = (): void => {
     const stored = loadKeys(keyStorage);
     for (const [env, input] of inputs) input.value = stored[env] ?? '';
+    syncKeysButton();
     if (typeof els.keysDialog.showModal === 'function') els.keysDialog.showModal();
   };
   els.keysButton.addEventListener('click', open);
@@ -1441,15 +1469,17 @@ function wireKeys(): void {
     const next: Record<string, string> = {};
     for (const [env, input] of inputs) next[env] = input.value;
     // Sanitized again on save: pasted whitespace is not a key.
-    saveKeys(keyStorage, next);
-    applyKeys();
+    void persistKeys(next).then(() => applyKeys());
     // The surrounding form uses method=dialog, so this submit closes it.
   });
 
   els.keysClear.addEventListener('click', () => {
     for (const input of inputs.values()) input.value = '';
+    if (bridge.keys) void bridge.keys.clear().catch(() => {});
+    vaultMirror.delete(STORAGE_KEY);
     clearKeys(keyStorage);
     applyKeys();
+    syncKeysButton();
   });
 }
 
@@ -2105,15 +2135,22 @@ const webFsStorage: WebFsStorage = {
 };
 
 /**
- * Device-local key vault, beside the appearance settings.
+ * The key vault.
  *
- * A never-throwing wrapper like the appearance one: storage can be
- * disabled, and losing the vault must not kill the app. Entries are
- * sanitized on every read, so a hand-edited value cannot smuggle
- * unrelated variables into provider calls.
+ * In the desktop app the main process owns the file and encrypts it through
+ * the OS secret store (see keys-host.ts); the renderer only ever sees the
+ * decrypted values it needs, through the bridge. `loadKeys` is then a cached
+ * read of that mirror, so every existing caller keeps working unchanged.
+ *
+ * Without the bridge — the Android webview, which has no secret store — this
+ * is the localStorage vault: device-local and still never written to a config
+ * file or a log, but plaintext on disk, which is why the dialog says so.
  */
+const vaultMirror = new Map<string, string>();
+
 const keyStorage: KeyStorage = {
   getItem: (key) => {
+    if (bridge.keys) return vaultMirror.has(key) ? (vaultMirror.get(key) as string) : null;
     try {
       return window.localStorage.getItem(key);
     } catch {
@@ -2121,6 +2158,8 @@ const keyStorage: KeyStorage = {
     }
   },
   setItem: (key, value) => {
+    vaultMirror.set(key, value);
+    if (bridge.keys) return;
     try {
       window.localStorage.setItem(key, value);
     } catch {
@@ -2128,6 +2167,8 @@ const keyStorage: KeyStorage = {
     }
   },
   removeItem: (key) => {
+    vaultMirror.delete(key);
+    if (bridge.keys) return;
     try {
       window.localStorage.removeItem(key);
     } catch {
@@ -2135,6 +2176,39 @@ const keyStorage: KeyStorage = {
     }
   },
 };
+
+/**
+ * Pull the vault through the bridge and mirror it locally.
+ *
+ * Sanitization happens in the main process too, so a compromised file cannot
+ * reintroduce a variable the allowlist dropped. Never throws: a vault that
+ * will not load means no hosted tier, not a failed boot.
+ */
+async function syncVault(): Promise<void> {
+  if (!bridge.keys) return;
+  try {
+    const state = await bridge.keys.read();
+    vaultPersistent = state.persistent;
+    vaultMirror.set(STORAGE_KEY, JSON.stringify(state.keys));
+  } catch {
+    vaultMirror.delete(STORAGE_KEY);
+  }
+  syncKeysButton();
+}
+
+/** Push the dialog's fields through the bridge, falling back to localStorage. */
+async function persistKeys(next: Record<string, string>): Promise<void> {
+  if (bridge.keys) {
+    try {
+      const saved = await bridge.keys.save(next);
+      vaultMirror.set(STORAGE_KEY, JSON.stringify(saved));
+      return;
+    } catch {
+      // Fall through so the session still has the keys.
+    }
+  }
+  saveKeys(keyStorage, next);
+}
 
 /**
  * Apply the onboarding posture to a resolved config.
@@ -2172,6 +2246,11 @@ async function main(): Promise<void> {
     openAppearance('onboarding');
     markOnboarded(appearanceStorage);
   }
+
+  // The vault must be in the mirror before the config resolves: the hosted
+  // tiers are keyed by what it holds, so reading it first is what makes a
+  // key-enabled tier appear on boot.
+  await syncVault();
 
   const { config, error, fromDefaults } = await resolveConfig();
   activeConfig = applyPosture(config);
