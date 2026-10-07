@@ -119,6 +119,30 @@ describe('runIdeAgent validation', () => {
     expect(response.ok).toBe(false);
     expect(host).toMatch(/Math\.min\(Math\.floor\(request\.maxIterations\), 50\)/);
   });
+
+  it('records no feedback for a run rejected before it reached a model', async () => {
+    // A run that never talked to anything is not evidence about routing, so
+    // grading the classifier on it would be noise dressed up as a data point.
+    let written = false;
+    const feedback = {
+      read: () => '',
+      write: () => {
+        written = true;
+      },
+    };
+
+    const response = await runIdeAgent(
+      { prompt: '   ', root: '/tmp' },
+      config,
+      {},
+      noop,
+      new AbortController().signal,
+      feedback,
+    );
+
+    expect(response.ok).toBe(false);
+    expect(written).toBe(false);
+  });
 });
 
 describe('resolveIdeModel', () => {

@@ -15,7 +15,7 @@
 import { ipcMain } from 'electron';
 import { stat } from 'node:fs/promises';
 
-import { ProviderFactory, type GearVaneConfig } from '@gearvane/core';
+import { ProviderFactory, type FeedbackStorage, type GearVaneConfig } from '@gearvane/core';
 import {
   ToolRegistry,
   Workspace,
@@ -33,6 +33,7 @@ import {
   type Tool,
 } from '@gearvane/harness';
 
+import { recordAgentRun } from './feedback-host.js';
 import { listFiles, readTextFile } from './ide/fs-store.js';
 import { sanitizeKeys } from './keys.js';
 
@@ -313,6 +314,14 @@ export async function runIdeAgent(
   env: Record<string, string | undefined>,
   onStep: (step: AgentStep) => void,
   signal: AbortSignal,
+  /**
+   * Where to record the run's routing outcome, when the host supplies one.
+   *
+   * Optional so a caller with nowhere to write -- a test, or a host that has
+   * deliberately opted out of learning -- records nothing rather than
+   * reaching for a default path.
+   */
+  feedback?: FeedbackStorage,
 ): Promise<AgentRunResponse> {
   if (typeof request.prompt !== 'string' || request.prompt.trim() === '') {
     return { ok: false, error: 'prompt must be a non-empty string' };
@@ -394,6 +403,19 @@ export async function runIdeAgent(
   // changed on disk, not what the transcript claims changed.
   const changed = await diffSnapshot(request.root, before);
 
+  // A run that reached a model is the only thing that says anything about
+  // routing, so this is the first point where recording is honest. The
+  // provider and model are the ones that actually served the request; what
+  // the router would have chosen lives in the recorder and is never used to
+  // pick a model.
+  if (feedback && model.provider && model.model) {
+    recordAgentRun(config, feedback, request.prompt, {
+      provider: model.provider,
+      model: model.model,
+      stopReason: result.stopReason,
+    });
+  }
+
   return {
     ok: true,
     result,
@@ -415,6 +437,14 @@ export function registerIdeAgentHandlers(
    * this device after the process started.
    */
   extraEnv: () => Record<string, string | undefined> = () => ({}),
+  /**
+   * Where completed runs are recorded for the learned classifier.
+   *
+   * Supplied by main, which owns the per-user directory. Defaulted to a
+   * no-op so a host that has not wired storage yet keeps working, rather than
+   * a missing argument failing every run.
+   */
+  feedback: () => FeedbackStorage | undefined = () => undefined,
 ): void {
   ipcMain.handle('agent:models', async () => listIdeModels((await loadConfig()).tiers));
 
@@ -444,7 +474,14 @@ export function registerIdeAgentHandlers(
         ...extraEnv(),
         ...sanitizeKeys(request.keys),
       };
-      return await runIdeAgent(request, await loadConfig(), env, onStep, signal);
+      return await runIdeAgent(
+        request,
+        await loadConfig(),
+        env,
+        onStep,
+        signal,
+        feedback(),
+      );
     } catch (error) {
       return {
         ok: false,

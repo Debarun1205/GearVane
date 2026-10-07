@@ -887,14 +887,19 @@ describe('security and hygiene', () => {
     }
   });
 
-  it('does not claim the app learns from outcomes', () => {
-    // Ground truth: recordRunFeedback is called from the CLI
-    // (packages/cli/src/bin.ts) and nowhere in apps/, so the desktop app a
-    // visitor downloads never learns anything. The card used to advertise
-    // the capability outright.
+  it('does not overclaim what the desktop app does with its feedback', () => {
+    // Ground truth: the desktop app now records outcomes
+    // (apps/desktop/src/feedback-host.ts), so the old "does not yet record
+    // outcomes" apology was false. But only packages/cli/src/bin.ts calls
+    // loadLearnedModel, so the app still routes on the heuristic. The page has
+    // to say both halves: it collects, and it does not yet act.
     expect(html).not.toContain('Learns from outcomes');
-    expect(prose).toMatch(/does not yet record outcomes, so it does not learn/);
-    expect(prose).toMatch(/always routes on the heuristic/);
+    expect(html).not.toContain('does not yet record outcomes');
+    expect(html).not.toContain('does not record');
+    expect(prose).toMatch(/records every finished run/);
+    // The limit is stated as plainly as the capability.
+    expect(prose).toMatch(/Training and loading the learned model are still CLI-only/);
+    expect(prose).toMatch(/routing stays on the heuristic/);
     // The capability that does ship is still claimed.
     expect(html).toContain('Reasons, not verdicts');
   });

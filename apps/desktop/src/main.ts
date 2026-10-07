@@ -22,6 +22,7 @@ import {
   startEmbeddedServer,
   type EmbeddedServer,
 } from './embedded-server.js';
+import { fileFeedbackStorage, userDataFeedbackFile } from './feedback-host.js';
 import { registerIdeAgentHandlers } from './ide-agent-host.js';
 import { registerIdeFsHandlers } from './ide-fs-host.js';
 import { KeyVault, vaultPath } from './keys-host.js';
@@ -312,7 +313,15 @@ registerIdeFsHandlers();
 // load. See ide-agent-host.ts for why the split matters. It gets the same
 // rewritten config as the renderer, so the agent reaches the embedded server
 // on its bound port with the per-launch token.
-registerIdeAgentHandlers(async () => serveConfig(), () => vault.env());
+//
+// The last argument is the feedback log: without it the app runs models and
+// tells the classifier nothing, so `gearvane train` has no data from anyone
+// who installed the desktop app. See feedback-host.ts.
+registerIdeAgentHandlers(
+  async () => serveConfig(),
+  () => vault.env(),
+  () => fileFeedbackStorage(userDataFeedbackFile()),
+);
 
 // Model downloads land in the same directory the embedded server serves,
 // so a finished fetch is usable without a restart. See models-host.ts.

@@ -421,10 +421,11 @@
               <p>
                 Every routing decision lists the signals behind it - the
                 keywords, the files, the confidence - so you can see why a
-                tier was chosen and pin a different one. The learned
-                classifier and its training loop exist and are tested in the
-                CLI, and the desktop app does not yet record outcomes, so it
-                does not learn from your runs yet.
+                tier was chosen and pin a different one. The desktop app
+                records every finished run to a feedback log that
+                <code>gearvane feedback</code> and <code>gearvane train</code>
+                read. Training and loading the learned model are still CLI-only,
+                so inside the app routing stays on the heuristic.
               </p>
             </article>
 
@@ -890,11 +891,13 @@ code --install-extension waypoint-0.3.0.vsix</code></pre>
             <p>
               The heuristic classifier is deterministic and shows its reasons,
               so you can argue with it. Accuracy depends on your keywords and
-              file patterns, which you control. Once you have recorded enough
-              outcomes recorded through the CLI you can train the learned
-              classifier, which refines the choice but always defers to the
-              heuristic on disagreement. The desktop app does not record
-              outcomes yet, so today it always routes on the heuristic.
+              file patterns, which you control. Both the CLI and the desktop
+              app record what each run actually cost in routing terms, so once
+              you have recorded enough outcomes you can train the learned
+              classifier with <code>gearvane train</code>, which refines the
+              choice but always defers to the heuristic on disagreement.
+              Loading that trained model is CLI-only, so inside the desktop app
+              routing stays on the heuristic.
             </p>
           </details>
 

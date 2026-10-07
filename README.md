@@ -280,8 +280,10 @@ Signals are scored into a tier, and every decision reports its reasons:
 - **Previous attempts** — a task that already failed here gets promoted
 
 The learned classifier exists, trains from recorded feedback, and always
-defers to the heuristic on disagreement. The CLI records outcomes; the desktop
-app does not yet, so today it always routes on the heuristic.
+defers to the heuristic on disagreement. Both the CLI and the desktop app
+record outcomes, in the same `feedback.jsonl` format, so `gearvane train`
+works on runs made in either. Training and loading the trained model are
+CLI-only, so inside the desktop app routing stays on the heuristic.
 
 ## Configure
 
