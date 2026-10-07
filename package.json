@@ -10,7 +10,7 @@
     "apps/*"
   ],
   "scripts": {
-    "build": "npm run build --workspaces --if-present",
+    "build": "npm run build --workspace @gearvane/core && npm run build --workspace @gearvane/harness && npm run build --workspace @gearvane/app-core && npm run build --workspace @gearvane/cli && npm run build --workspace gearvane && npm run build --workspace gearvane-app",
     "test": "npm run test --workspaces --if-present",
     "test:repo": "vitest run",
     "test:python": "python -m pytest tests/ -q",
