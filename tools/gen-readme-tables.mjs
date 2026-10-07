@@ -106,26 +106,36 @@ function catalogTable() {
 
 /** A short summary of what the catalog contains. */
 function catalogSummary() {
-  const bundled = catalog.filter((m) => m.bundled === true);
+  const bundled = catalog.filter((m) => m.provision === 'installer');
+  const firstBoot = catalog.filter((m) => m.provision === 'first-boot');
   const total = catalog.reduce((sum, m) => sum + m.bytes, 0);
   const routed = catalog.filter((m) => tierOf[m.id]).length;
+  const names = (list) => list.map((m) => `\`${m.id}\``).join(', ');
+  const gib = (bytes) => `${(bytes / 1073741824).toFixed(2)} GiB`;
+
   // Derived, never written out. This line used to say "Four" while listing
   // whatever was flagged bundled, so the count and the list disagreed the
-  // moment the bundle was cut down to one model.
-  const ships =
-    bundled.length === 1
-      ? 'One ships'
-      : `${bundled.length} ship`;
+  // moment the bundle was cut down to one model -- and it used to describe
+  // only the installer, silently dropping the two the app provisions.
+  //
+  // The two sets are now separate sentences. "Four at first launch" would be
+  // false while the other two are still in flight, so the README says which is
+  // which: two are ready at first launch, two arrive shortly after on first
+  // boot.
   return [
     `**${catalog.length} weights, ${routed} of them in the default tiers.**`,
     '',
-    `${ships} in the installer (${bundled
-      .map((m) => `\`${m.id}\``)
-      .join(', ')}) and work${bundled.length === 1 ? 's' : ''} offline at first`,
-    `launch. The rest are one click away. Every one is a downloadable file you`,
-    `run on your own machine, so a local run costs nothing and needs no`,
-    `account. The catalog as a whole is`,
-    `${(total / 1073741824).toFixed(1)} GiB if you wanted all of it; nobody does.`,
+    `${bundled.length} ship in the installer (${names(bundled)}, ${gib(
+      bundled.reduce((sum, m) => sum + m.bytes, 0),
+    )}) and work offline the moment you open the app.`,
+    `${firstBoot.length} more (${names(
+      firstBoot,
+    )}, ${gib(firstBoot.reduce((sum, m) => sum + m.bytes, 0))}) download`,
+    'automatically in the background on first launch, with no prompt. Any one of',
+    'them that this machine cannot hold is skipped, and the picker says why.',
+    'Every weight is a downloadable file you run on your own machine, so a local',
+    `run costs nothing and needs no account. All ${catalog.length} together are`,
+    `${(total / 1073741824).toFixed(1)} GiB; nobody wants that.`,
   ].join('\n');
 }
 

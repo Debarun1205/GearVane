@@ -22,15 +22,17 @@
  */
 import { execFileSync } from 'node:child_process';
 import {
+  closeSync,
   cpSync,
   existsSync,
-  mkdirSync,
   mkdtempSync,
+  openSync,
   readFileSync,
+  readSync,
   readdirSync,
   rmSync,
   statSync,
-  writeFileSync,
+  writeSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
@@ -237,9 +239,15 @@ check('a corrupted mirror file is rejected, not renamed into place', () => {
     // A file of the right length and the wrong contents.
     const corrupt = join(bad, target.file);
     cpSync(join(MIRROR, target.file), corrupt);
-    const raw = readFileSync(corrupt);
-    raw[0] = raw[0] ^ 0xff;
-    writeFileSync(corrupt, raw);
+    // One byte flipped, in place. Reading the whole file to do it would fail:
+    // these weights are larger than Node's 2 GiB Buffer limit.
+    const handle = openSync(corrupt, 'r+');
+    try {
+      const first = readSync(handle, Buffer.alloc(1), 0, 1, 0);
+      writeSync(handle, Buffer.from([first[0] ^ 0xff]), 0, 1, 0);
+    } finally {
+      closeSync(handle);
+    }
 
     let failed = false;
     try {

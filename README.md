@@ -20,7 +20,7 @@ cheapest tier that can do the job.**
 ```
 
 Two models are in the installer, offline, the moment you install. Two more
-download on first launch in the background. The other 46 are one click away.
+download in the background on first launch. The other 46 are one click away.
 No account, no API key, and in Local-only mode nothing leaves your machine.
 MIT licensed. **Alpha, and honest about it** — see [Status](#status).
 
@@ -144,11 +144,13 @@ gearvane --help
 <!-- BEGIN catalog-summary -->
 **50 weights, 50 of them in the default tiers.**
 
-2 ship in the installer (`qwen2.5-coder-0.5b-instruct-q4_0`, `smollm2-360m-instruct.q4_k_m`) and work offline at first
-launch. The rest are one click away. Every one is a downloadable file you
-run on your own machine, so a local run costs nothing and needs no
-account. The catalog as a whole is
-272.2 GiB if you wanted all of it; nobody does.
+2 ship in the installer (`qwen2.5-coder-0.5b-instruct-q4_0`, `smollm2-360m-instruct.q4_k_m`, 0.65 GiB) and work offline the moment you open the app.
+2 more (`qwen2.5-7b-instruct-q4_k_m`, `qwen3-8b.q4_k_m`, 9.04 GiB) download
+automatically in the background on first launch, with no prompt. Any one of
+them that this machine cannot hold is skipped, and the picker says why.
+Every weight is a downloadable file you run on your own machine, so a local
+run costs nothing and needs no account. All 50 together are
+272.2 GiB; nobody wants that.
 <!-- END catalog-summary -->
 
 Weights under 500 MB install silently when you pick them; larger ones ask
@@ -412,10 +414,19 @@ npm run lint
 
 node tools/gen-site-catalog.mjs   # refresh the site's model table
 node tools/gen-readme-tables.mjs  # refresh the README model table
+node tools/gen-third-party-notices.mjs   # refresh the weight licences
+
+node tools/verify-requirements.mjs       # PASS/FAIL per requirement
+node tools/check-catalog-pins.mjs        # every weight pinned + hashed
+node tools/check-first-boot.mjs          # the four first-boot weights
+
+node tools/fetch-first-boot-mirror.mjs   # once, 9.04 GiB, for the check above
 ```
 
-Those two generators have `--check` modes, and CI runs them, so a stale table
-fails the build rather than quietly misreporting the catalog.
+Those generators have `--check` modes and CI runs them, so a stale table fails
+the build rather than quietly misreporting the catalog. `check-first-boot.mjs`
+needs the mirror, which is gitignored and disposable; without it the check says
+so and names the script rather than reporting a pass it did not achieve.
 
 CI runs the Python suite on 3.9 through 3.12, builds and tests every
 TypeScript package, lints both trees, runs the end-to-end Electron suite on

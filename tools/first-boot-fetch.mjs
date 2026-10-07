@@ -17,8 +17,9 @@
  * Usage:
  *   node tools/first-boot-fetch.mjs --mirror DIR --into DIR [--only ID]
  */
-import { existsSync, mkdirSync, readFileSync, statSync } from 'node:fs';
+import { createReadStream, existsSync, mkdirSync, readFileSync, statSync } from 'node:fs';
 import { dirname, join, resolve as resolvePath } from 'node:path';
+import { Readable } from 'node:stream';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -114,6 +115,11 @@ process.exit(failures === 0 ? 0 : 1);
  * file whose name is the tail of the catalog's path. Everything downstream of
  * the response -- streaming, hashing, comparing, renaming -- is the app's own
  * code, which is what the check is for.
+ *
+ * Streamed, never buffered. The two first-boot weights are 4.36 and 4.68 GiB,
+ * and a Buffer cannot hold more than 2 GiB in Node, so reading one whole threw
+ * "File size is greater than 2 GiB" -- a limit of this harness, not of the code
+ * being checked.
  */
 function mirrorFetch(dir) {
   return async (input) => {
@@ -123,13 +129,12 @@ function mirrorFetch(dir) {
     if (!existsSync(path)) {
       return new Response(null, { status: 404 });
     }
-    const { readFile } = await import('node:fs/promises');
-    const body = await readFile(path);
-    return new Response(body, {
+    const size = statSync(path).size;
+    return new Response(Readable.toWeb(createReadStream(path)), {
       status: 200,
       headers: {
         'Content-Type': 'application/octet-stream',
-        'Content-Length': String(body.byteLength),
+        'Content-Length': String(size),
       },
     });
   };
