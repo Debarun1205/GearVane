@@ -141,7 +141,18 @@ interface HostBridge {
     list(): Promise<
       Array<{ id: string; file: string; use: string; bytes: number; present: boolean }>
     >;
-    fetch(id: string): Promise<{ ok: boolean; error?: string; cancelled?: boolean }>;
+    /**
+     * Start a transfer.
+     *
+     * `confirmed` carries the user's agreement for a weight at or above
+     * AUTO_INSTALL_LIMIT. The host refuses without it, so a renderer that
+     * skipped the confirm dialog gets an error rather than a silent
+     * multi-gigabyte download.
+     */
+    fetch(
+      id: string,
+      options?: { confirmed?: boolean },
+    ): Promise<{ ok: boolean; error?: string; cancelled?: boolean }>;
     onProgress(handler: (progress: { id: string; done: number; total: number }) => void): () => void;
     /**
      * Stop a transfer in progress.
@@ -546,13 +557,26 @@ async function showInstallFit(entry: ModelPickerEntry): Promise<void> {
   host.hidden = lines.length === 0;
 }
 
+/**
+ * Ids the user already agreed to download in this picker session.
+ *
+ * R3: at or above the threshold the confirm dialog decides, and the host
+ * refuses an unconfirmed large transfer. The agreement has to be carried
+ * across to the host, because the host is the boundary that cannot be
+ * bypassed -- the renderer's own check is only a convenience.
+ */
+const confirmedInstalls = new Set<string>();
+
 const pickerHandlers = {
   install: async (entry: ModelPickerEntry): Promise<boolean> => {
     if (!bridge.models) return false;
     try {
       // downloadId rather than id: a hosted row's id is qualified as
       // provider/model, which is not what the catalog is keyed by.
-      const result = await bridge.models.fetch(entry.downloadId ?? entry.id);
+      const target = entry.downloadId ?? entry.id;
+      const confirmed = confirmedInstalls.has(target);
+      const result = await bridge.models.fetch(target, { confirmed });
+      if (result.ok) confirmedInstalls.delete(target);
       return result.ok;
     } catch {
       return false;
@@ -579,6 +603,13 @@ const pickerHandlers = {
   },
   confirmInstall: (entry: ModelPickerEntry): Promise<boolean> =>
     new Promise<boolean>((resolve) => {
+      // Record the agreement before the fetch, so the host sees it. Keyed by
+      // the same id the fetch uses.
+      const target = entry.downloadId ?? entry.id;
+      const agree = (): void => {
+        confirmedInstalls.add(target);
+        resolve(true);
+      };
       const size = entry.download ? formatMB(entry.download.bytes) : '';
       els.modelInstallText.textContent =
         `${entry.label} is not on this device yet. ` +
@@ -604,7 +635,10 @@ const pickerHandlers = {
       els.modelInstallDialog.returnValue = '';
       els.modelInstallDialog.addEventListener(
         'close',
-        () => resolve(els.modelInstallDialog.returnValue === 'install'),
+        () => {
+          if (els.modelInstallDialog.returnValue === 'install') agree();
+          else resolve(false);
+        },
         { once: true },
       );
       if (typeof els.modelInstallDialog.showModal === 'function') {

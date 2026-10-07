@@ -114,7 +114,12 @@ const api = {
    */
   models: {
     list: () => ipcRenderer.invoke('models:list'),
-    fetch: (id) => ipcRenderer.invoke('models:fetch', id),
+    // `confirmed` is the user's agreement, carried from the confirm dialog. The
+    // main process refuses a weight at or above AUTO_INSTALL_LIMIT without
+    // it, so a renderer that skipped the dialog cannot start a silent
+    // multi-gigabyte transfer.
+    fetch: (id, options) =>
+      ipcRenderer.invoke('models:fetch', id, { confirmed: options?.confirmed === true }),
     cancel: (id) => ipcRenderer.invoke('models:cancel', id),
     // Measured in the main process: a sandboxed renderer cannot statfs or
     // read total memory.
