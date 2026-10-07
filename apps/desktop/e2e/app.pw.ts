@@ -77,8 +77,35 @@ test.beforeEach(async () => {
 });
 
 test.afterEach(async () => {
-  await app?.close();
+  // Bounded, because a test that hit Playwright's 30s timeout has already spent
+  // the whole budget and the worker's teardown limit is 30s too. An unbounded
+  // `close()` on an app whose launch was still in flight would then push
+  // teardown past the limit, and that is what failed the ubuntu job: the
+  // assertion passed on retry ("1 flaky") and the reported error was worker
+  // teardown, not a failed expectation.
+  //
+  // So: give close a short window, and if it does not finish, kill the process.
+  // A leaked Electron instance would outlive the run and contend with whatever
+  // starts next, which is the other half of the same problem.
+  const current = app;
   app = null;
+  if (!current) return;
+
+  const closed = await Promise.race([
+    current.close().then(
+      () => true,
+      () => true,
+    ),
+    new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 5000)),
+  ]);
+
+  if (!closed) {
+    try {
+      current.process().kill();
+    } catch {
+      // Already gone. Nothing to do, and nothing to report.
+    }
+  }
 });
 
 /** Failures a human would notice: uncaught exceptions and console.error. */
