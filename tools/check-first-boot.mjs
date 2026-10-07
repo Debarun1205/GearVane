@@ -47,10 +47,20 @@ const ROOT = join(HERE, '..');
 const MIRROR = join(HERE, '..', 'tmp', 'first-boot-mirror');
 
 const results = [];
+
+/**
+ * How long one check may take before it is called hung.
+ *
+ * Generous, because these move real gigabytes and a slow disk is not a failure.
+ * The point is to convert an open-ended wait into a named failure, so a stall
+ * says which check stalled rather than the script simply never printing.
+ */
+const CHECK_TIMEOUT_MS = Number(process.env.CHECK_TIMEOUT_MS ?? 15 * 60 * 1000);
+
 /**
  * Start one check, including when it is async.
  *
- * Two things this has to get right:
+ * Three things this has to get right:
  *
  *   - A rejection inside an async check must be recorded, not thrown. The try
  *     block has already returned by the time the await inside it fails.
@@ -58,19 +68,53 @@ const results = [];
  *     through an HTTP server into a temp directory and hashes the result; eight
  *     of them at once thrash the disk so badly that the whole script appeared to
  *     hang. Sequential, with the cheap logic checks first.
+ *   - Each one announces itself and reports how long it took. A script that
+ *     prints nothing until it finishes cannot be told apart from one that is
+ *     stuck, which is exactly the failure this had twice.
  */
 const pending = [];
 function check(name, fn) {
   pending.push(
     (async () => {
+      const began = Date.now();
+      process.stdout.write(`  ... ${name}\n`);
       try {
-        const detail = await fn();
+        const detail = await withTimeout(
+          fn(),
+          CHECK_TIMEOUT_MS,
+          name,
+        );
         results.push({ name, pass: true, detail: detail ?? '' });
+        process.stdout.write(`  ok  ${name} (${secs(began)})\n`);
       } catch (error) {
         results.push({ name, pass: false, detail: error.message });
+        process.stdout.write(`  FAIL ${name} (${secs(began)}): ${error.message}\n`);
       }
     })(),
   );
+}
+
+function secs(began) {
+  return `${((Date.now() - began) / 1000).toFixed(1)}s`;
+}
+
+function withTimeout(promise, ms, name) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(
+      () => reject(new Error(`no result after ${Math.round(ms / 1000)}s`)),
+      ms,
+    );
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (error) => {
+        clearTimeout(timer);
+        reject(error);
+      },
+    );
+  });
 }
 
 function assert(condition, message) {

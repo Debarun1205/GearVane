@@ -260,16 +260,51 @@ check('R4 default config ships no spend limits', () => {
   return 'no spend_limits key; budget per_session/per_day/per_task all 0';
 });
 
-check('R4 the app meter enforces nothing', () => {
+check('R4 the app meter shows cost and enforces no cap', () => {
+  const meterTs = readFileSync(join(ROOT, 'apps/app-core/src/cost-meter.ts'), 'utf8');
+
+  // The readout exists and shows both figures the owner asked for.
   assert(
-    /sessionSpendUsd\.toFixed\(4\)/.test(rendererTs),
-    'the spend meter no longer renders the session cost',
+    /describe\(reading/.test(meterTs) && /session/.test(meterTs) && /day/.test(meterTs),
+    'the cost meter does not report both a session and a day figure',
+  );
+  // And it says what the run actually costs, rather than always printing a number
+  // that could be mistaken for a quota.
+  assert(
+    /Free, unlimited/.test(meterTs),
+    'a local run does not read as free',
   );
   assert(
-    /No limit is enforced/.test(rendererTs),
+    /No limit is enforced|nothing is capped|not a limit/.test(meterTs),
     'the meter does not say that no limit is enforced',
   );
-  return 'meter renders a running cost and enforces no cap';
+
+  // The part that matters for "enforces nothing": there is no comparison against a
+  // limit anywhere in the readout, so filling the bar cannot cut a run off. A
+  // regex for the absence of a comparison is blunt, but it is the only way to
+  // assert an absence, and the alternative is trusting that nobody adds one.
+  //
+  // Comments are stripped first, because the module explains at length that it
+  // does not cap anything -- "no cap behind it", "not a limit". Matching the
+  // prose would fail on the documentation of the very property being asserted.
+  const meterCode = meterTs.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+  assert(
+    !/cost.*(>|>=).*limit|limit.*(<|<=).*cost/.test(meterCode),
+    'the cost meter compares cost against a limit',
+  );
+  assert(
+    !/throw|\bcap\(|\bcap\b|exceed|budget/i.test(meterCode),
+    'the cost meter can refuse a run',
+  );
+
+  // Free vs metered comes from the provider, never the tier: the mid and high
+  // tiers both hold local weights, so a tier-derived meter would call a run on
+  // the user's own disk billable.
+  assert(
+    /provider/.test(rendererTs) && /LOCAL_PROVIDER_NAMES/.test(rendererTs),
+    'the meter does not derive cost from the provider',
+  );
+  return 'session and day figures, free for local weights, no comparison and no cap';
 });
 
 // --- packaging: installer payload, and the installable ceiling -------------
