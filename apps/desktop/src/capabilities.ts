@@ -129,6 +129,20 @@ export function describeCapabilities(host: HostCapabilities): Capability[] {
       'Weights are downloaded to a folder this host cannot write to. Point ' +
         'GearVane at a local server instead.',
     ),
+    // Stated separately from 'install' because they are different omissions and
+    // conflating them is how "four models ready at first boot" ended up
+    // implying it everywhere. Downloading a weight is a filesystem write;
+    // running one needs the inference runtime, which is Node. The Android build
+    // is a webview, so it has neither, and a user on a phone is looking at an
+    // app whose entire model catalog is unusable with no indication of why.
+    unavailable(
+      'localModels',
+      'Run local models',
+      host.models !== undefined,
+      'Running a local weight needs the inference runtime, which is Node. This ' +
+        'build is a webview, so the bundled and provisioned weights cannot run ' +
+        'here. Point GearVane at a local server, or add a cloud key.',
+    ),
   ];
 }
 

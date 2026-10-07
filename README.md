@@ -111,8 +111,13 @@ Windows, choose *More info* then *Run anyway*.
 **Android** runs the same IDE — editor, file tree, search, Ask-mode agent —
 over a workspace stored on the device. It has no terminal, because a webview
 has no shell, and no file-changing Build mode, because the agent's tool layer
-needs Node. The APK is **debug-signed**, so it installs for testing but is not
-Play-Store distributable.
+needs Node. **It cannot run any of the catalog's local models**, including the
+two that ship in the installer and the two the app provisions on first launch:
+running a local weight needs the inference runtime, which is Node, and this
+build is a webview. The app says so on screen rather than showing an empty model
+picker. On Android, point GearVane at a local server or add a cloud key. The APK
+is **debug-signed**, so it installs for testing but is not Play-Store
+distributable.
 
 ### Install from source
 

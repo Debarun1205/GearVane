@@ -500,6 +500,13 @@
                 tool layer needs Node. The app says so on its first screen
                 rather than leaving you to work out why a button is missing.
               </p>
+              <p class="card-note">
+                <strong>No local models run on Android</strong> - not the two in
+                the installer, and not the two the desktop app provisions on
+                first launch. Running a local weight needs the inference
+                runtime, which is Node, and this is a webview. On a phone, point
+                GearVane at a local server or add a cloud key.
+              </p>
               <a
                 class="button button-small"
                 href="https://github.com/Debarun1205/GearVane/releases/download/v0.3.0/app-debug.apk"
@@ -639,6 +646,7 @@ code --install-extension waypoint-0.3.0.vsix</code></pre>
                     <li>Artifacts are <strong>unsigned</strong></li>
                     <li>APK is debug-signed, not Play-Store ready</li>
                     <li>Android runs the IDE in a webview over a device-local workspace, but has no terminal and no file-changing Build mode</li>
+                    <li>Android cannot run any local model, including the four the desktop app has ready at first boot: the inference runtime is Node, and the Android build is a webview</li>
                     <li>AppImage is x64 only; <code>.deb</code> covers both architectures</li>
                     <li>New providers need your keys and are unverified live</li>
                     <li>GPT-6 Astra needs the Responses API for tool calling</li>

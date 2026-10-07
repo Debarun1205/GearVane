@@ -381,6 +381,23 @@ describe('platform claims are scoped to what ships', () => {
     expect(prose).not.toMatch(/no IDE, files, or terminal/);
   });
 
+  it('says Android cannot run local models, on the card and in the limits', () => {
+    // The download card is where a phone visitor decides. The whole catalog is
+    // unusable on Android, so a page that talks about four models ready at
+    // first boot without saying this misinforms exactly the reader who cannot
+    // use them.
+    expect(prose).toMatch(
+      /No local models run on Android[\s\S]{0,220}not the two in the installer/,
+    );
+    expect(prose).toMatch(/inference\s+runtime, which is Node/);
+    expect(prose).toMatch(/point\s+GearVane at a local server or add a cloud key/);
+
+    // And in the limitation list, not only on the card.
+    expect(html).toMatch(
+      /Android cannot run any local model, including the four the desktop app has ready at first boot/,
+    );
+  });
+
   it('answers the Android IDE question in the FAQ', () => {
     // The question a phone visitor actually has. The answer is "most of it",
     // not the unqualified "Yes" it used to open with, and it gives both
