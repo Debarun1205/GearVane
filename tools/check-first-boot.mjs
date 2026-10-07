@@ -49,6 +49,47 @@ const MIRROR = join(HERE, '..', 'tmp', 'first-boot-mirror');
 const results = [];
 
 /**
+ * Every scratch directory this run has created.
+ *
+ * A check that moves gigabytes removes its directory in a `finally` block. That
+ * block does not run when the process is killed, and a killed first-boot check
+ * leaves 1 to 7 GiB behind -- enough that repeated interruptions filled a disk.
+ * So the directories are tracked here and removed on the way out, whatever the
+ * reason for going out.
+ */
+const SCRATCH = [];
+
+/** Remember a directory so it can be removed on exit. */
+function track(dir) {
+  SCRATCH.push(dir);
+  return dir;
+}
+
+/** Remove every tracked directory. Safe to call more than once. */
+function releaseScratch() {
+  while (SCRATCH.length > 0) {
+    const dir = SCRATCH.pop();
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+// SIGINT (Ctrl-C) and SIGTERM (taskkill, CI timeout) both need this. Without it
+// the default behaviour is to die immediately, skipping every finally block.
+for (const signal of ['SIGINT', 'SIGTERM']) {
+  process.on(signal, () => {
+    process.stdout.write(`\n${signal}: removing ${SCRATCH.length} scratch director` +
+      `${SCRATCH.length === 1 ? 'y' : 'ies'} before exiting\n`);
+    releaseScratch();
+    process.exit(130);
+  });
+}
+
+// The backstop for exits that are not signals: an uncaught rejection, or a check
+// that throws before it reaches its own finally. `exit` fires after the event
+// loop drains, which is late enough for any pending write to have settled.
+process.on('exit', releaseScratch);
+
+/**
  * How long one check may take before it is called hung.
  *
  * Generous, because these move real gigabytes and a slow disk is not a failure.
@@ -361,7 +402,7 @@ check('the mirror holds both weights, verified against the catalog', () => {
 check('a real download from the mirror verifies and lands', () => {
   // The whole path: resolve, stream, hash, compare, rename. Run through the
   // same harness the app uses, so what passes here is what the app does.
-  const dir = mkdtempSync(join(tmpdir(), 'gearvane-firstboot-'));
+  const dir = track(mkdtempSync(join(tmpdir(), 'gearvane-firstboot-')));
   try {
     // Smallest first so the check is quick if a future catalog picks differently.
     const target = [...firstBoot].sort((a, b) => a.bytes - b.bytes)[0];
@@ -396,8 +437,8 @@ check('a corrupted mirror file is rejected, not renamed into place', () => {
   // The failure path matters more than the happy one: a weight that lands
   // corrupt fails to load with no explanation, and the embedded server serves
   // every GGUF in the directory.
-  const dir = mkdtempSync(join(tmpdir(), 'gearvane-firstboot-bad-'));
-  const bad = mkdtempSync(join(tmpdir(), 'gearvane-firstboot-mirror-'));
+  const dir = track(mkdtempSync(join(tmpdir(), 'gearvane-firstboot-bad-')));
+  const bad = track(mkdtempSync(join(tmpdir(), 'gearvane-firstboot-mirror-')));
   try {
     const target = [...firstBoot].sort((a, b) => a.bytes - b.bytes)[0];
     // A file of the right length and the wrong contents.
@@ -452,7 +493,7 @@ check('a corrupted mirror file is rejected, not renamed into place', () => {
  * provisioning fails here rather than in a user's first ten minutes.
  */
 async function runProvisioner(options = {}) {
-  const dir = mkdtempSync(join(tmpdir(), 'gearvane-provision-'));
+  const dir = track(mkdtempSync(join(tmpdir(), 'gearvane-provision-')));
   const mirror = await startMirror(options.mirrorDir ?? MIRROR);
   const seen = [];
 
@@ -514,7 +555,7 @@ check('the provisioner fetches both weights, one at a time, verified', async () 
 check('a failed attempt is retried, not abandoned', async () => {
   // Only the smaller weight: the retry path does not depend on there being two,
   // and halving the bytes keeps this affordable.
-  const dir = mkdtempSync(join(tmpdir(), 'gearvane-retry-'));
+  const dir = track(mkdtempSync(join(tmpdir(), 'gearvane-retry-')));
   const mirror = await startMirror(MIRROR);
   try {
     // Seed the larger weight so it is skipped, and make the mirror reject the
@@ -541,7 +582,7 @@ check('a failed attempt is retried, not abandoned', async () => {
 });
 
 check('it resumes from a partial instead of starting over', async () => {
-  const dir = mkdtempSync(join(tmpdir(), 'gearvane-resume-'));
+  const dir = track(mkdtempSync(join(tmpdir(), 'gearvane-resume-')));
   const mirror = await startMirror(MIRROR);
   try {
     const target = [...firstBoot].sort((a, b) => a.bytes - b.bytes)[0];
@@ -592,7 +633,7 @@ check('it resumes from a partial instead of starting over', async () => {
 });
 
 check('a verified weight is never fetched again', async () => {
-  const dir = mkdtempSync(join(tmpdir(), 'gearvane-nodl-'));
+  const dir = track(mkdtempSync(join(tmpdir(), 'gearvane-nodl-')));
   const mirror = await startMirror(MIRROR);
   try {
     // Seed both weights as if a previous launch had already fetched them.
@@ -689,7 +730,7 @@ check('a metered connection pauses before any bytes move', async () => {
 });
 
 check('"download anyway" continues on a metered link', async () => {
-  const dir = mkdtempSync(join(tmpdir(), 'gearvane-metered-'));
+  const dir = track(mkdtempSync(join(tmpdir(), 'gearvane-metered-')));
   const mirror = await startMirror(MIRROR);
   try {
     // Seed the larger weight so only the smaller one has to move: the point is
@@ -735,7 +776,7 @@ check('a machine that cannot hold a weight skips it and says why', async () => {
 check('a weight the machine cannot hold never blocks the boot', async () => {
   // start() must resolve whatever the plan decided, and must not reject. A
   // rejection here would be an unhandled error in main.ts's boot path.
-  const dir = mkdtempSync(join(tmpdir(), 'gearvane-skip-'));
+  const dir = track(mkdtempSync(join(tmpdir(), 'gearvane-skip-')));
   const mirror = await startMirror(MIRROR);
   try {
     // Only the largest weight, and a directory on a full volume is simulated by
