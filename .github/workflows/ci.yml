@@ -108,6 +108,28 @@ jobs:
         # Covers the site and the gitignore contract.
         run: npm run test:repo
 
+      - name: Verify the owner's requirements against the real catalog
+        # One script, not a test suite: prints PASS/FAIL per requirement and
+        # exits non-zero on any failure. Reads models.json, config.example.yaml
+        # and the source constants, so a claim in the README or a config
+        # default that drifts from the catalog fails the build here.
+        run: node tools/verify-requirements.mjs
+
+      - name: Check every weight is pinned to a revision
+        # S7. All fifty URLs used to read `.../resolve/main/<file>`, so the
+        # bytes behind a URL could change under an installed app and nothing
+        # recorded what it expected to receive. This fails on any unpinned
+        # entry and makes no network calls, so it gates every push.
+        run: node tools/check-catalog-pins.mjs
+
+      - name: The generated tables and notices are current
+        # Same contract as the generators themselves: a stale table fails rather
+        # than quietly reporting a catalog the app no longer offers.
+        run: |
+          node tools/gen-site-catalog.mjs --check
+          node tools/gen-readme-tables.mjs --check
+          node tools/gen-third-party-notices.mjs --check
+
   lint:
     runs-on: ubuntu-latest
     steps:
