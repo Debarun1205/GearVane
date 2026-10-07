@@ -16,6 +16,22 @@ export default defineConfig({
   testDir: './e2e',
   testMatch: '**/*.pw.ts',
   fullyParallel: false,
+  /**
+   * One worker in CI, and for a specific reason.
+   *
+   * There are exactly two spec files, so the default two workers means
+   * smoke.pw.ts (Chromium) and app.pw.ts (Electron) run at the same time on
+   * one runner. On the Linux job that is a virtual display and no GPU, and the
+   * contention is not affordable: the suite went from ~8s locally to 2m20s,
+   * and the workers then could not tear down inside Playwright's 30s limit.
+   * The assertions were never the problem -- they passed, on retry, every
+   * time ("10 passed, 2 flaky"), and the two reported errors were worker
+   * teardown, not a failed expectation.
+   *
+   * The Electron tests were already serial within their file, so serialising
+   * across files removes the contention and costs almost nothing.
+   */
+  workers: process.env.CI === 'true' ? 1 : undefined,
   forbidOnly: process.env.CI === 'true',
   retries: process.env.CI === 'true' ? 1 : 0,
   reporter: process.env.CI === 'true' ? 'github' : 'list',
