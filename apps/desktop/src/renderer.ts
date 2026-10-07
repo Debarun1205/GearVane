@@ -2036,29 +2036,51 @@ function openSpaceDialog(mode: 'rename' | 'create'): void {
 /**
  * Approve-or-revise gate for destructive prompts.
  *
- * Resolves true on Approve, false on Revise, Escape, or dismiss. Revise
- * leaves the draft in the composer and focuses it, so editing is one
+ * Resolves true on Approve, false on Revise, Escape, Enter, or dismiss.
+ * Revise leaves the draft in the composer and focuses it, so editing is one
  * keystroke away.
+ *
+ * Enter declines rather than approves. The button carries `autofocus`, so the
+ * dialog opens with the safe choice focused and Enter would already land
+ * there -- but a dialog that runs a command on the user's machine should not
+ * have its safe path depend on whether the user agent has finished moving
+ * focus, so the key is handled directly and means the same thing whatever
+ * else holds focus.
  */
 function showApproval(prompt: string): Promise<boolean> {
   return new Promise<boolean>((resolve) => {
+    const dialog = els.approvalDialog;
     const excerpt = prompt.length > 220 ? `${prompt.slice(0, 220)}...` : prompt;
     els.approvalText.textContent =
       `This request looks destructive: "${excerpt}". ` +
       'Approve to run it, or revise it first.';
-    els.approvalDialog.returnValue = '';
-    els.approvalDialog.addEventListener(
+
+    const onKeydown = (event: KeyboardEvent): void => {
+      if (event.key !== 'Enter') return;
+      event.preventDefault();
+      dialog.close('revise');
+    };
+
+    const settle = (approved: boolean): void => {
+      dialog.removeEventListener('keydown', onKeydown);
+      if (!approved) els.input.focus();
+      resolve(approved);
+    };
+
+    dialog.returnValue = '';
+    dialog.addEventListener(
       'close',
-      () => {
-        const approved = els.approvalDialog.returnValue === 'approve';
-        if (!approved) els.input.focus();
-        resolve(approved);
-      },
+      () => settle(dialog.returnValue === 'approve'),
       { once: true },
     );
-    if (typeof els.approvalDialog.showModal === 'function') {
-      els.approvalDialog.showModal();
+    dialog.addEventListener('keydown', onKeydown);
+
+    if (typeof dialog.showModal === 'function') {
+      dialog.showModal();
     } else {
+      // No modal support: nothing was shown, so unhook before settling or the
+      // listeners outlive the dialog and the next gate double-answers.
+      dialog.removeEventListener('keydown', onKeydown);
       resolve(false);
     }
   });

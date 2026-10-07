@@ -232,10 +232,13 @@ test('dashboard shell: sidebar, effort, and approval revise', async ({ page }) =
   await expect(page.locator('#input')).toHaveValue('git push origin main');
   await expect(page.locator('#transcript .message')).toHaveCount(0);
 
-  // The gate is keyboard-operable, and the default key does not run anything:
-  // autofocus lands on Revise, so Enter takes the same path as clicking it.
+  // The gate is keyboard-operable, and the default key does not run anything.
+  // autofocus puts the safe choice under the caret; Enter then declines, so
+  // both halves are asserted separately rather than one assertion hiding
+  // which of them moved.
   await page.locator('#send').click();
   await expect(page.locator('#approval-dialog')).toBeVisible();
+  await expect(page.locator('#approval-revise')).toBeFocused();
   await page.keyboard.press('Enter');
   await expect(page.locator('#approval-dialog')).toBeHidden();
   await expect(page.locator('#input')).toHaveValue('git push origin main');
