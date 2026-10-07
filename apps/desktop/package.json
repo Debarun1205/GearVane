@@ -49,11 +49,11 @@
     "@capacitor/android": "^6.2.0",
     "@capacitor/cli": "^6.2.0",
     "@capacitor/core": "^6.2.0",
-    "@playwright/test": "^1.49.1",
+    "@playwright/test": "^1.63.0",
     "@types/node": "^22.0.0",
     "electron": "^33.0.0",
     "electron-builder": "^25.0.0",
-    "esbuild": "^0.24.0"
+    "esbuild": "^0.28.2"
   },
   "build": {
     "appId": "dev.gearvane.app",
