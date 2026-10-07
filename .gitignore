@@ -51,6 +51,13 @@ build/
 # never committed; release builds download it before packaging.
 apps/desktop/resources/models/
 
+# The first-boot provisioning mirror. Two weights, 9.04 GiB, fetched once by
+# `node tools/fetch-first-boot-mirror.mjs` and verified against the catalog's
+# sha256 as they arrive. Disposable: deleting it costs one refetch, and
+# tools/check-first-boot.mjs names the script when it is missing rather than
+# reporting a pass it did not achieve.
+tmp/first-boot-mirror/
+
 # Node / TypeScript
 node_modules/
 *.tsbuildinfo
