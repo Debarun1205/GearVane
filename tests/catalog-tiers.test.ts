@@ -10,7 +10,11 @@ const REPO = join(import.meta.dirname, '..');
 
 interface CatalogEntry {
   id: string;
+  file: string;
+  url: string;
   bytes: number;
+  use: string;
+  license: string;
 }
 
 const entries = CATALOG as CatalogEntry[];
@@ -60,6 +64,33 @@ describe('site tier bands', () => {
     }
 
     expect(mismatches).toEqual([]);
+  });
+
+  it('has no duplicate id or file', () => {
+    // B3. The catalog is generated into three surfaces -- the site table, the
+    // README table, and THIRD_PARTY_NOTICES -- all keyed by id, so a duplicate
+    // is not a cosmetic problem: it silently merges two weights into one row
+    // in every one of them.
+    const ids = new Set<string>();
+    const files = new Set<string>();
+    const dupes: string[] = [];
+    for (const entry of entries) {
+      if (ids.has(entry.id)) dupes.push(`id ${entry.id}`);
+      if (files.has(entry.file)) dupes.push(`file ${entry.file}`);
+      ids.add(entry.id);
+      files.add(entry.file);
+    }
+    expect(dupes).toEqual([]);
+    expect(entries).toHaveLength(50);
+  });
+
+  it('gives every weight a size, a use and a licence', () => {
+    for (const entry of entries) {
+      expect(entry.bytes, `${entry.id} has no size`).toBeGreaterThan(0);
+      expect(entry.use, `${entry.id} has no use`).toBeTruthy();
+      expect(entry.license, `${entry.id} has no licence`).toBeTruthy();
+      expect(entry.url, `${entry.id} has no url`).toMatch(/^https:\/\//);
+    }
   });
 
   it('never labels a weight the router does not name', async () => {
