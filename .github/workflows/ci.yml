@@ -5,6 +5,12 @@ on:
     branches: [main, master]
   pull_request:
     branches: [main, master]
+  # Manual trigger. The e2e job runs the packaged Electron app on ubuntu, and
+  # one green run is not evidence that it is reliably green -- a job that passes
+  # once and then fails on a timing assumption has told you nothing. Re-running
+  # the same commit is the only way to tell those apart, and without this the
+  # only way to re-run is the Actions tab.
+  workflow_dispatch:
 
 jobs:
   # Python reference implementation.
