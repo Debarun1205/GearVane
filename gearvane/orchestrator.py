@@ -12,16 +12,17 @@ from typing import Any, Dict, Iterator, List, Optional
 
 from .classifier import TaskContext
 from .cost import CostTracker
-from .providers import Completion, ProviderError, ProviderFactory
+from .providers import (
+    LOCAL_PROVIDER_NAMES,
+    Completion,
+    ProviderError,
+    ProviderFactory,
+)
 from .retry import RetryConfig, RetryExhaustedError, retry_sync
 from .router import RoutingDecision, TierRouter
 from .safety import SafetyManager
 
 logger = logging.getLogger(__name__)
-
-
-class BudgetExceeded(Exception):
-    """Raised when a task would exceed its configured spend budget."""
 
 
 class RetryableProviderError(Exception):
@@ -100,24 +101,19 @@ class Orchestrator:
             )
             decision = self.router.route(task_id, context)
 
-            # Budget gate runs before any tokens are spent.
-            unit_cost = self._cost_per_token.get(decision.tier.value, 0.0)
-            estimated = unit_cost * max_tokens
-            if not self.safety.check_spend(estimated, task_id=task_id):
-                return ExecutionResult(
-                    task_id=task_id,
-                    success=False,
-                    tier=decision.tier.value,
-                    model=decision.model,
-                    provider=decision.provider.name,
-                    attempts=attempt + 1,
-                    escalated=decision.escalated,
-                    duration_seconds=time.time() - start,
-                    confidence=decision.confidence,
-                    reasons=decision.reasons,
-                    error=f"Budget exceeded: ${estimated:.4f} would exceed the limit",
-                    history=history,
-                )
+            # No gate. R4: no usage or spend limit is enforced on the user, for
+            # any model, and there is deliberately no branch here that can
+            # return BudgetExceeded -- that type is gone from both engines.
+            # `check_spend` always permits; it stays as the single place an
+            # opt-in cap would go if one is ever added.
+
+            # Priced by provider, not by tier. The tiers are capability bands
+            # and mid and frontier deliberately hold local weights, so pricing
+            # by tier billed the user for running a model on their own disk.
+            # Same rule as the TypeScript engine's costClassForProvider.
+            unit_cost = 0.0
+            if decision.provider.name.lower() not in LOCAL_PROVIDER_NAMES:
+                unit_cost = self._cost_per_token.get(decision.tier.value, 0.0)
 
             logger.info(
                 f"Executing {task_id} on {decision.provider.name}/{decision.model} "

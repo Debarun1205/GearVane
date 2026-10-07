@@ -77,11 +77,9 @@ export {
   type RetryStrategy,
 } from './retry.js';
 export {
-  BudgetExceededError,
   CostTracker,
   Orchestrator,
   SpendTracker,
-  type BudgetExceeded,
   type CostStats,
   type ExecuteOptions,
   type OrchestratorOptions,

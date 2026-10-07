@@ -20,14 +20,33 @@ const cfg = (overrides: Partial<GearVaneConfig> = {}): GearVaneConfig => {
       mid: {
         name: 'mid',
         description: 'Mid',
-        providers: [{ name: 'openrouter', models: ['haiku'], baseUrl: 'https://openrouter.ai/api' }],
+        providers: [
+          {
+            name: 'openrouter',
+            // The key variable is what makes this provider billable. Without
+            // it, costClassForProvider reads the provider as a local server
+            // reached without a key, which is free -- so a fixture modelling
+            // openrouter but omitting it describes a provider that cannot cost
+            // money, and asserts cost against it.
+            apiKeyEnv: 'OPENROUTER_API_KEY',
+            models: ['haiku'],
+            baseUrl: 'https://openrouter.ai/api',
+          },
+        ],
         maxRetries: 2,
         costPerToken: 0,
       },
       frontier: {
         name: 'frontier',
         description: 'Frontier',
-        providers: [{ name: 'anthropic', models: ['claude'], baseUrl: 'https://api.anthropic.com' }],
+        providers: [
+          {
+            name: 'anthropic',
+            apiKeyEnv: 'ANTHROPIC_API_KEY',
+            models: ['claude'],
+            baseUrl: 'https://api.anthropic.com',
+          },
+        ],
         maxRetries: 3,
         costPerToken: 0,
       },
@@ -35,7 +54,6 @@ const cfg = (overrides: Partial<GearVaneConfig> = {}): GearVaneConfig => {
     providers: { timeoutSeconds: 5, maxRetries: 0, retryBaseDelay: 0, retryMaxDelay: 0 },
     safety: {
       ...base.safety,
-      
     },
     ...overrides,
   };
@@ -99,7 +117,7 @@ describe('Orchestrator success path', () => {
     expect(result.tier).toBe('frontier');
   });
 
-  it('records cost from the tier rate', async () => {
+  it('records cost from the tier rate for a keyed provider', async () => {
     const config = cfg();
     config.tiers.frontier!.costPerToken = 0.01;
     const orch = new Orchestrator(config, {
@@ -109,6 +127,37 @@ describe('Orchestrator success path', () => {
       filesTouched: ['a.ts', 'b.ts', 'c.ts'],
     });
     expect(result.costUsd).toBeCloseTo(3, 6);
+    expect(result.tokensIn).toBe(100);
+    expect(result.tokensOut).toBe(200);
+  });
+
+  it('charges nothing for a local weight sitting in the most expensive tier', async () => {
+    // The defect this closes. `rateFor` priced by tier, so a run through
+    // `embedded` -- the app's loopback server serving weights off the user's
+    // own disk -- was billed at the tier's rate even though it cannot cost
+    // anything. Frontier is the strongest case: the most expensive band in the
+    // catalog, holding local weights, and the answer is still zero.
+    const config = cfg();
+    config.tiers.frontier!.costPerToken = 0.01;
+    config.tiers.frontier!.providers = [
+      {
+        name: 'embedded',
+        baseUrl: 'http://127.0.0.1:11439',
+        models: ['yi-1.5-34b-chat-q4_k_m'],
+      },
+    ];
+    const orch = new Orchestrator(config, {
+      createClient: () => new FakeClient([ok('x', 100, 200)]),
+    });
+    const result = await orch.execute(
+      't-local-in-paid-tier',
+      'refactor the architecture for concurrency at scale',
+      { filesTouched: ['a.ts', 'b.ts', 'c.ts'] },
+    );
+    expect(result.tier).toBe('frontier');
+    expect(result.provider).toBe('embedded');
+    expect(result.costUsd).toBe(0);
+    // Tokens were really spent, so the zero is a price, not a no-op.
     expect(result.tokensIn).toBe(100);
     expect(result.tokensOut).toBe(200);
   });

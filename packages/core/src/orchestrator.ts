@@ -8,6 +8,7 @@ import {
   type Verifier,
 } from './verification.js';
 import type { SerializedWeights } from './learned-classifier.js';
+import { costClassForProvider } from './types.js';
 import type {
   AttemptRecord,
   ExecutionResult,
@@ -17,17 +18,12 @@ import type {
   GearVaneConfig,
 } from './types.js';
 
-export interface BudgetExceeded extends Error {
-  name: 'BudgetExceeded';
-}
-
-/** Raised when a task's estimated cost cannot fit the remaining budget. */
-export class BudgetExceededError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = 'BudgetExceeded';
-  }
-}
+// BudgetExceededError is gone, and its absence is the guarantee. R4: no usage
+// or spend limit is enforced on the user, for any model. An exported error type
+// invites a future caller to throw it and a future reader to assume something
+// still does, and the branch that threw it here had already been removed. What
+// remains is an estimate that is computed, recorded, and reported -- never a
+// reason to refuse a run.
 
 export interface SpendStatus {
   sessionSpend: number;
@@ -287,32 +283,11 @@ export class Orchestrator {
       const decision = this.router.route(taskId, context);
       if (decision.escalated) escalatedAny = true;
 
-      const maxTokens = options.maxTokens ?? 2048;
-      const unitCost = this.rateFor(decision.tier);
-      const estimated = unitCost * maxTokens;
-
-      // Budget gate runs before any tokens are spent.
-      if (!this.spend.canSpend(estimated, taskId)) {
-        return {
-          taskId,
-          success: false,
-          content: '',
-          tier: decision.tier,
-          provider: decision.provider.name,
-          model: decision.model,
-          attempts: attempt + 1,
-          escalated: escalatedAny,
-          costUsd: round(totalCost),
-          tokensIn: totalIn,
-          tokensOut: totalOut,
-          durationMs: Date.now() - startedAt,
-          confidence: decision.confidence,
-          reasons: decision.reasons,
-          error: `Budget exceeded: $${estimated.toFixed(4)} would exceed the limit`,
-          history,
-          ...(verification ? { verification } : {}),
-        };
-      }
+      // What this run will cost, computed so it can be recorded. Nothing gates
+      // on it: R4 says no usage or spend limit is enforced on the user, for any
+      // model. There is deliberately no branch here that can return
+      // BudgetExceeded -- the estimate is reported, never a reason to refuse.
+      const unitCost = this.rateFor(decision.tier, decision.provider);
 
       try {
         const completion = await this.callWithRetry(decision, attemptPrompt, options);
@@ -522,7 +497,22 @@ export class Orchestrator {
     }
   }
 
-  private rateFor(tier: string): number {
+  /**
+   * USD per token for this specific run.
+   *
+   * Takes the provider, not just the tier, because the tier is a capability
+   * band and mid and frontier deliberately hold local weights. Pricing a run
+   * through `embedded` -- the app's own loopback server serving weights off the
+   * user's own disk -- at the mid tier's $0.0001 meant `gearvane cost` reported
+   * a bill for work the user did on their own hardware. That is the same defect
+   * as reporting `embedded` under "mid, metered", and it was still in the
+   * accounting after the reporting was fixed.
+   *
+   * costClassForProvider is the single rule: money changes hands only if
+   * reaching the model needed somebody else's key.
+   */
+  private rateFor(tier: string, provider: ProviderConfig): number {
+    if (costClassForProvider(provider) === 'free') return 0;
     return this.cost.getCostPerToken(tier);
   }
 
