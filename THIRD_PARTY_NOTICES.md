@@ -48,6 +48,16 @@ provisions on first launch, is one of these.
 | `qwen2.5-coder-32b-instruct-q4_k_m` | [`bartowski/Qwen2.5-Coder-32B-Instruct-GGUF`](https://huggingface.co/bartowski/Qwen2.5-Coder-32B-Instruct-GGUF) | 18.49 GiB |
 | `yi-1.5-34b-chat-q4_k_m` | [`bartowski/Yi-1.5-34B-Chat-GGUF`](https://huggingface.co/bartowski/Yi-1.5-34B-Chat-GGUF) | 19.24 GiB |
 
+4 of these come from a repository that publishes no licence of
+its own; their terms are the base model's, confirmed against the base model
+repository rather than assumed:
+
+- `deepseek-r1-distill-qwen-1.5b-q4_k_m` — deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B (MIT)
+- `deepseek-r1-distill-qwen-7b-q4_k_m` — deepseek-ai/DeepSeek-R1-Distill-Qwen-7B (MIT)
+- `deepseek-r1-distill-qwen-14b-q4_k_m` — deepseek-ai/DeepSeek-R1-Distill-Qwen-14B (MIT)
+- `deepseek-r1-distill-qwen-32b-q4_k_m` — deepseek-ai/DeepSeek-R1-Distill-Qwen-32B (MIT)
+
+
 ## 19 weights under other terms
 
 Each of these is download-on-request only: none ships in the installer and
@@ -137,6 +147,12 @@ Applies to 2 weights in the catalog.
 - https://falconllm.tii.ae/falcon-terms-and-conditions.html
 
 Applies to 4 weights in the catalog.
+
+3 of these come from a repository that publishes no licence of its own. Their terms are the base models, confirmed against the base model repository:
+
+- `falcon3-7b-instruct-q4_k_m` — tiiuae/Falcon3-7B-Instruct (TII Falcon-LLM License 2.0)
+- `falcon3-1b-instruct-q4_k_m` — tiiuae/Falcon3-1B-Instruct (TII Falcon-LLM License 2.0)
+- `falcon3-10b-instruct-q4_k_m` — tiiuae/Falcon3-10B-Instruct (TII Falcon-LLM License 2.0)
 
 | Model | Repository | Size |
 | --- | --- | --- |

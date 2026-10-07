@@ -29,6 +29,25 @@ const GIB = 1073741824;
 const PERMISSIVE = new Set(['Apache-2.0', 'MIT']);
 
 /**
+ * Repositories that publish no `cardData.license`.
+ *
+ * A quantisation does not change the terms, so for these the licence is the
+ * base model's -- which was confirmed against that base model's own repository,
+ * not assumed. Listed here because "the repository says nothing" and "the
+ * repository says Apache-2.0" are different facts about a weight, and a reader
+ * deciding whether to run something is entitled to both.
+ */
+const LICENCE_FROM_BASE = {
+  'bartowski/DeepSeek-R1-Distill-Qwen-1.5B-GGUF': 'deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B (MIT)',
+  'bartowski/DeepSeek-R1-Distill-Qwen-7B-GGUF': 'deepseek-ai/DeepSeek-R1-Distill-Qwen-7B (MIT)',
+  'bartowski/DeepSeek-R1-Distill-Qwen-14B-GGUF': 'deepseek-ai/DeepSeek-R1-Distill-Qwen-14B (MIT)',
+  'bartowski/DeepSeek-R1-Distill-Qwen-32B-GGUF': 'deepseek-ai/DeepSeek-R1-Distill-Qwen-32B (MIT)',
+  'tiiuae/Falcon3-1B-Instruct-GGUF': 'tiiuae/Falcon3-1B-Instruct (TII Falcon-LLM License 2.0)',
+  'tiiuae/Falcon3-7B-Instruct-GGUF': 'tiiuae/Falcon3-7B-Instruct (TII Falcon-LLM License 2.0)',
+  'tiiuae/Falcon3-10B-Instruct-GGUF': 'tiiuae/Falcon3-10B-Instruct (TII Falcon-LLM License 2.0)',
+};
+
+/**
  * Display names for the licences the catalog uses.
  *
  * The catalog stores whatever Hugging Face's `cardData.license` returned, which
@@ -98,6 +117,24 @@ const lines = [
   '| --- | --- | --- |',
   ...rowsFor(permissive),
   '',
+  ...(() => {
+    // Provenance, stated once for the permissive set. The restricted licences
+    // below each name their own, because there the reader has to go and read
+    // something; here it is one sentence so the claim is still auditable.
+    const fromBase = permissive.filter((e) => LICENCE_FROM_BASE[repoOf(e.url)]);
+    if (fromBase.length === 0) return [];
+    return [
+      `${fromBase.length} of these come from a repository that publishes no licence of`,
+      "its own; their terms are the base model's, confirmed against the base model",
+      'repository rather than assumed:',
+      '',
+      ...fromBase.map(
+        (e) => `- \`${e.id}\` — ${LICENCE_FROM_BASE[repoOf(e.url)]}`,
+      ),
+      '',
+    ];
+  })(),
+  '',
   `## ${restricted.length} weights under other terms`,
   '',
   'Each of these is download-on-request only: none ships in the installer and',
@@ -130,6 +167,24 @@ for (const licence of [...byLicence.keys()].sort()) {
     `Applies to ${entries.length} weight${entries.length === 1 ? '' : 's'} in the catalog.`,
   );
   lines.push('');
+
+  // Name the weights whose licence came from the base model, so the source of
+  // the claim is visible rather than assumed.
+  const fromBase = entries.filter((e) => LICENCE_FROM_BASE[repoOf(e.url)]);
+  if (fromBase.length > 0) {
+    lines.push(
+      `${fromBase.length} of these come from a repository that publishes no ` +
+        'licence of its own. Their terms are the base model' +
+        `${fromBase.length === 1 ? "'s" : "s"}, confirmed against the base ` +
+        'model repository:',
+    );
+    lines.push('');
+    for (const entry of fromBase) {
+      lines.push(`- \`${entry.id}\` — ${LICENCE_FROM_BASE[repoOf(entry.url)]}`);
+    }
+    lines.push('');
+  }
+
   lines.push('| Model | Repository | Size |');
   lines.push('| --- | --- | --- |');
   lines.push(...rowsFor(entries));
