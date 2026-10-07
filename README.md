@@ -19,7 +19,8 @@ cheapest tier that can do the job.**
    └─────────┘             └─────────┘             └───────────┘
 ```
 
-One model is ready the moment you install, offline. The other 49 are one click away.
+Two models are in the installer, offline, the moment you install. Two more
+download on first launch in the background. The other 46 are one click away.
 No account, no API key, and in Local-only mode nothing leaves your machine.
 MIT licensed. **Alpha, and honest about it** — see [Status](#status).
 
@@ -44,10 +45,12 @@ MIT licensed. **Alpha, and honest about it** — see [Status](#status).
    was chosen and pin a different one. Try it on the
    [site](https://debarun1205.github.io/GearVane/#playground), where the real
    classifier runs in your browser.
-3. **Free by default.** One weight ships in the installer; the rest install
-   when you pick them (under 500 MB silently, larger after you confirm). Local
-   models cost nothing per token, so there are no spend ceilings on them.
-   Hosted keys keep their limits, because those are the only runs that bill you.
+3. **Free by default.** Two weights ship in the installer and two more arrive on
+   first launch; the rest install when you pick them (under 500 MB silently,
+   larger after you confirm). Local models cost nothing per token, and no
+   spend limit is enforced on any model. A run through a keyed cloud model
+   draws on your own key, and GearVane reports what it cost rather than gating
+   it.
 4. **Honest safety.** Writes are diff-reviewed, gated commands need an
    explicit approval, credential-shaped files are refused by default, and a
    file that tries to instruct the agent gets its subsequent writes held for a
@@ -134,13 +137,13 @@ gearvane --help
 ## Models
 
 <!-- BEGIN catalog-summary -->
-**50 weights, 36 of them in the default tiers.**
+**50 weights, 50 of them in the default tiers.**
 
-One ships in the installer (`smollm2-360m-instruct.q4_k_m`) and works offline at first
+2 ship in the installer (`qwen2.5-coder-0.5b-instruct-q4_0`, `smollm2-360m-instruct.q4_k_m`) and work offline at first
 launch. The rest are one click away. Every one is a downloadable file you
 run on your own machine, so a local run costs nothing and needs no
 account. The catalog as a whole is
-449.7 GiB if you wanted all of it; nobody does.
+272.2 GiB if you wanted all of it; nobody does.
 <!-- END catalog-summary -->
 
 Weights under 500 MB install silently when you pick them; larger ones ask
@@ -156,63 +159,71 @@ and the app says so next to the picker.
 <!-- BEGIN catalog-table -->
 | Model | Tier | Size | Licence | In installer |
 | --- | --- | --- | --- | --- |
-| `qwen2.5-coder-0.5b-instruct-q4_0` | `local` | 0.4 GiB | Apache-2.0 |  |
+| `qwen2.5-coder-0.5b-instruct-q4_0` | `local` | 0.4 GiB | Apache-2.0 | yes |
 | `smollm2-360m-instruct.q4_k_m` | `local` | 0.3 GiB | Apache-2.0 | yes |
-| `qwen2.5-1.5b-instruct-q4_0` | `mid` | 1.0 GiB | Apache-2.0 |  |
-| `llama-3.2-1b-instruct-q4_k_m` | on request | 0.8 GiB | custom |  |
-| `llama-3.2-3b-instruct-q4_k_m` | `mid` | 1.9 GiB | custom |  |
-| `gemma-2-2b-it-q4_k_m` | `mid` | 1.6 GiB | custom |  |
-| `deepseek-r1-distill-qwen-1.5b-q4_k_m` | on request | 1.0 GiB | MIT |  |
-| `qwen2.5-coder-1.5b-instruct-q4_0` | `mid` | 1.0 GiB | Apache-2.0 |  |
-| `qwen2.5-coder-3b-instruct-q4_0` | `mid` | 1.9 GiB | custom |  |
-| `smollm2-1.7b-instruct.q4_k_m` | `mid` | 1.0 GiB | Apache-2.0 |  |
-| `qwen3-0.6b.q4_k_m` | on request | 0.5 GiB | Apache-2.0 |  |
-| `tinyllama-1.1b-chat-v1.0.q4_k_m` | on request | 0.6 GiB | Apache-2.0 |  |
-| `deepseek-coder-1.3b-instruct.q4_k_m` | on request | 0.8 GiB | custom |  |
-| `falcon3-3b-instruct-q4_k_m` | `mid` | 1.9 GiB | custom |  |
-| `phi-3-mini-4k-instruct-q4` | `mid` | 2.2 GiB | MIT |  |
-| `qwen2.5-3b-instruct-q4_0` | `mid` | 1.9 GiB | custom |  |
-| `qwen2.5-0.5b-instruct-q4_0` | on request | 0.4 GiB | Apache-2.0 |  |
-| `qwen2.5-7b-instruct-q4_k_m` | `mid` | 4.4 GiB | Apache-2.0 |  |
-| `mistral-7b-instruct-v0.3-q4_k_m` | `mid` | 4.1 GiB | Apache-2.0 |  |
-| `deepseek-r1-distill-qwen-7b-q4_k_m` | `mid` | 4.4 GiB | MIT |  |
-| `falcon3-7b-instruct-q4_k_m` | `mid` | 4.3 GiB | custom |  |
-| `qwen2.5-coder-7b-instruct-q4_0` | `mid` | 4.1 GiB | Apache-2.0 |  |
-| `falcon3-1b-instruct-q4_k_m` | `mid` | 1.0 GiB | custom |  |
-| `qwen3-1.7b.q4_k_m` | `mid` | 1.2 GiB | Apache-2.0 |  |
-| `starcoder2-7b-q4_k_m` | `mid` | 4.1 GiB | custom |  |
-| `qwen3-4b.q4_k_m` | `mid` | 2.5 GiB | Apache-2.0 |  |
-| `starcoder2-3b-q4_k_m` | `mid` | 1.7 GiB | custom |  |
-| `qwen2.5-14b-instruct-q4_k_m` | `frontier` | 8.4 GiB | Apache-2.0 |  |
-| `deepseek-r1-distill-qwen-14b-q4_k_m` | `frontier` | 8.4 GiB | MIT |  |
-| `mistral-nemo-instruct-2407-q4_k_m` | `frontier` | 7.0 GiB | Apache-2.0 |  |
-| `falcon3-10b-instruct-q4_k_m` | `frontier` | 5.9 GiB | custom |  |
-| `qwen2.5-coder-14b-instruct-q4_k_m` | `frontier` | 8.4 GiB | Apache-2.0 |  |
-| `qwen3-8b.q4_k_m` | `frontier` | 4.7 GiB | Apache-2.0 |  |
-| `starcoder2-15b-q4_k_m` | `frontier` | 9.2 GiB | custom |  |
-| `phi-4-q4_k` | `frontier` | 8.4 GiB | MIT |  |
-| `llama-3.1-8b-instruct-q4_k_m` | on request | 4.6 GiB | custom |  |
-| `gemma-2-9b-it-q4_k_m` | on request | 5.1 GiB | custom |  |
-| `nemotron-3-8b-q4_k_m` | on request | 4.9 GiB | custom |  |
-| `qwen2.5-32b-instruct-q4_k_m` | `frontier` | 18 GiB | Apache-2.0 |  |
-| `qwen2.5-coder-32b-instruct-q4_k_m` | `frontier` | 18 GiB | Apache-2.0 |  |
-| `yi-1.5-34b-chat-q4_k_m` | `frontier` | 18 GiB | Apache-2.0 |  |
-| `nemotron-3-ultra-q4_k_m` | `frontier` | 26 GiB | custom |  |
-| `mixtral-8x7b-instruct-q4_k_m` | `frontier` | 25 GiB | Apache-2.0 |  |
-| `qwen2.5-72b-instruct-q4_k_m` | on request | 38 GiB | custom |  |
-| `llama-3.3-70b-instruct-q4_k_m` | on request | 37 GiB | custom |  |
-| `deepseek-v3-q4_k_m` | on request | 67 GiB | custom |  |
-| `nemotron-4-ultra-q4_k_m` | on request | 30 GiB | custom |  |
-| `gemma-3-27b-q4_k_m` | on request | 15 GiB | custom |  |
-| `deepseek-r1-distill-qwen-32b-q4_k_m` | `frontier` | 18 GiB | MIT |  |
-| `deepseek-r1-q4_k_m` | `frontier` | 12 GiB | MIT |  |
+| `qwen2.5-1.5b-instruct-q4_0` | `local` | 1.0 GiB | Apache-2.0 | no |
+| `llama-3.2-1b-instruct-q4_k_m` | `local` | 0.8 GiB | custom | no |
+| `llama-3.2-3b-instruct-q4_k_m` | `local` | 1.9 GiB | custom | no |
+| `gemma-2-2b-it-q4_k_m` | `local` | 1.6 GiB | custom | no |
+| `deepseek-r1-distill-qwen-1.5b-q4_k_m` | `local` | 1.0 GiB | MIT | no |
+| `qwen2.5-coder-1.5b-instruct-q4_0` | `local` | 1.0 GiB | Apache-2.0 | no |
+| `qwen2.5-coder-3b-instruct-q4_0` | `local` | 1.9 GiB | custom | no |
+| `smollm2-1.7b-instruct.q4_k_m` | `local` | 1.0 GiB | Apache-2.0 | no |
+| `qwen3-0.6b.q4_k_m` | `local` | 0.5 GiB | Apache-2.0 | no |
+| `tinyllama-1.1b-chat-v1.0.q4_k_m` | `local` | 0.6 GiB | Apache-2.0 | no |
+| `deepseek-coder-1.3b-instruct.q4_k_m` | `local` | 0.8 GiB | custom | no |
+| `falcon3-3b-instruct-q4_k_m` | `local` | 1.9 GiB | custom | no |
+| `phi-3-mini-4k-instruct-q4` | `mid` | 2.2 GiB | MIT | no |
+| `qwen2.5-3b-instruct-q4_0` | `local` | 1.9 GiB | custom | no |
+| `qwen2.5-0.5b-instruct-q4_0` | `local` | 0.4 GiB | Apache-2.0 | no |
+| `qwen2.5-7b-instruct-q4_k_m` | `mid` | 4.4 GiB | Apache-2.0 | no |
+| `mistral-7b-instruct-v0.3-q4_k_m` | `mid` | 4.1 GiB | Apache-2.0 | no |
+| `deepseek-r1-distill-qwen-7b-q4_k_m` | `mid` | 4.4 GiB | MIT | no |
+| `falcon3-7b-instruct-q4_k_m` | `mid` | 4.3 GiB | custom | no |
+| `qwen2.5-coder-7b-instruct-q4_0` | `mid` | 4.1 GiB | Apache-2.0 | no |
+| `falcon3-1b-instruct-q4_k_m` | `local` | 1.0 GiB | custom | no |
+| `qwen3-1.7b.q4_k_m` | `local` | 1.2 GiB | Apache-2.0 | no |
+| `starcoder2-7b-q4_k_m` | `mid` | 4.1 GiB | custom | no |
+| `qwen3-4b.q4_k_m` | `mid` | 2.5 GiB | Apache-2.0 | no |
+| `starcoder2-3b-q4_k_m` | `local` | 1.7 GiB | custom | no |
+| `qwen2.5-14b-instruct-q4_k_m` | `frontier` | 8.4 GiB | Apache-2.0 | no |
+| `deepseek-r1-distill-qwen-14b-q4_k_m` | `frontier` | 8.4 GiB | MIT | no |
+| `mistral-nemo-instruct-2407-q4_k_m` | `frontier` | 7.0 GiB | Apache-2.0 | no |
+| `falcon3-10b-instruct-q4_k_m` | `mid` | 5.9 GiB | custom | no |
+| `qwen2.5-coder-14b-instruct-q4_k_m` | `frontier` | 8.4 GiB | Apache-2.0 | no |
+| `qwen3-8b.q4_k_m` | `frontier` | 4.7 GiB | Apache-2.0 | no |
+| `starcoder2-15b-q4_k_m` | `frontier` | 9.2 GiB | custom | no |
+| `phi-4-q4_k` | `frontier` | 8.4 GiB | MIT | no |
+| `meta-llama-3.1-8b-instruct-q4_k_m` | `mid` | 4.6 GiB | custom | no |
+| `gemma-2-9b-it-q4_k_m` | `mid` | 5.4 GiB | custom | no |
+| `phi-3.5-mini-instruct-q4_0` | `mid` | 2.0 GiB | MIT | no |
+| `qwen2.5-32b-instruct-q4_k_m` | `frontier` | 18 GiB | Apache-2.0 | no |
+| `qwen2.5-coder-32b-instruct-q4_k_m` | `frontier` | 18 GiB | Apache-2.0 | no |
+| `yi-1.5-34b-chat-q4_k_m` | `frontier` | 19 GiB | Apache-2.0 | no |
+| `qwen3-30b-a3b-q4_0` | `frontier` | 16 GiB | Apache-2.0 | no |
+| `nvidia-nemotron3-nano-4b-q4_k_m` | `mid` | 2.6 GiB | custom | no |
+| `qwen3-coder-30b-a3b-instruct-q4_0` | `frontier` | 16 GiB | Apache-2.0 | no |
+| `mistral-small-3.1-24b-instruct-2503-q4_k_m` | `frontier` | 13 GiB | Apache-2.0 | no |
+| `qwen3-14b-q4_k_m` | `frontier` | 8.4 GiB | Apache-2.0 | no |
+| `gemma-3-12b-it-q4_k_m` | `frontier` | 6.8 GiB | custom | no |
+| `gemma-3-12b-it-q4_0` | `frontier` | 6.4 GiB | custom | no |
+| `deepseek-r1-distill-qwen-32b-q4_k_m` | `frontier` | 18 GiB | MIT | no |
+| `deepseek-r1-distill-llama-8b-q4_k_m` | `mid` | 4.6 GiB | custom | no |
 <!-- END catalog-table -->
 
 **The catalog's RAM figures are hand-written prose, and they contradict each
 other.** 29 of the 50 entries say "needs NGB RAM" inside their description, the
-ratio to file size ranges from 1.73x to 3.48x, and gemma-3-27b is a 15 GiB file
-claiming 48 GB while qwen2.5-32b is a 17.9 GiB file claiming 32. Treat them as
-hints, never as requirements.
+ratio to file size ranges from 1.73x to 3.48x, and one entry claimed 48 GB for a
+15 GiB file while another claimed 32 for an 18 GiB one. Treat them as hints,
+never as requirements.
+
+**Every weight's size, revision and SHA-256 come from the Hugging Face API, and
+all 50 install with one click.** Previously thirteen entries carried byte counts
+that disagreed with the published file, and seven named repositories that
+returned 401 or did not contain the file — one of them a 67 GiB weight behind
+`bartowski/DeepSeek-V3-GGUF`, which no longer resolves. Those are replaced with
+verified weights under 20 GiB, not marked remote. `tools/check-catalog-pins.mjs`
+fails on any entry not pinned to a commit revision with a hash.
 
 So the app does not use them to decide anything. It measures the machine
 instead: **os.totalmem**, **os.freemem**, and **statfs** on the volume holding
@@ -342,16 +353,23 @@ re-parses their argument into something the gate never saw.
 
 ## Cost control
 
-Local models cost nothing per token, so a dollar ceiling on them is a ceiling
-on zero and GearVane does not pretend otherwise: the tracker records usage,
-and nothing is enforced against a free run. Hosted models are the ones that
-bill you.
+**No spend limit is enforced on you, for any model.** Per-task, per-session and
+per-day USD ceilings were removed: they were never enforced by the TypeScript
+engine, the Python engine checked a different set of numbers, and a ceiling on a
+local model is a ceiling on zero.
+
+Cost class is derived from the provider, not from the tier. A run costs money
+only if reaching the model needed a key that belongs to somebody else, so the
+local tier and the local weights sitting inside the mid and high tiers all read
+as free:
 
 ```bash
 gearvane safety spend
-# local     unlimited, $0.00  (embedded, ollama, lm_studio, ...)
-# mid       metered, $0.0001/token  (embedded, openrouter, meta, deepseek, ...)
-# frontier  metered, $0.005/token  (anthropic, openai, longcat, xai, embedded)
+# local     unlimited, $0.00  (embedded, ollama, lm_studio, llama_cpp, vllm, ...)
+# mid       metered, $0.0001/token  (free: embedded | metered: openrouter, meta, ...)
+# frontier  metered, $0.005/token  (free: embedded | metered: anthropic, openai, ...)
+#
+# No spend limits are enforced, for any model.
 
 gearvane cost
 # Calls: 12
@@ -359,9 +377,13 @@ gearvane cost
 # Cost:   $0.0041
 ```
 
-Add `--json` to either for machine-readable output. See
-[config.example.yaml](config.example.yaml) for the ceilings you can set on
-hosted models.
+Add `--json` to either for machine-readable output. The meter in the app shows
+what a session has cost against a keyed provider, and nothing cuts the run off
+behind it.
+
+Run safety is bounded by safeguards rather than budgets: max iterations, a
+per-run timeout, repeat-call detection, and a kill switch. All four are
+adjustable, and none of them counts runs, tokens or time per day.
 
 Read tools refuse credential-shaped paths even inside the workspace: `.env`
 variants, `.ssh/`, `.aws/`, `.git/config`, private keys, browser cookie and
@@ -401,18 +423,24 @@ identically.
 Requires platform toolchains this repository does not carry. See
 [apps/desktop/BUILDING.md](apps/desktop/BUILDING.md).
 
-**The installer carries one weight, not the catalog.** Exactly one model is
-flagged `bundled` in `src/models.json` (SmolLM2 360M, ~258 MB); the other 49
-download on first run, with resume and a size check. That split is what keeps
-the installer under the 2 GiB per-asset limit GitHub enforces on release
-uploads.
+**The installer carries two weights, not the catalog.** Two models are flagged
+`bundled` in `src/models.json` — SmolLM2 360M (258 MB) and Qwen2.5-Coder 0.5B
+(409 MB), both Apache-2.0 — for 0.65 GiB together. Two more are flagged
+`first-boot`: Qwen2.5 7B and Qwen3 8B, 9.0 GiB, fetched on first launch with
+resume, retry and a SHA-256 check. That split is what keeps the installer under
+the 2 GiB per-asset limit GitHub enforces on release uploads.
 
-`extraResources` names that one file rather than the `resources/models`
-directory, so a build machine that happens to have other weights on disk
-cannot fold them into the artifact. That directory is gitignored, so CI always
-started empty and produced a correct installer while a local `npm run dist`
-shipped everything the developer had downloaded — which is where an earlier
-9.7 GiB measurement came from.
+`extraResources` names each of those two files rather than the
+`resources/models` directory, so a build machine that happens to have other
+weights on disk cannot fold them into the artifact. That directory is
+gitignored, so CI always started empty and produced a correct installer while a
+local `npm run dist` shipped everything the developer had downloaded — which is
+where an earlier 9.7 GiB measurement came from.
+
+`models:fetch` takes `--first-boot` for the two the app provisions and `--all`
+for the whole catalog. `--first-run` used to mean `--all`; it now exits with an
+error, because a flag called "first run" in a build script is one refactor away
+from downloading every weight on a user's first launch.
 
 ## Status
 

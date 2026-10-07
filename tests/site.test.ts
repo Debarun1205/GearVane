@@ -727,15 +727,47 @@ describe('the model explorer', () => {
   it('flags the RAM figures as prose rather than measurements', () => {
     // Two ways to be wrong here, both of which the earlier draft managed.
     //
-    // Claiming RAM is absent would be false: 29 of the 50 "Good for" strings
+    // Claiming RAM is absent would be false: 18 of the 50 "Good for" strings
     // carry a gigabyte figure. Presenting those figures as requirements would
-    // also be false, and demonstrably so - gemma-3-27b at 15.0 GiB claims
-    // 48 GB while qwen2.5-32b at 17.9 GiB claims 32 GB, which cannot both be
-    // true. So the page names the inconsistency rather than hiding the column
-    // or laundering the numbers.
+    // also be false, and demonstrably so - qwen3-8b at 4.7 GiB claims 16 GB
+    // while yi-1.5-34b at 19.2 GiB claims 32, which cannot both be true. So
+    // the page names the inconsistency rather than hiding the column or
+    // laundering the numbers.
+    //
+    // Both figures are re-derived from models.json here, so the disclosure
+    // cannot go on citing a weight the catalog no longer carries.
     expect(prose).toMatch(/What this table does not tell you/);
     expect(prose).toMatch(/hand-written guidance,\s+not a computed requirement/);
-    expect(prose).toMatch(/15 GB weight claims 48 GB of RAM while an 18 GB one claims 32/);
+
+    // The disclosure's example is derived from the live catalog, so replacing a
+    // weight cannot leave the page quoting a model that is no longer offered.
+    const catalog = JSON.parse(read(REPO, 'apps', 'desktop', 'src', 'models.json')) as Array<{
+      id: string;
+      bytes: number;
+      use: string;
+    }>;
+    const claims = catalog
+      .map((entry) => {
+        const match = /(\d+(?:\.\d+)?)\s*(?:GB|GiB)\b/i.exec(entry.use);
+        return match
+          ? { id: entry.id, gib: entry.bytes / 1073741824, claim: Number(match[1]) }
+          : null;
+      })
+      .filter((row): row is { id: string; gib: number; claim: number } => row !== null);
+    expect(claims.length).toBeGreaterThan(0);
+
+    // The worst ratio against file size, and the best among the large files.
+    const worst = claims.reduce((a, b) => (a.claim / a.gib > b.claim / b.gib ? a : b));
+    const big = claims.filter((row) => row.gib > 15);
+    expect(big.length).toBeGreaterThan(0);
+    const bestBig = big.reduce((a, b) => (a.claim / a.gib < b.claim / b.gib ? a : b));
+
+    const size = (gib: number) => `${gib < 10 ? gib.toFixed(1) : Math.round(gib)} GB`;
+    expect(prose).toContain(
+      `a ${size(worst.gib)} weight claims ${worst.claim} GB of RAM while a ` +
+        `${size(bestBig.gib)} one claims ${bestBig.claim}.`,
+    );
+
     expect(prose).toMatch(/Tokens per second is absent entirely/);
     expect(prose).not.toMatch(/RAM\s+requirements and tokens per second are absent/);
     // The app measures rather than reading the column. Claiming it does not

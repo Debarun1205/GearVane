@@ -24,12 +24,12 @@ const entries = CATALOG as Entry[];
  */
 describe('installability ceiling', () => {
   it('keeps every downloadable weight under the ceiling', () => {
+    // R1: all fifty install with one click. Six entries used to sit at
+    // 24-67 GiB and four of those repositories did not resolve at all; they are
+    // now verified weights under the ceiling, so nothing is listed-but-not-
+    // installable.
     const tooBig = entries.filter((e) => e.bytes > REMOTE_ONLY_BYTES);
-    // This is not a failure on its own: those rows are listed as remote. What
-    // matters is that they are listed, which the next test pins.
-    for (const entry of tooBig) {
-      expect(entry.bytes).toBeGreaterThan(REMOTE_ONLY_BYTES);
-    }
+    expect(tooBig.map((e) => e.id)).toEqual([]);
   });
 
   it('offers a download for the weights people can actually run', () => {

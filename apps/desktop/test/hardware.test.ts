@@ -134,12 +134,13 @@ describe('assessFit', () => {
   });
 
   it('disagrees with the catalog on the two models the site names', () => {
-    // The site discloses that gemma-3-27b (15 GiB) claims 48 GB while
-    // qwen2.5-32b (17.9 GiB) claims 32, which cannot both be right. These
-    // estimates follow the file size, so they come out ordered.
-    const gemma = assessFit(15 * GIB, machine(32));
-    const qwen = assessFit(17.9 * GIB, machine(32));
-    expect(qwen.estimatedRam).toBeGreaterThan(gemma.estimatedRam);
+    // The site discloses that qwen3-8b (4.7 GiB) claims 16 GB while
+    // yi-1.5-34b (19.2 GiB) claims 32, which cannot both be right -- the small
+    // file claims a third of what the larger one does. These estimates follow
+    // the file size, so they come out the other way round, which is the point.
+    const qwen3 = assessFit(4.7 * GIB, machine(32));
+    const yi = assessFit(19.2 * GIB, machine(32));
+    expect(yi.estimatedRam).toBeGreaterThan(qwen3.estimatedRam);
   });
 });
 

@@ -130,9 +130,15 @@ describe('site tier bands', () => {
     const generated = await import('../site/assets/catalog-data.js');
     const bundled = generated.MODELS.filter((r: { bundled: boolean }) => r.bundled);
 
-    // Only smollm2-360m is bundled now (shipped in installer)
-    expect(bundled).toHaveLength(1);
-    expect(bundled[0].id).toBe('smollm2-360m-instruct.q4_k_m');
-    expect(bundled[0].tier).not.toBeNull();
+    // Two low-tier weights ship in the installer: smollm2-360m and
+    // qwen2.5-coder-0.5b. Both must have a tier, or the site would show them as
+    // unclassified while the app routes to them.
+    expect(bundled.map((r: { id: string }) => r.id).sort()).toEqual([
+      'qwen2.5-coder-0.5b-instruct-q4_0',
+      'smollm2-360m-instruct.q4_k_m',
+    ]);
+    for (const row of bundled) {
+      expect(row.tier, `${row.id} has no tier`).not.toBeNull();
+    }
   });
 });

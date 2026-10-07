@@ -9,6 +9,11 @@
  * quietly lies the first time someone adds a weight, so the catalog one is
  * generated and the check runs in CI.
  *
+ * Sibling generators, same shape and same `--check` contract:
+ *   tools/gen-site-catalog.mjs          site/assets/catalog-data.js
+ *   tools/gen-third-party-notices.mjs   THIRD_PARTY_NOTICES.md
+ *   tools/build-site-engine.mjs         site/assets/engine.js
+ *
  * The counters in the "Development" section are deliberately NOT generated.
  * Test counts change with every commit that adds one, so quoting them makes
  * the README a thing that must be edited in the same commit as the tests -
@@ -84,7 +89,11 @@ function catalogTable() {
     const tier = tierOf[entry.id];
     const where = tier ? `\`${tier}\`` : 'on request';
     const license = shortLicense(entry.license);
-    const bundled = entry.bundled === true ? 'yes' : '';
+    // `no` rather than a blank cell. A blank is ambiguous in a rendered table
+    // -- it reads as "unknown" as readily as "not bundled" -- and an installer
+    // column whose false value is invisible cannot be checked in either
+    // direction.
+    const bundled = entry.bundled === true ? 'yes' : 'no';
     return `| \`${entry.id}\` | ${where} | ${gib(entry.bytes)} | ${license} | ${bundled} |`;
   });
 

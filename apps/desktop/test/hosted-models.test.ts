@@ -15,13 +15,36 @@ describe('keyStateFor', () => {
   });
 });
 
+/**
+ * How many embedded models each tier's config declares.
+ *
+ * Read from the config rather than written as literals: the previous version
+ * hardcoded 19 and 15, which is what made the tier repair look like a
+ * regression when it was the arithmetic catching up. A test that pins counts
+ * must be re-pinned by hand every time a weight moves bands, and the last time
+ * that happened the count was updated without checking where the models went.
+ */
+function embeddedCount(config: ReturnType<typeof defaultConfig>): number {
+  return (['mid', 'frontier'] as const).reduce((total, tier) => {
+    const provider = config.tiers[tier].providers.find((p) => p.name === 'embedded');
+    return total + (provider?.models.length ?? 0);
+  }, 0);
+}
+
 describe('hostedModelRows', () => {
   it('lists keyless embedded rows without keys on defaults', () => {
-    const rows = hostedModelRows(defaultConfig(), {});
-    // Mid: 19, Frontier: 15 = 34 total
-    expect(rows).toHaveLength(34);
-    expect(rows.filter((row) => row.tier === 'mid')).toHaveLength(19);
-    expect(rows.filter((row) => row.tier === 'frontier')).toHaveLength(15);
+    const config = defaultConfig();
+    const rows = hostedModelRows(config, {});
+    const expected = embeddedCount(config);
+    // Mid: 14, Frontier: 17 = 31 total, after each weight was filed under its
+    // published size rather than its old estimate.
+    expect(rows).toHaveLength(expected);
+    expect(rows.filter((row) => row.tier === 'mid')).toHaveLength(
+      config.tiers.mid.providers.find((p) => p.name === 'embedded')?.models.length,
+    );
+    expect(rows.filter((row) => row.tier === 'frontier')).toHaveLength(
+      config.tiers.frontier.providers.find((p) => p.name === 'embedded')?.models.length,
+    );
     expect(rows.every((row) => row.keyless && row.keyed)).toBe(true);
   });
 
@@ -48,15 +71,16 @@ describe('hostedModelRows', () => {
     };
     const rows = hostedModelRows(config, keys);
     const mid = rows.filter((row) => row.tier === 'mid');
-    // 19 embedded + 3 openrouter + 1 meta + 2 deepseek + 1 gemini + 1 mistral = 27
-    expect(mid).toHaveLength(27);
+    const frontier = rows.filter((row) => row.tier === 'frontier');
+    // 14 embedded + 3 openrouter + 1 meta + 2 deepseek + 1 gemini + 1 mistral = 22
+    expect(mid).toHaveLength(22);
     expect(mid.filter((row) => !row.keyless)).toHaveLength(8);
     const embedded = mid.filter((row) => row.keyless);
-    expect(embedded).toHaveLength(19);
+    expect(embedded).toHaveLength(14);
     expect(embedded.every((row) => row.keyed)).toBe(true);
-    // Frontier: 15 embedded + 3 anthropic + 1 openai + 1 xai = 18? No, 5 hosted = 20
-    expect(rows.filter((row) => row.tier === 'frontier')).toHaveLength(20);
-    expect(rows.filter((row) => row.tier === 'frontier' && !row.keyless)).toHaveLength(5);
+    // Frontier: 17 embedded + 3 anthropic + 1 openai + 1 xai = 22
+    expect(frontier).toHaveLength(22);
+    expect(frontier.filter((row) => !row.keyless)).toHaveLength(5);
     expect(rows.every((row) => row.keyed)).toBe(true);
     expect(rows[0]?.label).toMatch(/\//);
   });

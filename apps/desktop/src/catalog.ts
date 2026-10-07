@@ -35,12 +35,17 @@ const GIB = 1073741824;
 /**
  * Above this, the weight is listed but not offered.
  *
- * 20 GiB is chosen because it is where the largest machines a person actually
- * runs -- a 64 GiB workstation -- stop being a comfortable answer, once the
- * file, the KV cache and an operating system are all in RAM at once. It also
- * matches the entries the improvement plan named individually (deepseek-v3,
- * llama-3.3-70b, the nemotron ultras, mixtral-8x7b) without singling any of
- * them out by id.
+ * Every one of the fifty catalogued weights now installs with one click, so
+ * this ceiling rejects nothing today. It stays as a tripwire rather than a
+ * rule with a use: weights are memory-mapped, so a file larger than physical
+ * RAM cannot load, and a catalog addition above this line would be a weight
+ * no consumer machine holds.
+ *
+ * The six entries that used to sit far above it -- deepseek-v3 at 67 GiB, the
+ * nemotron ultras, mixtral-8x7b -- did not resolve at all: their repositories
+ * returned 401 or did not contain the named file. They have been replaced with
+ * verified weights, not merely marked remote, because R1 requires all fifty to
+ * be installable and a 404 is not an installable weight.
  */
 export const REMOTE_ONLY_BYTES = 20 * GIB;
 

@@ -3,6 +3,8 @@ import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
+import { defaultConfig } from '../packages/core/src/defaults.js';
+
 /**
  * The root README is the first thing anyone reads, so it is checked against
  * the repository rather than trusted.
@@ -170,18 +172,30 @@ describe('claims are qualified', () => {
     // and it drifted badly: this used to document a 9.7 GiB blocker and call
     // the bundle split unimplemented, both already false. It also said "Four
     // models are ready the moment you install" in three places while exactly
-    // one ships.
+    // one shipped.
     const catalog = JSON.parse(
       read(REPO, 'apps', 'desktop', 'src', 'models.json'),
-    ) as Array<{ id: string; bytes: number; bundled?: boolean }>;
+    ) as Array<{ id: string; bytes: number; bundled?: boolean; provision?: string }>;
     const bundled = catalog.filter((entry) => entry.bundled === true);
+    const provisioned = catalog.filter((entry) => entry.provision === 'first-boot');
 
-    expect(bundled).toHaveLength(1);
-    expect(readme).toContain(bundled[0]?.id);
+    // Two ship in the installer; two more arrive on first launch. Four in all,
+    // each named rather than counted.
+    expect(bundled).toHaveLength(2);
+    expect(provisioned).toHaveLength(2);
+    for (const entry of [...bundled, ...provisioned]) {
+      expect(readme, `${entry.id} is not named in the README`).toContain(entry.id);
+    }
     expect(readme).toMatch(/2 GiB per-asset limit/);
 
-    // The shipped count is stated once per claim, never as a stale number.
-    expect(readme).not.toMatch(/\bFour (models|weights)\b/);
+    // "Four models ready at first launch" is the claim under test. It may
+    // appear only with the names of what the four actually are, so the phrase
+    // cannot outlive the catalog it describes.
+    for (const claim of readme.match(/[^.]*four models[^.]*\./gi) ?? []) {
+      expect(claim, `"${claim.trim()}" asserts four without qualifying them`).toMatch(
+        /installer|provision|first (boot|launch|run)/i,
+      );
+    }
     expect(readme).not.toMatch(/\bFifty more\b/);
 
     // The split is implemented, so the README must not still call it a plan
@@ -266,26 +280,61 @@ describe('generated tables', () => {
     }
   });
 
-  it('mark the bundled weight as in the installer', () => {
+  it('marks the bundled weights as in the installer, and the rest as not', () => {
     const catalog = JSON.parse(
       read(REPO, 'apps', 'desktop', 'src', 'models.json'),
     ) as Array<{ id: string; bundled: boolean }>;
     const bundled = catalog.filter((e) => e.bundled).map((e) => e.id);
-    expect(bundled).toHaveLength(1);
-    expect(bundled[0]).toBe('smollm2-360m-instruct.q4_k_m');
+    expect(bundled.sort()).toEqual([
+      'qwen2.5-coder-0.5b-instruct-q4_0',
+      'smollm2-360m-instruct.q4_k_m',
+    ]);
 
-    for (const id of bundled) {
-      const pattern = new RegExp('^\\| `' + id + '` \\|.*\\|$', 'm');
+    // The `yes`/`no` column has to track the catalog in both directions. A
+    // generator that marks everything `yes` passes the original one-sided test.
+    for (const entry of catalog) {
+      const pattern = new RegExp('^\\| `' + entry.id + '` \\|.*\\|$', 'm');
       const row = readme.match(pattern)?.[0] ?? '';
-      expect(row, id + ' not marked bundled').toMatch(/\| yes \|$/);
+      expect(row, entry.id + ' has no table row').not.toBe('');
+      expect(row, `${entry.id} bundled flag disagrees with the table`).toMatch(
+        entry.bundled ? /\| yes \|$/ : /\| no \|$/,
+      );
     }
   });
 
-  it('flag a weight the tiers do not name as on request', () => {
-    // 14 of the 50 are downloadable but absent from the shipped tier lists.
-    // Labelling them with a tier would describe a classification the app does
-    // not perform.
-    expect(readme).toMatch(/on request/);
+  it('labels every weight with the tier the router gives it, or on request', () => {
+    // All fifty now appear in a shipped tier, so "on request" no longer appears
+    // in the table. The rule is what matters, not the presence of the fallback:
+    // a weight absent from the tier lists must be labelled "on request" rather
+    // than given a tier the app does not assign, because a table that invents a
+    // classification is worse than one that admits it has none.
+    const catalog = JSON.parse(
+      read(REPO, 'apps', 'desktop', 'src', 'models.json'),
+    ) as Array<{ id: string }>;
+    const table = readme.slice(
+      readme.indexOf('<!-- BEGIN catalog-table -->'),
+      readme.indexOf('<!-- END catalog-table -->'),
+    );
+
+    const named = new Set(
+      ['local', 'mid', 'frontier'].flatMap((tier) => {
+        const provider = defaultConfig().tiers[
+          tier as 'local' | 'mid' | 'frontier'
+        ].providers.find((p) => p.name === 'embedded');
+        return provider?.models ?? [];
+      }),
+    );
+
+    const unlabelled: string[] = [];
+    for (const entry of catalog) {
+      const row = table.match(new RegExp('^\\| `' + entry.id + '` \\|.*\\|$', 'm'))?.[0] ?? '';
+      if (named.has(entry.id)) {
+        if (!/\| `(local|mid|frontier)` \|/.test(row)) unlabelled.push(entry.id);
+      } else if (!/\| on request \|/.test(row)) {
+        unlabelled.push(entry.id);
+      }
+    }
+    expect(unlabelled).toEqual([]);
   });
 });
 

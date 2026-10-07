@@ -17,7 +17,7 @@ export const MODELS = [
     "id": "qwen2.5-coder-0.5b-instruct-q4_0",
     "bytes": 428730240,
     "use": "Code: typos, refactors, boilerplate",
-    "bundled": false,
+    "bundled": true,
     "license": "Apache-2.0",
     "licenseUrl": "https://www.apache.org/licenses/LICENSE-2.0",
     "tier": "local"
@@ -38,7 +38,7 @@ export const MODELS = [
     "bundled": false,
     "license": "Apache-2.0",
     "licenseUrl": "https://www.apache.org/licenses/LICENSE-2.0",
-    "tier": "mid"
+    "tier": "local"
   },
   {
     "id": "llama-3.2-1b-instruct-q4_k_m",
@@ -47,7 +47,7 @@ export const MODELS = [
     "bundled": false,
     "license": "Llama 3.2 Community License",
     "licenseUrl": "https://github.com/meta-llama/llama-models/blob/main/models/llama3_2/LICENSE",
-    "tier": null
+    "tier": "local"
   },
   {
     "id": "llama-3.2-3b-instruct-q4_k_m",
@@ -56,7 +56,7 @@ export const MODELS = [
     "bundled": false,
     "license": "Llama 3.2 Community License",
     "licenseUrl": "https://github.com/meta-llama/llama-models/blob/main/models/llama3_2/LICENSE",
-    "tier": "mid"
+    "tier": "local"
   },
   {
     "id": "gemma-2-2b-it-q4_k_m",
@@ -65,7 +65,7 @@ export const MODELS = [
     "bundled": false,
     "license": "Gemma License",
     "licenseUrl": "https://ai.google.dev/gemma/terms",
-    "tier": "mid"
+    "tier": "local"
   },
   {
     "id": "deepseek-r1-distill-qwen-1.5b-q4_k_m",
@@ -74,7 +74,7 @@ export const MODELS = [
     "bundled": false,
     "license": "MIT",
     "licenseUrl": "https://opensource.org/license/mit",
-    "tier": null
+    "tier": "local"
   },
   {
     "id": "qwen2.5-coder-1.5b-instruct-q4_0",
@@ -83,7 +83,7 @@ export const MODELS = [
     "bundled": false,
     "license": "Apache-2.0",
     "licenseUrl": "https://www.apache.org/licenses/LICENSE-2.0",
-    "tier": "mid"
+    "tier": "local"
   },
   {
     "id": "qwen2.5-coder-3b-instruct-q4_0",
@@ -92,7 +92,7 @@ export const MODELS = [
     "bundled": false,
     "license": "Qwen Research License",
     "licenseUrl": "https://huggingface.co/Qwen/Qwen2.5-Coder-3B-Instruct/blob/main/LICENSE",
-    "tier": "mid"
+    "tier": "local"
   },
   {
     "id": "smollm2-1.7b-instruct.q4_k_m",
@@ -101,7 +101,7 @@ export const MODELS = [
     "bundled": false,
     "license": "Apache-2.0",
     "licenseUrl": "https://www.apache.org/licenses/LICENSE-2.0",
-    "tier": "mid"
+    "tier": "local"
   },
   {
     "id": "qwen3-0.6b.q4_k_m",
@@ -110,7 +110,7 @@ export const MODELS = [
     "bundled": false,
     "license": "Apache-2.0",
     "licenseUrl": "https://www.apache.org/licenses/LICENSE-2.0",
-    "tier": null
+    "tier": "local"
   },
   {
     "id": "tinyllama-1.1b-chat-v1.0.q4_k_m",
@@ -119,7 +119,7 @@ export const MODELS = [
     "bundled": false,
     "license": "Apache-2.0",
     "licenseUrl": "https://www.apache.org/licenses/LICENSE-2.0",
-    "tier": null
+    "tier": "local"
   },
   {
     "id": "deepseek-coder-1.3b-instruct.q4_k_m",
@@ -128,7 +128,7 @@ export const MODELS = [
     "bundled": false,
     "license": "DeepSeek Model License",
     "licenseUrl": "https://github.com/deepseek-ai/deepseek-coder/blob/main/LICENSE-MODEL",
-    "tier": null
+    "tier": "local"
   },
   {
     "id": "falcon3-3b-instruct-q4_k_m",
@@ -137,7 +137,7 @@ export const MODELS = [
     "bundled": false,
     "license": "TII Falcon-LLM License 2.0",
     "licenseUrl": "https://falconllm.tii.ae/falcon-terms-and-conditions.html",
-    "tier": "mid"
+    "tier": "local"
   },
   {
     "id": "phi-3-mini-4k-instruct-q4",
@@ -155,7 +155,7 @@ export const MODELS = [
     "bundled": false,
     "license": "Qwen Research License",
     "licenseUrl": "https://huggingface.co/Qwen/Qwen2.5-3B-Instruct/blob/main/LICENSE",
-    "tier": "mid"
+    "tier": "local"
   },
   {
     "id": "qwen2.5-0.5b-instruct-q4_0",
@@ -164,7 +164,7 @@ export const MODELS = [
     "bundled": false,
     "license": "Apache-2.0",
     "licenseUrl": "https://www.apache.org/licenses/LICENSE-2.0",
-    "tier": null
+    "tier": "local"
   },
   {
     "id": "qwen2.5-7b-instruct-q4_k_m",
@@ -218,7 +218,7 @@ export const MODELS = [
     "bundled": false,
     "license": "TII Falcon-LLM License 2.0",
     "licenseUrl": "https://falconllm.tii.ae/falcon-terms-and-conditions.html",
-    "tier": "mid"
+    "tier": "local"
   },
   {
     "id": "qwen3-1.7b.q4_k_m",
@@ -227,7 +227,7 @@ export const MODELS = [
     "bundled": false,
     "license": "Apache-2.0",
     "licenseUrl": "https://www.apache.org/licenses/LICENSE-2.0",
-    "tier": "mid"
+    "tier": "local"
   },
   {
     "id": "starcoder2-7b-q4_k_m",
@@ -254,7 +254,7 @@ export const MODELS = [
     "bundled": false,
     "license": "BigCode OpenRAIL-M",
     "licenseUrl": "https://huggingface.co/spaces/bigcode/bigcode-model-license-agreement",
-    "tier": "mid"
+    "tier": "local"
   },
   {
     "id": "qwen2.5-14b-instruct-q4_k_m",
@@ -290,7 +290,7 @@ export const MODELS = [
     "bundled": false,
     "license": "TII Falcon-LLM License 2.0",
     "licenseUrl": "https://falconllm.tii.ae/falcon-terms-and-conditions.html",
-    "tier": "frontier"
+    "tier": "mid"
   },
   {
     "id": "qwen2.5-coder-14b-instruct-q4_k_m",
@@ -329,35 +329,35 @@ export const MODELS = [
     "tier": "frontier"
   },
   {
-    "id": "llama-3.1-8b-instruct-q4_k_m",
-    "bytes": 4928307200,
-    "use": "Frontier chat, needs 16GB RAM",
+    "id": "meta-llama-3.1-8b-instruct-q4_k_m",
+    "bytes": 4920739168,
+    "use": "Mid: general instruction following",
     "bundled": false,
-    "license": "Llama 3.1 Community License",
-    "licenseUrl": "https://github.com/meta-llama/llama-models/blob/main/models/llama3_1/LICENSE",
-    "tier": null
+    "license": "llama3.1",
+    "licenseUrl": "https://llama.meta.com/llama3_1/license/",
+    "tier": "mid"
   },
   {
     "id": "gemma-2-9b-it-q4_k_m",
-    "bytes": 5476089856,
-    "use": "Frontier chat, needs 16GB RAM",
+    "bytes": 5761057728,
+    "use": "Mid: stronger general model",
     "bundled": false,
-    "license": "Gemma License",
+    "license": "gemma",
     "licenseUrl": "https://ai.google.dev/gemma/terms",
-    "tier": null
+    "tier": "mid"
   },
   {
-    "id": "nemotron-3-8b-q4_k_m",
-    "bytes": 5234532352,
-    "use": "NVIDIA mid model, needs 16GB RAM",
+    "id": "phi-3.5-mini-instruct-q4_0",
+    "bytes": 2182468896,
+    "use": "Mid: Microsoft instruction and reasoning",
     "bundled": false,
-    "license": "NVIDIA AI Foundation Models License",
-    "licenseUrl": "https://www.nvidia.com/en-us/agreements/enterprise-software/nvidia-nemotron-open-model-license",
-    "tier": null
+    "license": "MIT",
+    "licenseUrl": "https://opensource.org/license/mit",
+    "tier": "mid"
   },
   {
     "id": "qwen2.5-32b-instruct-q4_k_m",
-    "bytes": 19234877440,
+    "bytes": 19851336576,
     "use": "Ultra flagship chat, needs 32GB RAM",
     "bundled": false,
     "license": "Apache-2.0",
@@ -375,7 +375,7 @@ export const MODELS = [
   },
   {
     "id": "yi-1.5-34b-chat-q4_k_m",
-    "bytes": 19782500352,
+    "bytes": 20658711360,
     "use": "Ultra chat, needs 32GB RAM",
     "bundled": false,
     "license": "Apache-2.0",
@@ -383,67 +383,67 @@ export const MODELS = [
     "tier": "frontier"
   },
   {
-    "id": "nemotron-3-ultra-q4_k_m",
-    "bytes": 27922219008,
-    "use": "NVIDIA ultra model, needs 48GB RAM",
-    "bundled": false,
-    "license": "NVIDIA AI Foundation Models License",
-    "licenseUrl": "https://www.nvidia.com/en-us/agreements/enterprise-software/nvidia-nemotron-open-model-license",
-    "tier": "frontier"
-  },
-  {
-    "id": "mixtral-8x7b-instruct-q4_k_m",
-    "bytes": 26599284736,
-    "use": "Mixture of experts, needs 48GB RAM",
+    "id": "qwen3-30b-a3b-q4_0",
+    "bytes": 17379988032,
+    "use": "Frontier: sparse mixture of experts",
     "bundled": false,
     "license": "Apache-2.0",
     "licenseUrl": "https://www.apache.org/licenses/LICENSE-2.0",
     "tier": "frontier"
   },
   {
-    "id": "qwen2.5-72b-instruct-q4_k_m",
-    "bytes": 41231686041,
-    "use": "Massive flagship, needs 96GB RAM",
+    "id": "nvidia-nemotron3-nano-4b-q4_k_m",
+    "bytes": 2837072864,
+    "use": "Small: fast on modest hardware",
     "bundled": false,
-    "license": "Qwen License",
-    "licenseUrl": "https://huggingface.co/Qwen/Qwen2.5-72B-Instruct/blob/main/LICENSE",
-    "tier": null
+    "license": "other",
+    "licenseUrl": "https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Nano-4B-GGUF",
+    "tier": "mid"
   },
   {
-    "id": "llama-3.3-70b-instruct-q4_k_m",
-    "bytes": 40045121536,
-    "use": "Meta flagship, needs 96GB RAM",
+    "id": "qwen3-coder-30b-a3b-instruct-q4_0",
+    "bytes": 17379990688,
+    "use": "Code: hardest multi-file changes",
     "bundled": false,
-    "license": "Llama 3.3 Community License",
-    "licenseUrl": "https://github.com/meta-llama/llama-models/blob/main/models/llama3_3/LICENSE",
-    "tier": null
+    "license": "Apache-2.0",
+    "licenseUrl": "https://www.apache.org/licenses/LICENSE-2.0",
+    "tier": "frontier"
   },
   {
-    "id": "deepseek-v3-q4_k_m",
-    "bytes": 72131051520,
-    "use": "DeepSeek flagship, needs 128GB RAM",
+    "id": "mistral-small-3.1-24b-instruct-2503-q4_k_m",
+    "bytes": 14333910176,
+    "use": "Frontier: long-form instruction following",
     "bundled": false,
-    "license": "DeepSeek Model License",
-    "licenseUrl": "https://github.com/deepseek-ai/DeepSeek-V3/blob/main/LICENSE-MODEL",
-    "tier": null
+    "license": "Apache-2.0",
+    "licenseUrl": "https://www.apache.org/licenses/LICENSE-2.0",
+    "tier": "frontier"
   },
   {
-    "id": "nemotron-4-ultra-q4_k_m",
-    "bytes": 32451855360,
-    "use": "NVIDIA next-gen ultra, needs 96GB RAM",
+    "id": "qwen3-14b-q4_k_m",
+    "bytes": 9001752960,
+    "use": "Frontier: larger general reasoning",
     "bundled": false,
-    "license": "NVIDIA AI Foundation Models License",
-    "licenseUrl": "https://www.nvidia.com/en-us/agreements/enterprise-software/nvidia-nemotron-open-model-license",
-    "tier": null
+    "license": "Apache-2.0",
+    "licenseUrl": "https://www.apache.org/licenses/LICENSE-2.0",
+    "tier": "frontier"
   },
   {
-    "id": "gemma-3-27b-q4_k_m",
-    "bytes": 16106127360,
-    "use": "Google multimodal, needs 48GB RAM",
+    "id": "gemma-3-12b-it-q4_k_m",
+    "bytes": 7300574976,
+    "use": "Frontier: multimodal-capable general",
     "bundled": false,
-    "license": "Gemma License",
+    "license": "gemma",
     "licenseUrl": "https://ai.google.dev/gemma/terms",
-    "tier": null
+    "tier": "frontier"
+  },
+  {
+    "id": "gemma-3-12b-it-q4_0",
+    "bytes": 6909282656,
+    "use": "Frontier: gemma 3 class",
+    "bundled": false,
+    "license": "gemma",
+    "licenseUrl": "https://ai.google.dev/gemma/terms",
+    "tier": "frontier"
   },
   {
     "id": "deepseek-r1-distill-qwen-32b-q4_k_m",
@@ -455,12 +455,12 @@ export const MODELS = [
     "tier": "frontier"
   },
   {
-    "id": "deepseek-r1-q4_k_m",
-    "bytes": 12884901888,
-    "use": "DeepSeek R1 reasoning, needs 32GB RAM",
+    "id": "deepseek-r1-distill-llama-8b-q4_k_m",
+    "bytes": 4920737216,
+    "use": "Mid: reasoning distilled to 8B",
     "bundled": false,
-    "license": "MIT",
-    "licenseUrl": "https://opensource.org/license/mit",
-    "tier": "frontier"
+    "license": "other",
+    "licenseUrl": "https://huggingface.co/deepseek-ai/DeepSeek-R1",
+    "tier": "mid"
   }
 ];
