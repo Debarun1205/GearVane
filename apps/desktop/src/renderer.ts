@@ -55,6 +55,7 @@ import { createWebBackend, type WebFsStorage } from './web-backend.js';
 import { hostedModelRows } from './hosted-models.js';
 import { capabilitySummary, isFullFeatured } from './capabilities.js';
 import MODEL_CATALOG from './models.json';
+import { isRemoteOnly, rowDetail } from './catalog.js';
 import {
   assessFit,
   formatBytes,
@@ -407,25 +408,32 @@ async function catalogEntries(): Promise<ModelPickerEntry[]> {
 
   // Grouped by `use`, which the catalog already carries: general, code,
   // small. Fifty flat rows are a list to scroll, not to choose from.
-  return (MODEL_CATALOG as CatalogEntry[]).map((entry) =>
-    bridge.models
-      ? {
-          id: entry.id,
-          label: entry.id,
-          group: entry.use,
-          detail: `${formatMB(entry.bytes)}`,
-          present: present.has(entry.id),
-          download: { bytes: entry.bytes },
-          license: entry.license,
-          licenseUrl: entry.licenseUrl,
-        }
-      : {
-          id: entry.id,
-          label: entry.id,
-          group: entry.use,
-          detail: 'desktop app only',
-        },
-  );
+  return (MODEL_CATALOG as CatalogEntry[]).map((entry) => {
+    const common = {
+      id: entry.id,
+      label: entry.id,
+      group: entry.use,
+      license: entry.license,
+      licenseUrl: entry.licenseUrl,
+    };
+    if (!bridge.models) {
+      return { ...common, detail: 'desktop app only' };
+    }
+    const onDisk = present.has(entry.id);
+    // A remote-only weight keeps its row -- hiding it would be pretending the
+    // catalog is smaller than it is -- but carries no `download`, which is
+    // exactly how the picker already marks a row it cannot install. The detail
+    // says why, so an absent button reads as a decision rather than a bug.
+    if (isRemoteOnly(entry)) {
+      return { ...common, detail: rowDetail(entry), present: onDisk };
+    }
+    return {
+      ...common,
+      detail: rowDetail(entry),
+      present: onDisk,
+      download: { bytes: entry.bytes },
+    };
+  });
 }
 
 /**

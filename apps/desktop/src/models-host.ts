@@ -15,6 +15,8 @@ import { fileURLToPath } from 'node:url';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 
+import { isRemoteOnly, remoteOnlyReason } from './catalog.js';
+
 export interface CatalogModel {
   id: string;
   file: string;
@@ -124,6 +126,14 @@ export async function downloadModel(
   mkdirSync(modelDir, { recursive: true });
   const target = join(modelDir, entry.file);
   if (existsSync(target)) return { path: target, bytes: sizeOf(target) };
+
+  // The picker already withholds the download affordance for these, but the
+  // main process is the boundary that matters: the renderer is sandboxed and
+  // every argument arrives over IPC, so a crafted `models:fetch` must not be
+  // able to start a 67 GiB transfer the UI never offered.
+  if (isRemoteOnly(entry)) {
+    throw new Error(remoteOnlyReason(entry.bytes));
+  }
 
   const fetchImpl = options.fetchImpl ?? fetch;
 
