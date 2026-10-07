@@ -15,7 +15,7 @@
  *   node tools/verify-requirements.mjs            # offline, fast
  *   node tools/verify-requirements.mjs --online   # also HEAD every weight
  */
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -161,15 +161,33 @@ check('R3 main process enforces the same threshold', () => {
   // The host owns the model directory, so the gate has to exist there too: a
   // renderer that ignored the picker must not be able to start a silent
   // multi-gigabyte transfer.
+  //
+  // Which file that is, is resolved rather than assumed. It was models-host.ts
+  // until the transfer was split into its own module so the first-boot check
+  // could run a real download outside Electron -- and this check kept looking
+  // at the old filename and reported the gate missing while it sat one module
+  // over. A check that names a file will report on that file's contents, not on
+  // whether the behaviour exists.
+  const srcDir = join(ROOT, 'apps/desktop/src');
+  const sources = readdirSync(srcDir)
+    .filter((name) => name.endsWith('.ts'))
+    .map((name) => ({ name, text: readFileSync(join(srcDir, name), 'utf8') }));
+
+  const owner = sources.find(
+    (file) =>
+      /export async function downloadModel\(/.test(file.text) &&
+      /from '\.\/catalog\.js'/.test(file.text),
+  );
+  assert(owner, 'no module exports downloadModel and reads the catalog');
   assert(
-    /import \{ AUTO_INSTALL_LIMIT/.test(modelsHostTs),
-    'models-host.ts does not import AUTO_INSTALL_LIMIT',
+    /import \{[^}]*AUTO_INSTALL_LIMIT[^}]*\} from '\.\/model-picker\.js'/.test(owner.text),
+    `${owner.name} does not import AUTO_INSTALL_LIMIT from model-picker`,
   );
   assert(
-    /AUTO_INSTALL_LIMIT/.test(modelsHostTs),
-    'models-host.ts never compares against AUTO_INSTALL_LIMIT',
+    /entry\.bytes >= AUTO_INSTALL_LIMIT && !options\.confirmed/.test(owner.text),
+    `${owner.name} never compares a weight against AUTO_INSTALL_LIMIT`,
   );
-  return 'models-host.ts imports and compares the same constant';
+  return `${owner.name} imports and enforces the same constant`;
 });
 
 check('R3 the picker asks above the threshold and does not below', () => {
