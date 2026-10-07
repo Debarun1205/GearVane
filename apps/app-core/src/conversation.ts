@@ -17,6 +17,15 @@ export interface Message {
   at: number;
   /** Tier the router chose for this turn, when it was a model turn. */
   tier?: Tier;
+  /**
+   * Which provider answered it.
+   *
+   * Recorded because it is the only honest basis for the cost meter: whether a
+   * run could bill is a fact about the provider, not the tier, and the mid and
+   * high tiers both hold local weights. The tier alone would call a run on the
+   * user's own disk "metered".
+   */
+  provider?: string;
   model?: string;
   confidence?: number;
   costUsd?: number;
@@ -119,6 +128,7 @@ export function reducer(state: AppState, action: Action): AppState {
           pending: false,
           error: undefined,
           ...(action.result.tier ? { tier: action.result.tier } : {}),
+          ...(action.result.provider ? { provider: action.result.provider } : {}),
           ...(action.result.model ? { model: action.result.model } : {}),
           confidence: action.result.confidence,
           costUsd: action.result.costUsd,

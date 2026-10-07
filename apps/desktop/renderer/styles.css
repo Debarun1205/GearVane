@@ -543,12 +543,32 @@ html[data-bg='grid'] .ambience::after {
 }
 
 .spend-meter {
-  display: block;
-  width: 84px;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  width: auto;
+  min-width: 84px;
+  max-width: 200px;
   height: 5px;
   border-radius: 999px;
   background: var(--border);
   overflow: hidden;
+}
+
+/*
+ * The figure itself, because a cost behind a hover is a cost nobody reads. It
+ * sits outside the bar's overflow so the text is not clipped by the 5px track.
+ */
+.spend-text {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  white-space: nowrap;
+  /* Free reads as free. The meter is dim either way; this says which. */
+  padding-inline: 0.35rem;
+}
+
+.spend-meter.is-free .spend-text {
+  color: var(--text-dim);
 }
 
 .spend-fill {

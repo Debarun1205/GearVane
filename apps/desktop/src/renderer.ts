@@ -55,7 +55,13 @@ import {
   readyNotice,
   type ProvisionBridge,
 } from './provision-chip.js';
-
+import {
+  browserDaySpendStore,
+  dayKey,
+  describe as describeCost,
+  type CostKind,
+} from '@gearvane/app-core';
+import { LOCAL_PROVIDER_NAMES_FOR_COST } from '@gearvane/core';
 import type { AgentResult, AgentStep } from '@gearvane/harness';
 import { createWebBackend, type WebFsStorage } from './web-backend.js';
 import { hostedModelRows } from './hosted-models.js';
@@ -272,6 +278,9 @@ const appearanceStorage: AppearanceStorage = {
 applyAppearance(document.documentElement, loadAppearance(appearanceStorage));
 
 let state: AppState = initialState();
+
+/** Where the day's running cost lives, so it survives a reload. */
+const daySpendStore = browserDaySpendStore();
 let controller: AppController | undefined;
 let activeTaskId: string | null = null;
 // The config the controller runs on, and whether it is built-in defaults.
@@ -873,17 +882,48 @@ function renderTierBadge(): void {
  *
  * A meter, not a budget. There is no cap behind it and nothing is cut off when
  * it fills -- `BudgetExceeded` was deleted from both engines rather than left
- * present and unreachable. A session that has spent nothing reads as exactly
- * that rather than as "100% used".
+ * present and unreachable. What it shows depends on what ran: a local weight
+ * reads "Free, unlimited", because "$0.00" invites the question of what the zero
+ * was a fraction of, and a run on the user's own disk is free in a way a number
+ * does not convey. A run through a keyed provider shows the day's figure.
  */
 function renderSpend(): void {
-  els.spendFill.style.width = '100%';
+  const reading = describeCost({ ...dayTotals(), kind: costKind() });
+  els.spendFill.style.width = reading.kind === 'metered' ? '100%' : '0';
   els.spendFill.className = 'spend-fill';
-  els.spendMeter.title = `$${state.sessionSpendUsd.toFixed(4)} spent this session`;
-  els.spendMeter.setAttribute(
-    'aria-label',
-    `Session cost ${state.sessionSpendUsd.toFixed(4)} US dollars. No limit is enforced.`,
-  );
+  els.spendMeter.title = reading.detail;
+  // The label is the figure, not a tooltip: this is a status bar, and a cost
+  // hidden behind a hover is a cost nobody reads.
+  els.spendMeter.setAttribute('aria-label', reading.detail);
+  const caption = els.spendMeter.querySelector('span.spend-text');
+  if (caption) caption.textContent = reading.label;
+  els.spendMeter.classList.toggle('is-free', reading.kind === 'free');
+}
+
+/**
+ * Whether anything billable has run.
+ *
+ * Sticky in the pessimistic direction and derived from the message history, not
+ * from a flag the run path has to remember to set. A message records the tier and
+ * provider that answered it, so "did this session touch a key" is a fact about
+ * what happened rather than a piece of state that can drift.
+ */
+function costKind(): CostKind {
+  for (const message of state.messages) {
+    const provider = message.provider?.toLowerCase();
+    if (provider && !LOCAL_PROVIDER_NAMES_FOR_COST.includes(provider)) return 'metered';
+  }
+  return 'free';
+}
+
+/** Session and day totals, day total read back from storage. */
+function dayTotals(): { session: number; day: number } {
+  const stored = daySpendStore.read();
+  const today = dayKey(Date.now());
+  return {
+    session: state.sessionSpendUsd,
+    day: stored && stored.day === today ? stored.usd : 0,
+  };
 }
 
 function renderComposer(): void {
