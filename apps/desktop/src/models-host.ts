@@ -9,7 +9,7 @@
  */
 
 import { ipcMain } from 'electron';
-import { createWriteStream, existsSync, mkdirSync, readFileSync, renameSync, statSync, unlinkSync } from 'node:fs';
+import { createWriteStream, existsSync, mkdirSync, readFileSync, renameSync, statSync, unlinkSync, type WriteStream } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Readable } from 'node:stream';
@@ -77,6 +77,31 @@ function sizeOf(path: string): number {
   }
 }
 
+/**
+ * Wait until a write stream has closed its file handle.
+ *
+ * On Windows an unlink issued in the moment after a stream is destroyed can
+ * still fail with EPERM, because the handle is released a tick later. Waiting
+ * for 'close' is the deterministic version of retrying the unlink and hoping
+ * the machine is fast enough.
+ *
+ * The timer is a backstop, not a deadline: a stream that never emits 'close'
+ * must not hold a cancelled download open forever, and the unlink retry in
+ * downloadModel still gets its turn afterwards.
+ */
+function handleReleased(sink: WriteStream | undefined): Promise<void> {
+  if (!sink) return Promise.resolve();
+  return new Promise<void>((resolve) => {
+    if (sink.closed) {
+      resolve();
+      return;
+    }
+    const done = (): void => resolve();
+    sink.once('close', done);
+    setTimeout(done, 500).unref?.();
+  });
+}
+
 export interface DownloadProgress {
   id: string;
   done: number;
@@ -125,6 +150,7 @@ export async function downloadModel(
   const total = Number(response.headers.get('content-length') ?? 0);
   const partial = `${target}.part`;
   let done = 0;
+  let sink: WriteStream | undefined;
   try {
     const source = Readable.fromWeb(
       response.body as import('node:stream/web').ReadableStream,
@@ -139,15 +165,22 @@ export async function downloadModel(
     // settled, the download hung after being cancelled, and the .part file
     // below was never cleaned up. pipeline watches both ends and tears down
     // the whole chain, which is what the catch block relies on.
-    await pipeline(source, createWriteStream(partial));
+    sink = createWriteStream(partial);
+    await pipeline(source, sink);
   } catch (error) {
     // A cancelled transfer leaves a half-written .part behind, and the
     // embedded server serves every GGUF in this directory. Removing it is
     // what stops a cancelled download becoming a corrupt model that loads
     // like real corruption.
     //
-    // On Windows the write stream may still hold a lock when we reach here,
-    // so unlinkSync fails with EPERM. Retry a few times with a small delay.
+    // On Windows the handle can outlive the rejected pipeline by a moment, and
+    // an unlink landing in that window fails with EPERM. Wait for the stream
+    // to actually close first: retrying the unlink only ever won because the
+    // machine happened to be fast enough for the handle to be gone already,
+    // which is why this still failed on the Windows runner. The retry stays
+    // as a backstop for the case where 'close' arrives but the directory
+    // entry has not been settled yet.
+    await handleReleased(sink);
     let unlinked = false;
     for (let i = 0; i < 5 && !unlinked; i++) {
       try {
