@@ -359,3 +359,52 @@ export class FeedbackLoop {
     return this.store.get_training_data();
   }
 }
+
+/** What a finished run contributes to the feedback loop. */
+export interface RunRecord {
+  /**
+   * The tier the router picked first, before any escalation.
+   *
+   * Hosts that do not route can still supply this by asking the router what
+   * it *would* choose: a prediction that was never acted on still grades the
+   * classifier against what actually served the request. Hosts that cannot
+   * produce one at all should omit it rather than record their own choice,
+   * which would grade every entry as correct.
+   */
+  predictedTier?: string;
+  /** The tier that served the request. */
+  servedTier?: string;
+  /** Whether the run produced a usable result. */
+  success: boolean;
+}
+
+/**
+ * Record one finished run into the feedback loop.
+ *
+ * The prediction is written first and always, so an interrupted run still
+ * leaves the router's intent behind. The outcome is written only when the run
+ * succeeded and a serving tier is known: a failed run records the prediction
+ * with no outcome, which keeps it out of training data rather than teaching
+ * the classifier that a failure was the right answer.
+ *
+ * Every error is swallowed. Feedback is a side effect of a run, so a
+ * read-only profile, a full disk, or a corrupt file must never change what a
+ * run did or whether it succeeded.
+ */
+export function recordRunOutcome(
+  storage: FeedbackStorage,
+  taskId: string,
+  description: string,
+  record: RunRecord,
+): void {
+  try {
+    if (!record.predictedTier) return;
+    const loop = new FeedbackLoop(new FeedbackStore(storage));
+    loop.record_prediction(taskId, description, record.predictedTier);
+    if (record.success && record.servedTier) {
+      loop.record_outcome(taskId, record.servedTier);
+    }
+  } catch {
+    // Feedback I/O must never change a run's outcome.
+  }
+}

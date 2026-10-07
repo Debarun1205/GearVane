@@ -5,6 +5,7 @@ import {
   FeedbackStore,
   formatFeedbackPercent,
   formatRating,
+  recordRunOutcome,
   roundHalfEven,
   type FeedbackEntry,
 } from '../src/feedback.js';
@@ -222,6 +223,106 @@ describe('FeedbackLoop recording', () => {
     loop.record_prediction('t4', 'fix a typo', 'local');
     loop.record_outcome('t4', 'local');
     expect(FeedbackStore.deserialize(written)[0]?.was_correct).toBe(true);
+  });
+});
+
+describe('recordRunOutcome', () => {
+  function readBack(box: { text: string }): FeedbackEntry[] {
+    return FeedbackStore.deserialize(box.text);
+  }
+
+  it('grades a successful run against the router prediction', () => {
+    const box = { text: '' };
+    recordRunOutcome(
+      { read: () => box.text, write: (t) => { box.text = t; } },
+      'r1',
+      'refactor the auth architecture',
+      { predictedTier: 'mid', servedTier: 'frontier', success: true },
+    );
+    const [entry] = readBack(box);
+    expect(entry?.predicted_tier).toBe('mid');
+    expect(entry?.actual_tier).toBe('frontier');
+    // Escalation records as a miss, which is what teaches the classifier to
+    // route higher next time rather than repeating the cheap answer.
+    expect(entry?.was_correct).toBe(false);
+  });
+
+  it('records the prediction alone for a failed run', () => {
+    // A failure with no outcome must stay out of training data rather than
+    // teach the classifier that failing was the right answer.
+    const box = { text: '' };
+    recordRunOutcome(
+      { read: () => box.text, write: (t) => { box.text = t; } },
+      'r2',
+      'fix a typo',
+      { predictedTier: 'local', servedTier: 'local', success: false },
+    );
+    const [entry] = readBack(box);
+    expect(entry?.predicted_tier).toBe('local');
+    expect(entry?.actual_tier).toBeNull();
+    const store = new FeedbackStore();
+    expect(store.get_training_data()).toEqual([]);
+  });
+
+  it('records nothing at all without a prediction', () => {
+    // A host that cannot ask the router anything must skip the entry. Falling
+    // back to the serving tier would grade every entry as correct.
+    const box = { text: '' };
+    recordRunOutcome(
+      { read: () => box.text, write: (t) => { box.text = t; } },
+      'r3',
+      'fix a typo',
+      { servedTier: 'local', success: true },
+    );
+    expect(readBack(box)).toEqual([]);
+    expect(box.text).toBe('');
+  });
+
+  it('skips the outcome when no serving tier is known', () => {
+    const box = { text: '' };
+    recordRunOutcome(
+      { read: () => box.text, write: (t) => { box.text = t; } },
+      'r4',
+      'fix a typo',
+      { predictedTier: 'local', success: true },
+    );
+    expect(readBack(box)[0]?.actual_tier).toBeNull();
+  });
+
+  it('never lets a storage failure escape', () => {
+    // Feedback is a side effect of a run. A read-only profile or a full disk
+    // must not change what the run did or whether it succeeded.
+    const exploding = {
+      read: () => {
+        throw new Error('disk on fire');
+      },
+      write: () => {
+        throw new Error('disk on fire');
+      },
+    };
+    expect(() =>
+      recordRunOutcome(exploding, 'r5', 'fix a typo', {
+        predictedTier: 'local',
+        servedTier: 'local',
+        success: true,
+      }),
+    ).not.toThrow();
+  });
+
+  it('appends to an existing log rather than replacing it', () => {
+    const box = { text: '' };
+    const storage = { read: () => box.text, write: (t: string) => { box.text = t; } };
+    recordRunOutcome(storage, 'r6', 'first', {
+      predictedTier: 'local',
+      servedTier: 'local',
+      success: true,
+    });
+    recordRunOutcome(storage, 'r7', 'second', {
+      predictedTier: 'mid',
+      servedTier: 'mid',
+      success: true,
+    });
+    expect(readBack(box).map((e) => e.task_id)).toEqual(['r6', 'r7']);
   });
 });
 

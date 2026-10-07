@@ -89,11 +89,13 @@ export {
   FeedbackStore,
   formatFeedbackPercent,
   formatRating,
+  recordRunOutcome,
   roundHalfEven,
   type AdjustmentSuggestion,
   type FeedbackEntry,
   type FeedbackStats,
   type FeedbackStorage,
+  type RunRecord,
   type TierAccuracy,
 } from './feedback.js';
 export {

@@ -19,6 +19,7 @@ import {
   LearnedClassifier,
   formatFeedbackPercent,
   formatRating,
+  recordRunOutcome,
   serializeWeights,
   type FeedbackStorage,
   type SerializedWeights,
@@ -202,7 +203,11 @@ export function cmdTrain(args: ParsedArgs, config: GearVaneConfig, json: boolean
  * tier that served the request. Escalation therefore records as a miss,
  * which is what teaches the classifier to route higher next time. Failed
  * runs record the prediction with no outcome, so they never enter training
- * data. Storage failures are swallowed: feedback must never break a run.
+ * data.
+ *
+ * The recording itself lives in @gearvane/core, which is what lets a host
+ * that does not go through this CLI -- the desktop app -- contribute the same
+ * entries instead of a second, divergent implementation.
  */
 export function recordRunFeedback(
   config: GearVaneConfig,
@@ -210,16 +215,10 @@ export function recordRunFeedback(
   description: string,
   result: { history?: Array<{ tier: Tier }>; tier?: Tier; success: boolean },
 ): void {
-  try {
-    const history = result.history ?? [];
-    const predicted = history.length > 0 ? history[0]?.tier : result.tier;
-    if (!predicted) return;
-    const loop = new FeedbackLoop(new FeedbackStore(fileFeedbackStorage(feedbackFileFor(config))));
-    loop.record_prediction(taskId, description, predicted);
-    if (result.success && result.tier) {
-      loop.record_outcome(taskId, result.tier);
-    }
-  } catch {
-    // Feedback I/O must never change a run's exit code.
-  }
+  const history = result.history ?? [];
+  recordRunOutcome(fileFeedbackStorage(feedbackFileFor(config)), taskId, description, {
+    predictedTier: history.length > 0 ? history[0]?.tier : result.tier,
+    servedTier: result.tier,
+    success: result.success,
+  });
 }
