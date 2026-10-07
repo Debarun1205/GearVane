@@ -59,6 +59,9 @@ import {
   browserDaySpendStore,
   dayKey,
   describe as describeCost,
+  describeRouting,
+  headline,
+  type Routed,
   type CostKind,
 } from '@gearvane/app-core';
 import { LOCAL_PROVIDER_NAMES_FOR_COST } from '@gearvane/core';
@@ -346,6 +349,7 @@ const els = {
   keysSave: byId<HTMLButtonElement>('keys-save'),
   keysClear: byId<HTMLButtonElement>('keys-clear'),
   tierBadge: byId('tier-badge'),
+  routingNote: byId('routing-note'),
   spendFill: byId('spend-fill'),
   spendMeter: byId('spend-meter'),
   provisionChip: byId('provision-chip'),
@@ -852,12 +856,26 @@ function metaItem(label: string, value: string): HTMLElement {
   return span;
 }
 
+/**
+ * The routing note: why the next or last message went where it did.
+ *
+ * Visible text, not a tooltip. The reasons used to live in the tier badge's
+ * `title`, which means visible if you happened to hover the badge and invisible
+ * otherwise. The wording is in `routing-note.ts` so it can be checked without a
+ * DOM.
+ *
+ * While there is a draft this previews, so the choice is inspectable before it
+ * is committed. With an empty draft it falls back to the last real decision,
+ * because the question a routing note answers -- "why did it answer that way?"
+ * -- is usually asked after the fact, not before.
+ */
 function renderTierBadge(): void {
   const draft = state.draft.trim();
 
   if (!draft || !controller) {
     els.tierBadge.textContent = 'no prompt';
     els.tierBadge.className = 'tier-badge tier-none';
+    showLastRoutingNote();
     return;
   }
 
@@ -870,11 +888,41 @@ function renderTierBadge(): void {
     els.tierBadge.textContent = preview.tier;
     els.tierBadge.className = `tier-badge tier-${preview.tier}`;
     els.tierBadge.title = `${preview.provider}/${preview.model} - ${preview.reasons.join('; ')}`;
+    showRoutingNote(preview);
   } catch {
     els.tierBadge.textContent = 'no model';
     els.tierBadge.className = 'tier-badge tier-none';
     els.tierBadge.title = 'No model tiers configured';
+    setRoutingNote('', false);
   }
+}
+
+function showRoutingNote(decision: Routed): void {
+  const note = describeRouting(decision);
+  // Hidden when there is nothing to say, rather than showing an empty row.
+  setRoutingNote(note.reasons.length === 0 ? '' : headline(note, decision), note.notable);
+}
+
+function showLastRoutingNote(): void {
+  const last = [...state.messages].reverse().find((message) => message.routingReasons);
+  if (!last) {
+    setRoutingNote('', false);
+    return;
+  }
+  const note = describeRouting({
+    tier: last.tier,
+    model: last.model,
+    reasons: last.routingReasons,
+  });
+  setRoutingNote(note.summary, note.notable);
+}
+
+function setRoutingNote(text: string, notable: boolean): void {
+  els.routingNote.textContent = text;
+  // `hidden` rather than a class, so a screen reader skips it too.
+  els.routingNote.hidden = text === '';
+  els.routingNote.classList.toggle('is-notable', notable);
+  els.routingNote.title = notable ? 'The router did not pick this tier directly' : '';
 }
 
 /**

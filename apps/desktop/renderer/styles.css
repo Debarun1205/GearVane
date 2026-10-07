@@ -285,6 +285,31 @@ html[data-bg='grid'] .ambience::after {
   border-color: color-mix(in srgb, var(--tier-frontier) 45%, transparent);
 }
 
+/* The routing note: which model will answer, and whether the
+   router got there directly. Dim by default, because it is
+   information rather than a prompt, but never hidden -- it used
+   to live in the tier badge's title, which meant readable only
+   if you already knew it was there. */
+.routing-note {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  white-space: nowrap;
+  max-width: 30ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.routing-note[hidden] {
+  display: none;
+}
+
+/* Escalation, a pin that matched nothing, a degraded fallback:
+   the cases where the badge looks ordinary and the answer is not. */
+.routing-note.is-notable {
+  color: var(--tier-frontier);
+  font-weight: 600;
+}
+
 /* Model picker: the header dropdown that chooses what
    drives the next run. Auto first, then every model, with
    a green marker beside weights already on disk. */

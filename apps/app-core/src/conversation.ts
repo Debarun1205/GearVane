@@ -27,6 +27,15 @@ export interface Message {
    */
   provider?: string;
   model?: string;
+  /**
+   * Why the router chose that, verbatim.
+   *
+   * Kept rather than summarised, because the interesting cases are the
+   * uninteresting-looking ones: a badge reading "high" says nothing about whether
+   * the router got there directly or by failing twice on "mid". The reasons are
+   * the only record of the second.
+   */
+  routingReasons?: string[];
   confidence?: number;
   costUsd?: number;
   durationMs?: number;
@@ -130,6 +139,9 @@ export function reducer(state: AppState, action: Action): AppState {
           ...(action.result.tier ? { tier: action.result.tier } : {}),
           ...(action.result.provider ? { provider: action.result.provider } : {}),
           ...(action.result.model ? { model: action.result.model } : {}),
+          ...(action.result.reasons.length > 0
+            ? { routingReasons: action.result.reasons }
+            : {}),
           confidence: action.result.confidence,
           costUsd: action.result.costUsd,
           durationMs: action.result.durationMs,
