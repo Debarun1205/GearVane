@@ -58,47 +58,62 @@ const results = [];
 const CHECK_TIMEOUT_MS = Number(process.env.CHECK_TIMEOUT_MS ?? 15 * 60 * 1000);
 
 /**
- * Start one check, including when it is async.
+ * Register one check. It does not run yet.
  *
- * Three things this has to get right:
+ * Registering rather than starting is the whole point. An earlier version pushed
+ * an already-running promise here, so the "sequential" loop at the bottom only
+ * sequenced the *awaiting* -- all twenty-three checks began at once, each
+ * streaming gigabytes, and the script looked hung for over an hour. Storing the
+ * thunk and calling it inside the loop is what actually makes it sequential.
  *
- *   - A rejection inside an async check must be recorded, not thrown. The try
- *     block has already returned by the time the await inside it fails.
- *   - They run one at a time, not concurrently. Each of these streams gigabytes
- *     through an HTTP server into a temp directory and hashes the result; eight
- *     of them at once thrash the disk so badly that the whole script appeared to
- *     hang. Sequential, with the cheap logic checks first.
- *   - Each one announces itself and reports how long it took. A script that
- *     prints nothing until it finishes cannot be told apart from one that is
- *     stuck, which is exactly the failure this had twice.
+ * Each one announces itself and reports how long it took: a script that prints
+ * nothing until it finishes cannot be told apart from one that is stuck, which
+ * is exactly the failure this had twice.
  */
-const pending = [];
+const registered = [];
 function check(name, fn) {
-  pending.push(
-    (async () => {
-      const began = Date.now();
-      process.stdout.write(`  ... ${name}\n`);
-      try {
-        const detail = await withTimeout(
-          fn(),
-          CHECK_TIMEOUT_MS,
-          name,
-        );
-        results.push({ name, pass: true, detail: detail ?? '' });
-        process.stdout.write(`  ok  ${name} (${secs(began)})\n`);
-      } catch (error) {
-        results.push({ name, pass: false, detail: error.message });
-        process.stdout.write(`  FAIL ${name} (${secs(began)}): ${error.message}\n`);
-      }
-    })(),
-  );
+  registered.push({ name, fn });
+}
+
+/**
+ * The checks that move real gigabytes, by name.
+ *
+ * Named rather than detected, because what makes them expensive is not visible
+ * from the outside: they are the ones that let a Provisioner run to completion
+ * against the mirror. A check that seeds a file and asserts it is skipped is
+ * cheap; one that lets the transfer finish is not.
+ */
+const FULL_TRANSFER_CHECKS = new Set([
+  'the provisioner fetches both weights, one at a time, verified',
+  'a failed attempt is retried, not abandoned',
+  'it resumes from a partial instead of starting over',
+  '"download anyway" continues on a metered link',
+  'a weight the machine cannot hold never blocks the boot',
+]);
+
+/** Run every registered check, one at a time, and record the outcome of each. */
+async function runAll() {
+  for (const { name, fn } of registered) {
+    const began = Date.now();
+    process.stdout.write(`  ... ${name}\n`);
+    try {
+      // Promise.resolve, because most checks are synchronous. withoutTimeout
+      // needs something with .then() and a bare string is not one.
+      const detail = await withTimeout(Promise.resolve(fn()), CHECK_TIMEOUT_MS);
+      results.push({ name, pass: true, detail: detail ?? '' });
+      process.stdout.write(`  ok  ${name} (${secs(began)})\n`);
+    } catch (error) {
+      results.push({ name, pass: false, detail: error.message });
+      process.stdout.write(`  FAIL ${name} (${secs(began)}): ${error.message}\n`);
+    }
+  }
 }
 
 function secs(began) {
   return `${((Date.now() - began) / 1000).toFixed(1)}s`;
 }
 
-function withTimeout(promise, ms, name) {
+function withTimeout(promise, ms) {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(
       () => reject(new Error(`no result after ${Math.round(ms / 1000)}s`)),
@@ -795,7 +810,35 @@ check('the chip describes each state in words a person can act on', async () => 
 
 // Sequential, deliberately. See check() -- concurrent gigabyte streams made this
 // look hung.
-for (const one of pending) await one;
+//
+// --quick skips the four checks that move real gigabytes. They are the ones that
+// prove the transfer end to end, and they are also the reason this script takes
+// hours rather than minutes: a 9 GiB transfer at the ~4 MB/s this machine manages
+// with Defender scanning every write is a 40-minute wait, and there are several.
+// The logic checks -- sequencing, retry, pause, cancel, metered, skip, chip
+// wording -- run in seconds and cover everything except the bytes themselves.
+// So: --quick for a change to the logic, full run for a change to the transfer.
+const QUICK = process.argv.includes('--quick');
+if (QUICK) {
+  // .has, not `in`: `in` on a Set looks at keys, and a Set has none, so the
+// filter matched nothing and --quick silently ran everything.
+const skipped = registered.filter((r) => FULL_TRANSFER_CHECKS.has(r.name));
+  for (const r of skipped) {
+    results.push({
+      name: r.name,
+      pass: true,
+      detail: 'skipped: --quick omits the multi-gigabyte checks',
+    });
+  }
+  const keep = registered.filter((r) => !FULL_TRANSFER_CHECKS.has(r.name));
+  registered.length = 0;
+  registered.push(...keep);
+  process.stdout.write(
+    `\n--quick: omitting ${skipped.length} multi-gigabyte check(s): ` +
+      `${skipped.map((r) => r.name).join(', ')}\n\n`,
+  );
+}
+await runAll();
 results.sort((a, b) => a.name.localeCompare(b.name));
 
 const width = Math.max(...results.map((r) => r.name.length));

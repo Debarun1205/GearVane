@@ -89,6 +89,33 @@ const MAX_ATTEMPTS = 3;
 /** Backoff between attempts. Deliberately short: first boot is interactive. */
 const RETRY_DELAY_MS = [2000, 8000, 30_000];
 
+/**
+ * Bound a wait that should take milliseconds.
+ *
+ * Used where a caller has to wait on something it does not control -- a transfer
+ * unwinding, a socket closing -- and where an unbounded await would leave a
+ * button looking like it did nothing. The timeout is a bound, not a prediction:
+ * it fires only if the thing being waited on is wedged.
+ */
+function withTimeout<T>(promise: Promise<T>, ms: number, what: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(
+      () => reject(new Error(`timed out after ${ms}ms waiting for ${what}`)),
+      ms,
+    );
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (error) => {
+        clearTimeout(timer);
+        reject(error);
+      },
+    );
+  });
+}
+
 export class Provisioner {
   private items: ProvisionItem[] = [];
   private controller: AbortController | undefined;
@@ -98,6 +125,14 @@ export class Provisioner {
   private meterApproved = false;
   private attempts = new Map<string, number>();
   private stopped = false;
+  /**
+   * The in-flight drain(), so cancel() can wait for it.
+   *
+   * Not for resuming -- resume() starts a new one. This exists so cancel() can
+   * know when the transfer has actually unwound, because the partial cannot be
+   * removed while its write stream is open.
+   */
+  private drainPromise: Promise<void> | undefined;
 
   constructor(
     private readonly modelDir: string,
@@ -164,7 +199,10 @@ export class Provisioner {
     });
 
     this.emit();
-    await this.drain();
+    // Kept, not just awaited: cancel() has to know when the transfer has unwound
+    // before it can remove the partial. See drainPromise.
+    this.drainPromise = this.drain();
+    await this.drainPromise;
   }
 
   /**
@@ -318,13 +356,28 @@ export class Provisioner {
    * Distinct from pause: the user is saying they do not want this weight, so a
    * leftover `.part` is exactly what should not survive -- the embedded server
    * serves every GGUF in the directory and a partial one loads as corruption.
+   *
+   * Async, and the await matters. Unlinking the partial while the write stream
+   * is still open does not work: on Windows the unlink fails with EPERM and
+   * `rmSync(..., { force: true })` swallows that error, so the file is still
+   * there afterwards and the failure is invisible. So this waits for the transfer
+   * to unwind -- which is what closes the stream -- and only then removes it.
+   * The timeout is a bound on a wait that should take milliseconds, so a wedged
+   * transfer cannot leave the Cancel button looking like it did nothing.
    */
-  cancel(id?: string): void {
+  async cancel(id?: string): Promise<void> {
     this.stopped = true;
     this.paused = false;
     if (id) cancelDownload(id);
     else for (const item of this.items) if (item.state === 'running') cancelDownload(item.id);
     this.controller?.abort();
+
+    // Both guards, not either. `running` is set false in drain()'s finally, which
+    // can run before this line; drainPromise is the thing that is actually
+    // awaited, and it is undefined when nothing was ever started.
+    if (this.running && this.drainPromise) {
+      await withTimeout(this.drainPromise, 10_000, 'the transfer to unwind');
+    }
 
     for (const item of this.items) {
       if (id && item.id !== id) continue;
