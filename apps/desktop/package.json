@@ -27,9 +27,9 @@
     "lint": "eslint src",
     "models:fetch": "node scripts/fetch-model.mjs",
     "start": "npm run build && electron dist/main.js",
-    "dist": "npm run build && electron-builder",
-    "dist:linux": "npm run build && electron-builder --linux",
-    "dist:win": "npm run build && electron-builder --win",
+    "dist": "npm run build && npm run models:fetch && electron-builder",
+    "dist:linux": "npm run build && npm run models:fetch && electron-builder --linux",
+    "dist:win": "npm run build && npm run models:fetch && electron-builder --win",
     "android:sync": "npm run build && cap sync android",
     "android:apk": "npm run android:sync && cd android && gradlew assembleDebug",
     "clean": "rm -rf dist release out android/app/build"
@@ -67,7 +67,7 @@
     ],
     "extraResources": [
       {
-        "from": "resources/models",
+        "from": "resources/models/SmolLM2-360M-Instruct.Q4_K_M.gguf",
         "to": "models"
       }
     ],

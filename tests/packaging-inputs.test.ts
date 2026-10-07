@@ -18,15 +18,24 @@ const manifest = JSON.parse(readFileSync(join(APP, 'package.json'), 'utf8')) as 
   author?: { name?: string; email?: string } | string;
   homepage?: string;
   repository?: unknown;
+  scripts: Record<string, string>;
   devDependencies: { electron: string };
   build: {
     files: string[];
+    extraResources?: Array<{ from: string; to: string }>;
     electronVersion?: string;
     linux: { icon?: string };
     win: { icon?: string };
     directories: { buildResources: string };
   };
 };
+
+/** The catalog the fetch script and the installer both read. */
+const catalog = JSON.parse(
+  readFileSync(join(APP, 'src', 'models.json'), 'utf8'),
+) as Array<{ id: string; file: string; bytes: number; bundled?: boolean }>;
+
+const BUNDLED = catalog.filter((entry) => entry.bundled === true);
 
 /**
  * Properties electron-builder accepts in its `build` block.
@@ -179,5 +188,79 @@ describe('packaging inputs', () => {
     // Icons belong to the build, not to the packaged app tree. Listing them
     // in files ships a stray PNG inside the bundle for no reason.
     expect(manifest.build.files).not.toContain('resources/icon.png');
+  });
+});
+
+/**
+ * The installer's size is a release blocker, not a nicety: GitHub caps a
+ * release asset at 2 GiB, and this app was measured building one at 9.7 GiB.
+ */
+describe('installer weight budget', () => {
+  it('bundles exactly one model', () => {
+    // Regression: extraResources pointed at the whole resources/models
+    // directory. That directory is gitignored, so CI always starts empty and
+    // always produces a correct installer -- while a developer's `npm run
+    // dist` shipped every weight that machine happened to have, which is
+    // where the 9.7 GiB came from. Naming the file removes the directory's
+    // contents from the decision entirely.
+    expect(BUNDLED).toHaveLength(1);
+    expect(manifest.build.extraResources).toHaveLength(1);
+  });
+
+  it('names the bundled file rather than the directory', () => {
+    const from = manifest.build.extraResources?.[0]?.from ?? '';
+    expect(from.startsWith('resources/models/')).toBe(true);
+    // A trailing slash or a bare directory means "whatever is in here".
+    expect(from.endsWith('/')).toBe(false);
+  });
+
+  it('ships the same file the catalog flags as bundled', () => {
+    // The filename is duplicated in package.json because electron-builder's
+    // config is static JSON. This is the guard against the two drifting, the
+    // same way the site and README tables are guarded.
+    expect(manifest.build.extraResources?.[0]?.from).toBe(
+      `resources/models/${BUNDLED[0]?.file}`,
+    );
+  });
+
+  it('lands the weight where the app looks for it', () => {
+    expect(manifest.build.extraResources?.[0]?.to).toBe('models');
+  });
+
+  it('keeps the installer under the 2 GiB asset cap', () => {
+    // The bundled model plus a generous allowance for Electron itself and the
+    // compiled app. Generous on purpose: this is a tripwire for a second
+    // weight creeping in, not a prediction of the exact artifact size.
+    const budgetBytes = 2 * 1024 ** 3;
+    expect(BUNDLED[0]?.bytes).toBeLessThan(budgetBytes / 2);
+  });
+
+  it('fetches the bundled model before packaging, locally and in CI', () => {
+    // extraResources now names a file that has to exist, so a build that
+    // skipped the fetch would fail late and confusingly. The release
+    // workflow already fetched; the local scripts now match it.
+    for (const script of ['dist', 'dist:linux', 'dist:win']) {
+      expect(manifest.scripts[script]).toContain('models:fetch');
+    }
+    const workflow = readFileSync(
+      join(REPO, '.github', 'workflows', 'release.yml'),
+      'utf8',
+    );
+    // Match the commands, not the prose: the workflow's header comment names
+    // electron-builder long before the packaging step, and matching that would
+    // make this test pass for the wrong reason.
+    const fetchAt = workflow.indexOf('run: npm run models:fetch');
+    const packageAt = workflow.indexOf('npx electron-builder');
+    expect(fetchAt).toBeGreaterThan(-1);
+    expect(packageAt).toBeGreaterThan(-1);
+    expect(fetchAt).toBeLessThan(packageAt);
+  });
+
+  it('does not track downloaded weights in git', () => {
+    // This is what let the directory drift without any test noticing: a
+    // gitignored resources/models is empty in CI, so the packaging tests
+    // could never see the problem.
+    const ignore = readFileSync(join(REPO, '.gitignore'), 'utf8');
+    expect(ignore).toContain('apps/desktop/resources/models/');
   });
 });
