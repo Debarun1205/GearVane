@@ -72,10 +72,15 @@ describe('desktop manifest', () => {
     // The embedded tier's whole point is zero setup: the GGUF travels
     // inside the installer via extraResources, fetched at build time
     // rather than committed to git.
+    //
+    // `from` names the file, not the directory. It used to name
+    // resources/models, which copied whatever weights the build machine
+    // happened to have -- the directory is gitignored, so CI was always
+    // empty and never showed it. tests/packaging-inputs.test.ts pins which
+    // file, and why; this only cares that it still lands in `models/`.
     const extra = (manifest.build.extraResources ?? []) as Array<{ from?: string; to?: string }>;
-    expect(extra.some((entry) => entry.from === 'resources/models' && entry.to === 'models')).toBe(
-      true,
-    );
+    expect(extra.some((entry) => entry.to === 'models')).toBe(true);
+    expect(extra.every((entry) => entry.from?.startsWith('resources/models/'))).toBe(true);
   });
 
   it('has an app id and a product name', () => {

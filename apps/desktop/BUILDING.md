@@ -21,11 +21,11 @@ What is **not** in the repository, and why:
 
 ## Bundled local model
 
-The desktop installer carries its own models (Qwen2.5-Coder 0.5B and
-SmolLM2 360M for the local tier, Qwen2.5-7B for mid, Qwen3-8B for
-frontier — roughly 10GB together), so a fresh install answers every
-tier with nothing else to set up. The GGUFs are **not** committed to
-git; fetch them before packaging:
+The installer carries **one** weight: SmolLM2 360M (~258 MB), flagged
+`bundled` in `src/models.json`. That is enough for the `local` tier to answer
+offline the moment the app opens. The `mid` and `frontier` tiers ship empty —
+nothing else is bundled, and the other 49 weights download on first run. The
+GGUF is **not** committed to git:
 
 ```bash
 cd apps/desktop
@@ -33,10 +33,17 @@ npm run models:fetch   # downloads into resources/models/ (gitignored)
 npm run dist:win       # or dist:linux / dist
 ```
 
-`extraResources` copies `resources/models` beside the app, where the main
-process serves it on loopback. Without the file the embedded tier reports
-unavailable and the other local providers carry on — the app never
-downloads a model on its own. Point `GEARVANE_MODEL_DIR` elsewhere, or
+The `dist` scripts run `models:fetch` themselves, so a local build matches a
+CI build. `extraResources` names that single GGUF rather than the
+`resources/models` directory, which matters: the directory is gitignored, so
+naming it meant a build copied whatever weights the machine happened to have
+— several GiB of them, past the 2 GiB per-asset limit GitHub enforces on
+release uploads. Naming the file makes that impossible.
+
+The weight lands beside the app under `resources/models`, where the main
+process serves it on loopback. Without it the embedded tier reports
+unavailable and the other local providers carry on — the app never downloads a
+model on its own. Point `GEARVANE_MODEL_DIR` elsewhere, or
 `GEARVANE_EMBEDDED_MODEL` at a different GGUF name, to run another model.
 The release workflow fetches automatically on tag builds.
 
