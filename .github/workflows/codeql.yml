@@ -10,6 +10,10 @@ on:
     - cron: '23 6 * * 1'
   workflow_dispatch:
 
+# Least-privilege defaults.
+permissions:
+  contents: read
+
 jobs:
   analyze:
     name: Analyse (${{ matrix.language }})
@@ -27,10 +31,10 @@ jobs:
           - language: python
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Initialise CodeQL
-        uses: github/codeql-action/init@v3
+        uses: github/codeql-action/init@c29f4eedf1fb43be1c9b9611f2e861ca03ad0008 # v3.28.16
         with:
           languages: ${{ matrix.language }}
 
@@ -38,9 +42,9 @@ jobs:
         # The JavaScript extractor needs no build (node_modules is excluded
         # by default); the Python extractor parses sources directly. This
         # step is the CodeQL template's no-op for both.
-        uses: github/codeql-action/autobuild@v3
+        uses: github/codeql-action/autobuild@c29f4eedf1fb43be1c9b9611f2e861ca03ad0008 # v3.28.16
 
       - name: Analyse
-        uses: github/codeql-action/analyze@v3
+        uses: github/codeql-action/analyze@c29f4eedf1fb43be1c9b9611f2e861ca03ad0008 # v3.28.16
         with:
           category: '/language:${{ matrix.language }}'
