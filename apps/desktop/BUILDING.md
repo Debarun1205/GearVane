@@ -21,11 +21,15 @@ What is **not** in the repository, and why:
 
 ## Bundled local model
 
-The installer carries **one** weight: SmolLM2 360M (~258 MB), flagged
-`bundled` in `src/models.json`. That is enough for the `local` tier to answer
-offline the moment the app opens. The `mid` and `frontier` tiers ship empty —
-nothing else is bundled, and the other 49 weights download on first run. The
-GGUF is **not** committed to git:
+The installer carries **two** weights: SmolLM2 360M (~258 MB) and
+Qwen2.5-Coder 0.5B (~409 MB), both flagged `bundled` in `src/models.json`. That
+is enough for the `local` tier to answer offline the moment the app opens, for
+0.65 GiB together.
+
+Nothing else is bundled, and the other 48 weights do not all arrive on first
+launch either. Two are flagged `first-boot` (Qwen2.5 7B and Qwen3 8B, 9.04 GiB)
+and the app fetches those in the background on a first launch. The remaining 46
+download when you pick them. The GGUF is **not** committed to git:
 
 ```bash
 cd apps/desktop

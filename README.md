@@ -153,6 +153,13 @@ run costs nothing and needs no account. All 50 together are
 272.2 GiB; nobody wants that.
 <!-- END catalog-summary -->
 
+The one thing that interrupts is a connection that *looks* metered. Chromium can
+tell, the app asks, and it offers one click to continue anyway — it never
+refuses, because a user on a hotspot has already decided what they want to pay
+for. The transfer resumes where it stopped if you quit, retries three times if
+the network drops, and a chip above the transcript shows the bytes, the speed and
+the ETA while it runs.
+
 Weights under 500 MB install silently when you pick them; larger ones ask
 first, showing the size, the licence, and whether it will fit your memory.
 
