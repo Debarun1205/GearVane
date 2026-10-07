@@ -19,7 +19,7 @@ cheapest tier that can do the job.**
    └─────────┘             └─────────┘             └───────────┘
 ```
 
-Four models are ready the moment you install. Fifty more are one click away.
+One model is ready the moment you install, offline. The other 49 are one click away.
 No account, no API key, and in Local-only mode nothing leaves your machine.
 MIT licensed. **Alpha, and honest about it** — see [Status](#status).
 
@@ -44,7 +44,7 @@ MIT licensed. **Alpha, and honest about it** — see [Status](#status).
    was chosen and pin a different one. Try it on the
    [site](https://debarun1205.github.io/GearVane/#playground), where the real
    classifier runs in your browser.
-3. **Free by default.** Four weights ship in the installer; the rest install
+3. **Free by default.** One weight ships in the installer; the rest install
    when you pick them (under 500 MB silently, larger after you confirm). Local
    models cost nothing per token, so there are no spend ceilings on them.
    Hosted keys keep their limits, because those are the only runs that bill you.
@@ -136,9 +136,10 @@ gearvane --help
 <!-- BEGIN catalog-summary -->
 **50 weights, 36 of them in the default tiers.**
 
-Four ship in the installer (`smollm2-360m-instruct.q4_k_m`) and work offline at first launch. The rest are one click
-away. Every one is a downloadable file you run on your own machine, so a
-local run costs nothing and needs no account. The catalog as a whole is
+One ships in the installer (`smollm2-360m-instruct.q4_k_m`) and works offline at first
+launch. The rest are one click away. Every one is a downloadable file you
+run on your own machine, so a local run costs nothing and needs no
+account. The catalog as a whole is
 449.7 GiB if you wanted all of it; nobody does.
 <!-- END catalog-summary -->
 
@@ -400,14 +401,18 @@ identically.
 Requires platform toolchains this repository does not carry. See
 [apps/desktop/BUILDING.md](apps/desktop/BUILDING.md).
 
-**A known blocker, stated rather than hidden:** the release workflow currently
-fetches every weight flagged `bundled` and packages it into the installer.
-Those four are 9.7 GiB together, which is over the 2 GiB per-asset limit
-GitHub enforces on release uploads, so the next release would fail at upload.
-v0.3.0 predates the four-model bundling, which is why the installers above are
-93 MB and contain no weights. Splitting the bundle — one small model in the
-installer, the rest as a first-run download with resume and checksum — is
-designed but not implemented.
+**The installer carries one weight, not the catalog.** Exactly one model is
+flagged `bundled` in `src/models.json` (SmolLM2 360M, ~258 MB); the other 49
+download on first run, with resume and a size check. That split is what keeps
+the installer under the 2 GiB per-asset limit GitHub enforces on release
+uploads.
+
+`extraResources` names that one file rather than the `resources/models`
+directory, so a build machine that happens to have other weights on disk
+cannot fold them into the artifact. That directory is gitignored, so CI always
+started empty and produced a correct installer while a local `npm run dist`
+shipped everything the developer had downloaded — which is where an earlier
+9.7 GiB measurement came from.
 
 ## Status
 
@@ -427,16 +432,19 @@ Alpha, and honest about it:
   check both promote a task.
 - Tier assignment is provisional and size-influenced, not measured. No
   benchmark exists yet.
-- RAM fit and tokens-per-second estimates are absent, and the RAM hints that
-  do exist are inconsistent.
+- Tokens per second is not shown in the app and is not measured anywhere in
+  this repository. RAM fit *is* measured from the machine, rather than
+  estimated from the catalog's inconsistent hints, but that is a fit check and
+  not a speed claim.
 - The learned classifier trains and predicts but has **not** been evaluated
-  against real production traffic. The desktop app does not record outcomes.
+  against real production traffic. Both the CLI and the desktop app now record
+  outcomes, but only the CLI loads a trained model, so the app still routes on
+  the heuristic.
 - Release binaries are **unsigned**; the Android APK is debug-signed and not
   Play-Store ready.
 - The harness gates destructive operations but does not sandbox them.
 - Provider support is tested against fixtures and mocks. No provider has been
   verified live, because that needs credentials this project does not have.
-- The next release is blocked on the installer-size problem above.
 
 ## Licence
 

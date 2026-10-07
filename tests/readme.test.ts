@@ -164,13 +164,31 @@ describe('claims are qualified', () => {
     expect(readme).toMatch(/not\s+measured/i);
   });
 
-  it('flags the installer-size blocker instead of hiding it', () => {
-    // The release workflow packages every bundled weight, which is over the
-    // GitHub per-asset limit. A README that said nothing would let someone
-    // cut a release that fails at upload.
-    expect(readme).toMatch(/known blocker/i);
-    expect(readme).toMatch(/9\.7 GiB/);
+  it('states the installer weight budget from the catalog, not from memory', () => {
+    // The claim is derived rather than asserted. A README that hardcodes "one
+    // small model" or a size in GiB drifts the moment the catalog changes,
+    // and it drifted badly: this used to document a 9.7 GiB blocker and call
+    // the bundle split unimplemented, both already false. It also said "Four
+    // models are ready the moment you install" in three places while exactly
+    // one ships.
+    const catalog = JSON.parse(
+      read(REPO, 'apps', 'desktop', 'src', 'models.json'),
+    ) as Array<{ id: string; bytes: number; bundled?: boolean }>;
+    const bundled = catalog.filter((entry) => entry.bundled === true);
+
+    expect(bundled).toHaveLength(1);
+    expect(readme).toContain(bundled[0]?.id);
     expect(readme).toMatch(/2 GiB per-asset limit/);
+
+    // The shipped count is stated once per claim, never as a stale number.
+    expect(readme).not.toMatch(/\bFour (models|weights)\b/);
+    expect(readme).not.toMatch(/\bFifty more\b/);
+
+    // The split is implemented, so the README must not still call it a plan
+    // or the next release blocked on it.
+    expect(readme).not.toMatch(/not\s+implemented/);
+    expect(readme).not.toMatch(/known blocker/i);
+    expect(readme).not.toMatch(/blocked on the installer-size/i);
   });
 
   it('says the app measures the machine rather than trusting catalog RAM', () => {

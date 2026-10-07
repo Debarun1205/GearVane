@@ -100,14 +100,22 @@ function catalogSummary() {
   const bundled = catalog.filter((m) => m.bundled === true);
   const total = catalog.reduce((sum, m) => sum + m.bytes, 0);
   const routed = catalog.filter((m) => tierOf[m.id]).length;
+  // Derived, never written out. This line used to say "Four" while listing
+  // whatever was flagged bundled, so the count and the list disagreed the
+  // moment the bundle was cut down to one model.
+  const ships =
+    bundled.length === 1
+      ? 'One ships'
+      : `${bundled.length} ship`;
   return [
     `**${catalog.length} weights, ${routed} of them in the default tiers.**`,
     '',
-    `Four ship in the installer (${bundled
+    `${ships} in the installer (${bundled
       .map((m) => `\`${m.id}\``)
-      .join(', ')}) and work offline at first launch. The rest are one click`,
-    `away. Every one is a downloadable file you run on your own machine, so a`,
-    `local run costs nothing and needs no account. The catalog as a whole is`,
+      .join(', ')}) and work${bundled.length === 1 ? 's' : ''} offline at first`,
+    `launch. The rest are one click away. Every one is a downloadable file you`,
+    `run on your own machine, so a local run costs nothing and needs no`,
+    `account. The catalog as a whole is`,
     `${(total / 1073741824).toFixed(1)} GiB if you wanted all of it; nobody does.`,
   ].join('\n');
 }
