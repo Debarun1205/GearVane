@@ -50,11 +50,6 @@ def make_config(per_task=5.0, per_session=50.0, max_retries=0, retry_delay=0.0):
         },
         "safety": {
             "require_approval": [],
-            "spend_limits": {
-                "per_session": per_session,
-                "per_day": per_session,
-                "per_task": per_task,
-            },
             "blocked_commands": [],
             "sandbox_allowed": [],
         },
@@ -243,40 +238,52 @@ class TestEscalation:
 
 
 class TestBudgetGate:
-    """Spend is checked before tokens are spent."""
+    """No run is ever blocked on cost.
 
-    def test_blocks_when_over_budget(self):
-        # Local models are free, so they pass any budget. Charge the local tier
-        # to exercise the gate.
+    R4: no usage or spend limit is enforced on the user, for any model. These
+    replaced tests that asserted a run was refused for exceeding a per-task
+    ceiling -- and the default ceiling of $5 was enforced as though the user
+    had chosen it.
+    """
+
+    def test_a_very_expensive_run_is_not_blocked(self):
         config = make_config(per_task=0.01, per_session=0.01)
+        # Charge the local tier so the old gate would have refused this.
         config["tiers"]["local"]["cost_per_token"] = 0.01
         orch = Orchestrator(config)
         called = []
         orch.providers.create = lambda p, m=None: called.append(1) or FakeClient([ok()])
         result = orch.execute("t1", "fix a typo")
-        assert result.success is False
-        assert "Budget exceeded" in result.error
-        # No provider call should have been made.
-        assert called == []
+        assert result.success is True
+        assert "Budget exceeded" not in result.error
+        # The provider was called: the gate did not stop it.
+        assert called == [1]
 
-    def test_frontier_estimate_blocks_when_local_would_pass(self):
+    def test_frontier_run_is_not_blocked_by_its_own_estimate(self):
         config = make_config(per_task=5.0, per_session=1000.0)
         config["tiers"]["frontier"]["cost_per_token"] = 0.01
         orch = Orchestrator(config)
         orch.providers.create = lambda p, m=None: FakeClient([ok()])
-        # max_tokens default 2048 * 0.01 = 20.48 > per_task 5.0
+        # 2048 tokens * $0.01 = $20.48, well past the former per-task ceiling.
         result = orch.execute(
             "t1", "refactor architecture for scale", files_touched=["a.py", "b.py", "c.py"]
         )
-        assert result.success is False
-        assert "Budget exceeded" in result.error
+        assert result.success is True
+        assert "Budget exceeded" not in result.error
 
-    def test_zero_cost_local_passes_tight_budget(self):
-        orch = Orchestrator(make_config(per_task=0.0, per_session=0.0))
+    def test_a_keyed_run_is_not_blocked_and_costs_nothing_locally(self):
+        # A "fix a typo" prompt routes to local, which is free, so the keyed
+        # tier's rate never applies and the run is refused by nothing. This is
+        # the shape that matters: a local run stays free regardless of what any
+        # configured cloud tier costs.
+        config = make_config(per_task=0.0, per_session=0.0)
+        config["tiers"]["frontier"]["cost_per_token"] = 0.005
+        orch = Orchestrator(config)
         orch.providers.create = lambda p, m=None: FakeClient([ok()])
         result = orch.execute("t1", "fix a typo", files_touched=["README.md"])
-        # Local tier costs nothing, so it is allowed through.
         assert result.success is True
+        assert result.tier == "local"
+        assert result.history[0]["cost_usd"] == 0.0
 
 
 class TestRetryIntegration:

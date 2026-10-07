@@ -119,11 +119,14 @@ class TestShippedConfigShape:
             # translates. Both are accepted, so just assert it is a string.
             assert isinstance(pattern, str)
 
-    def test_budget_matches_safety_limits(self, config):
-        safety = config["safety"]["spend_limits"]
+    def test_ships_no_spend_limits(self, config):
+        # R4: no usage or spend limit is enforced on the user, for any model.
+        # The shipped example must not imply a budget nobody agreed to: the
+        # previous version set $10/$50/$5 in two places that disagreed.
+        assert "spend_limits" not in config["safety"]
         budget = config["budget"]
         for key in ("per_session", "per_day", "per_task"):
-            assert safety[key] == budget[key], f"{key} disagrees"
+            assert budget[key] == 0.0, f"{key} implies a limit"
 
     def test_default_branch_matches_repo(self, config):
         # The repo's default branch is master, so the example must say master.

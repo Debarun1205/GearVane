@@ -32,28 +32,95 @@ export function isTier(value: string): value is Tier {
  * capability with cost.
  */
 
-export const COST_CLASSES = ['free', 'metered', 'capped', 'premium'] as const;
+export const COST_CLASSES = ['free', 'metered'] as const;
 export type CostClass = (typeof COST_CLASSES)[number];
 
 export function isCostClass(value: string): value is CostClass {
   return (COST_CLASSES as readonly string[]).includes(value);
 }
 
-/** Default cost class for a tier when not explicitly configured. */
-export function defaultCostClassForTier(tier: string): CostClass {
-  switch (tier) {
-    case 'local':
-      return 'free';
-    case 'mid':
-      return 'metered';
-    case 'frontier':
-      return 'premium';
-    default:
-      return 'metered';
-  }
+/**
+ * Provider names that run on the user's own machine.
+ *
+ * A run through one of these cannot bill anybody, whatever tier it sits in.
+ * Tiers are capability bands, and the mid and high bands deliberately hold
+ * local weights -- so deriving cost from the tier bills the user for running
+ * a model on their own GPU. That is what `safety spend` used to print:
+ * "mid, metered, $0.0001/token (embedded, ...)".
+ *
+ * Kept as a literal rather than importing LOCAL_PROVIDER_NAMES from
+ * providers.ts: types.ts is the lowest module in core and must not depend on
+ * the provider layer. tests pin the two lists against each other.
+ */
+export const LOCAL_PROVIDER_NAMES_FOR_COST: readonly string[] = [
+  'embedded',
+  'ollama',
+  'lm_studio',
+  'llama_cpp',
+  'llamacpp',
+  'vllm',
+  'localai',
+  'gpt4all',
+  'textgen',
+];
+
+/** The subset of provider fields that decide whether a run can bill. */
+export interface CostBearingProvider {
+  name: string;
+  /** Cloud providers declare the env var holding the key. */
+  apiKeyEnv?: string;
+  /** The embedded provider carries a per-launch loopback token instead. */
+  apiKey?: string;
 }
 
-/** Configuration for a cost class. */
+/**
+ * Cost class for one provider, derived from what it is rather than where it
+ * sits.
+ *
+ * The rule is one sentence: a run costs money only if reaching the model
+ * required a key that belongs to somebody else. Everything served from this
+ * machine is free, so the tier it was filed under is irrelevant.
+ *
+ * `apiKeyEnv` is the signal rather than membership of a name list, so a
+ * self-hosted provider the user configures is treated the way it actually
+ * works. A local server reached without a key is free even if the config
+ * carries a loopback token.
+ */
+export function costClassForProvider(provider: CostBearingProvider): CostClass {
+  const local = LOCAL_PROVIDER_NAMES_FOR_COST.includes(provider.name.toLowerCase());
+  if (local) return 'free';
+  // No key variable means nothing to bill against.
+  return provider.apiKeyEnv ? 'metered' : 'free';
+}
+
+/** True when any provider in the list can bill the user. */
+export function anyProviderBills(providers: readonly CostBearingProvider[]): boolean {
+  return providers.some((provider) => costClassForProvider(provider) === 'metered');
+}
+
+/**
+ * Effective cost per token across a tier's providers.
+ *
+ * Only what a run would actually cost. A tier mixing local and cloud providers
+ * reports the cloud rate, because that is the rate a run through the cloud one
+ * would pay -- and the caller still reports local providers as free, so the
+ * user sees which is which rather than a single blended number.
+ */
+export function tierCostPerToken(
+  tier: { providers: readonly CostBearingProvider[]; costPerToken: number },
+): number {
+  return anyProviderBills(tier.providers) ? tier.costPerToken : 0;
+}
+
+/**
+ * Configuration for a cost class.
+ *
+ * There is deliberately no cap field. Per-task, per-session and per-day USD
+ * ceilings were removed: they were never enforced, they printed numbers that
+ * looked like budgets, and a ceiling on a free run is a ceiling on zero. Run
+ * safety is bounded by iterations and wall-clock time instead, which is a
+ * safeguard against a runaway loop rather than a budget.
+ */
 export interface CostClassConfig {
   /** Human-readable name. */
   label: string;
@@ -61,17 +128,18 @@ export interface CostClassConfig {
   billable: boolean;
   /** Whether usage should be tracked even if not billed. */
   trackUsage: boolean;
-  /** Default rate in USD per token (for metered/premium). */
+  /** Reference rate in USD per token. An estimate, never charged. */
   defaultRate?: number;
-  /** Optional cap for capped classes (USD per session). */
-  capPerSession?: number;
-  /** Optional cap for capped classes (USD per day). */
-  capPerDay?: number;
-  /** Optional cap for capped classes (USD per task). */
-  capPerTask?: number;
 }
 
-/** Default cost class configs. */
+/**
+ * Default cost class configs.
+ *
+ * Two classes, because there are two real situations: a run that cannot cost
+ * money, and a run that draws on somebody's key. 'capped' and 'premium' are
+ * gone -- they carried per-day and per-session ceilings that were never
+ * enforced and read as budgets nobody had agreed to.
+ */
 export const DEFAULT_COST_CLASSES: Record<CostClass, CostClassConfig> = {
   free: {
     label: 'Free',
@@ -84,33 +152,33 @@ export const DEFAULT_COST_CLASSES: Record<CostClass, CostClassConfig> = {
     trackUsage: true,
     defaultRate: 0.0001,
   },
-  capped: {
-    label: 'Capped monthly',
-    billable: true,
-    trackUsage: true,
-    defaultRate: 0.001,
-    capPerSession: 10.0,
-    capPerDay: 50.0,
-    capPerTask: 5.0,
-  },
-  premium: {
-    label: 'Premium',
-    billable: true,
-    trackUsage: true,
-    defaultRate: 0.005,
-  },
 };
 
 /**
- * Get the cost class configuration, falling back to the tier default.
+ * The cost class configuration for a tier.
+ *
+ * Derived from the providers the tier holds, never from the tier's name. An
+ * explicit `costClass` in config is still honoured, so a user who wants a
+ * stricter classification can say so; what is gone is the silent default that
+ * called anything in `frontier` billable.
  */
 export function getCostClassConfig(
-  tierConfig: { costClass?: CostClass; costPerToken: number; name: string },
+  tierConfig: {
+    costClass?: CostClass;
+    costPerToken: number;
+    name: string;
+    providers: readonly CostBearingProvider[];
+  },
 ): CostClassConfig {
-  const costClass = tierConfig.costClass ?? defaultCostClassForTier(tierConfig.name);
+  const derived = anyProviderBills(tierConfig.providers) ? 'metered' : 'free';
+  const costClass = tierConfig.costClass ?? derived;
   const base = DEFAULT_COST_CLASSES[costClass];
 
-  // If the tier specifies a custom rate, merge it in.
+  // A tier with no billing provider has no rate, whatever it was configured
+  // with: reporting a per-token price for a free run is the original bug.
+  if (!anyProviderBills(tierConfig.providers)) {
+    return { ...base, defaultRate: 0 };
+  }
   if (tierConfig.costPerToken !== undefined && tierConfig.costPerToken !== base.defaultRate) {
     return { ...base, defaultRate: tierConfig.costPerToken };
   }
@@ -152,10 +220,15 @@ export interface TierConfig {
   description: string;
   providers: ProviderConfig[];
   maxRetries: number;
-  /** USD per token. Zero for local models. */
+  /** USD per token, used to report what a run would cost. Zero for local. */
   costPerToken: number;
-  /** Cost class: 'free' | 'metered' | 'capped' | 'premium'.
-   *  Determines billing behaviour independent of capability tier. */
+  /**
+   * Cost class, overriding the value derived from this tier's providers.
+   *
+   * Normally leave it unset: `costClassForProvider` gets it right per provider,
+   * which matters because a single tier holds both free local weights and
+   * keyed cloud models.
+   */
   costClass?: CostClass;
 }
 

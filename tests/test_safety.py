@@ -14,11 +14,6 @@ class TestSafetyManager:
                     "git_force_push",
                     "deploy_production",
                 ],
-                "spend_limits": {
-                    "per_session": 10.0,
-                    "per_day": 50.0,
-                    "per_task": 5.0,
-                },
                 "sandbox_allowed": [
                     "git status",
                     "git log",
@@ -49,48 +44,32 @@ class TestSafetyManager:
         result = self.safety.check_command("git push --force origin main")
         assert result.status == ApprovalStatus.PENDING
 
-    def test_spend_within_limits(self):
-        # per_task_limit is 5.0, so a single task can spend at most 5.0 even
-        # though the session budget is larger.
-        assert self.safety.check_spend(5.0, task_id="task-a")
-        self.safety.record_spend(5.0, task_id="task-a")
-        # Task budget now exhausted.
-        assert not self.safety.check_spend(0.1, task_id="task-a")
-        # Session budget (10.0) still has room, and a new task resets task spend.
-        assert self.safety.check_spend(5.0, task_id="task-b")
-
-    def test_session_limit_blocks(self):
+    def test_no_spend_limit_ever_blocks(self):
+        # R4: no usage or spend limit is enforced on the user, for any model.
+        # The old tracker refused a run past a per-task ceiling, and the default
+        # ceiling of $5 was enforced as though the user had chosen it.
         self.safety.record_spend(5.0, task_id="task-a")
         self.safety.record_spend(5.0, task_id="task-b")
-        # Session budget of 10.0 is now exhausted regardless of task scoping.
-        assert not self.safety.check_spend(0.1, task_id="task-c")
+        # Far past any former ceiling, and it still permits.
+        assert self.safety.check_spend(10_000.0, task_id="task-c")
 
-    def test_per_task_limit_blocks_within_session_budget(self):
-        # per_task_limit is 5.0 but the session budget is 10.0. Spending 5.0 on
-        # one task must exhaust the task budget even though session budget remains.
+    def test_spend_is_recorded_per_task(self):
+        # Recording still happens, and it still scopes to the current task.
         self.safety.record_spend(5.0, task_id="task-a")
-        assert not self.safety.check_spend(0.1, task_id="task-a")
-        assert self.safety.check_spend(0.1, task_id="task-b")
+        self.safety.record_spend(2.0, task_id="task-b")
+        status = self.safety.get_spend_status()
+        assert status["session_spend"] == 7.0
+        assert status["task_spend"] == 2.0
 
-    def test_per_task_budget_resets_for_new_task(self):
-        # Regression: task_spend used to accumulate forever because nothing called
-        # reset_task(), so one expensive task blocked all later tasks.
-        self.safety.record_spend(5.0, task_id="task-a")
-        self.assertBlockedForCurrentTask()
-        # A new task gets a fresh per-task budget.
-        assert self.safety.check_spend(5.0, task_id="task-b")
-        self.safety.record_spend(5.0, task_id="task-b")
-        # Session budget (10.0) is now exhausted.
-        assert not self.safety.check_spend(0.1, task_id="task-c")
-
-    def assertBlockedForCurrentTask(self):
-        assert not self.safety.check_spend(0.01, task_id="task-a")
-
-    def test_spend_tracker_status(self):
+    def test_spend_status_reports_no_limits(self):
+        # No `*_remaining` key, because there is no budget to remain within.
         self.safety.record_spend(2.5)
         status = self.safety.get_spend_status()
         assert status["session_spend"] == 2.5
-        assert status["session_remaining"] == 7.5
+        assert status["limits"] == "none"
+        assert status["enforced"] is False
+        assert "session_remaining" not in status
+        assert "task_remaining" not in status
 
     def test_pending_approvals_listed(self):
         self.safety.check_command("git push origin main")

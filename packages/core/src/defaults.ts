@@ -190,6 +190,9 @@ export function defaultConfig(env: Record<string, string | undefined> = {}): Gea
             : []),
         ],
         maxRetries: 2,
+        // The rate a run through one of this tier's *keyed* providers would
+        // pay. Deriving cost from the tier instead billed the user for running
+        // the local weights this same tier holds -- see costClassForProvider.
         costPerToken: 0.0001,
         costClass: 'metered',
       },
@@ -251,8 +254,11 @@ export function defaultConfig(env: Record<string, string | undefined> = {}): Gea
           },
         ],
         maxRetries: 3,
+        // The rate through a keyed provider in this tier. The tier also holds
+        // the largest local weights, and those runs cost nothing: the class is
+        // derived per provider, not from being called 'frontier'.
         costPerToken: 0.005,
-        costClass: 'premium',
+        costClass: 'metered',
       },
     },
     router: {

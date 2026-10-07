@@ -69,8 +69,9 @@ export function parseConfig(
       providers: normaliseProviders(tier['providers']),
       maxRetries: num(tier['max_retries'] ?? tier['maxRetries'], 2),
       costPerToken: num(tier['cost_per_token'] ?? tier['costPerToken'], 0),
-      // Cost class: 'free' | 'metered' | 'capped' | 'premium'.
-      // Falls back to tier-based default when omitted.
+      // Cost class: 'free' | 'metered'. Optional -- derived from the tier's
+      // providers when omitted, which is what makes a local weight in `mid`
+      // free rather than billable.
       costClass: (tier['cost_class'] ?? tier['costClass']) as CostClass | undefined,
     };
   }

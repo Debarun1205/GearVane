@@ -810,10 +810,23 @@ function renderTierBadge(): void {
   }
 }
 
+/**
+ * The running-cost readout.
+ *
+ * A meter, not a budget. It fills as a session spends against a keyed
+ * provider, and GearVane enforces nothing here: there is no cap behind this
+ * bar, so filling it is a statement about what has been spent rather than a
+ * countdown to being cut off. A session that has spent nothing reads as
+ * exactly that rather than as "100% used".
+ */
 function renderSpend(): void {
   els.spendFill.style.width = '100%';
   els.spendFill.className = 'spend-fill';
-  els.spendMeter.title = `$${state.sessionSpendUsd.toFixed(4)}`;
+  els.spendMeter.title = `$${state.sessionSpendUsd.toFixed(4)} spent this session`;
+  els.spendMeter.setAttribute(
+    'aria-label',
+    `Session cost ${state.sessionSpendUsd.toFixed(4)} US dollars. No limit is enforced.`,
+  );
 }
 
 function renderComposer(): void {

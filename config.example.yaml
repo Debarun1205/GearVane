@@ -336,16 +336,17 @@ safety:
     - delete_branch
     - merge_pr
 
-  # Spend ceilings in USD. These apply to hosted models, which are the
-  # only runs that bill you: a tier with cost_per_token 0 is free whatever
-  # it does, so a ceiling there would gate nothing.
+  # There are no spend limits, and no keys for them.
   #
-  # The TypeScript engine records usage but does not enforce these; the
-  # Python reference engine checks them. `gearvane cost` reports either.
-  spend_limits:
-    per_session: 10.0
-    per_day: 50.0
-    per_task: 5.0
+  # Per-task, per-session and per-day USD ceilings were removed. They were
+  # never enforced by the TypeScript engine, the Python reference engine
+  # checked a different set of numbers, and a ceiling on a local model is a
+  # ceiling on $0 -- so the config implied a budget that did not exist.
+  #
+  # Runs through a provider that needs an API key draw on your own key.
+  # GearVane reports what that costs (`gearvane cost`, and the meter in the
+  # app) and enforces nothing. Run safety is bounded by the safeguards under
+  # `agent` above: iterations, wall-clock timeout and repeat-call detection.
 
   # Commands permitted to run without approval.
   sandbox_allowed:
@@ -386,13 +387,20 @@ health:
   failure_threshold: 3
 
 # ---------------------------------------------------------------------------
-# Budget alerts
+# Cost reporting
 # ---------------------------------------------------------------------------
-# Alert thresholds as a fraction of each limit.
+# No limits. Nothing here gates a run, and the thresholds that used to sit
+# alongside per-session and per-day ceilings are gone with them: a warning
+# threshold is meaningless without a limit to be a fraction of.
+#
+# What this section keeps is the shape of the report. `gearvane cost` and the
+# meter in the app read these rates to show what a session would have cost, so
+# a user can see the difference between running locally and sending the same
+# prompt to a keyed model.
 budget:
-  per_session: 10.0
-  per_day: 50.0
-  per_task: 5.0
+  per_session: 0.0
+  per_day: 0.0
+  per_task: 0.0
   warning_threshold: 0.7
   critical_threshold: 0.9
 

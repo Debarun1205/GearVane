@@ -26,11 +26,18 @@ class ApprovalRequest:
 
 @dataclass
 class SpendTracker:
-    """Track spending against limits."""
+    """Record what a session cost. Enforces nothing.
 
-    per_session_limit: float = 10.0
-    per_day_limit: float = 50.0
-    per_task_limit: float = 5.0
+    The per-session, per-day and per-task ceilings this used to carry are gone.
+    They blocked runs against budgets nobody had agreed to, and the default of
+    $10/$50/$5 was enforced as though the user had set it. A ceiling on a local
+    model is a ceiling on $0.
+
+    What remains is the arithmetic a user actually wants after the fact: what
+    did this session cost, and how much of it was free. Run safety is bounded by
+    iterations and wall-clock time instead, which is a safeguard against a
+    runaway loop rather than a budget.
+    """
 
     session_spend: float = 0.0
     day_spend: float = 0.0
@@ -40,7 +47,7 @@ class SpendTracker:
     _current_task_id: Optional[str] = None
 
     def start_task(self, task_id: str):
-        """Begin tracking a new task and reset the per-task budget.
+        """Begin tracking a new task, resetting its running total.
 
         Per-task spend must reset when the task changes. Previously this was
         only resettable via an explicit reset_task() call that no caller made,
@@ -52,13 +59,12 @@ class SpendTracker:
             self._current_task_id = task_id
 
     def can_spend(self, amount: float) -> bool:
-        """Check if a spend amount is within limits."""
-        if self.session_spend + amount > self.per_session_limit:
-            return False
-        if self.day_spend + amount > self.per_day_limit:
-            return False
-        if self.task_spend + amount > self.per_task_limit:
-            return False
+        """Always true. No spend limit is enforced, for any model.
+
+        Kept so callers keep their shape and so this stays a single place to
+        reintroduce an opt-in cap. A false here means "blocked", and nothing
+        sets one.
+        """
         return True
 
     def record_spend(self, amount: float, task_id: Optional[str] = None):
@@ -75,19 +81,27 @@ class SpendTracker:
         self._current_task_id = None
 
     def get_status(self) -> Dict[str, Any]:
-        """Get current spend status."""
+        """Get current spend status.
+
+        No `*_remaining` keys: with no limit there is no remaining budget, and
+        reporting one against a number the user never set is the confusion this
+        whole change exists to remove.
+        """
         return {
             "session_spend": round(self.session_spend, 4),
             "day_spend": round(self.day_spend, 4),
             "task_spend": round(self.task_spend, 4),
-            "session_remaining": round(self.per_session_limit - self.session_spend, 4),
-            "day_remaining": round(self.per_day_limit - self.day_spend, 4),
-            "task_remaining": round(self.per_task_limit - self.task_spend, 4),
+            "limits": "none",
+            "enforced": False,
         }
 
 
 class SafetyManager:
-    """Manages safety: approvals, spend limits, and sandboxing."""
+    """Manages safety: approvals and sandboxing.
+
+    Spend tracking is recording only. There are no spend limits, so there is
+    nothing here to configure and no default budget to impose.
+    """
 
     def __init__(self, config: Optional[Dict[str, Any]] = None):
         self.config = config or {}
@@ -96,13 +110,8 @@ class SafetyManager:
         # Approval settings
         self.require_approval: Set[str] = set(safety_config.get("require_approval", []))
 
-        # Spend limits
-        spend_config = safety_config.get("spend_limits", {})
-        self.spend_tracker = SpendTracker(
-            per_session_limit=spend_config.get("per_session", 10.0),
-            per_day_limit=spend_config.get("per_day", 50.0),
-            per_task_limit=spend_config.get("per_task", 5.0),
-        )
+        # Usage recording. No limits are read from config.
+        self.spend_tracker = SpendTracker()
 
         # Sandbox settings
         self.sandbox_allowed: List[str] = safety_config.get("sandbox_allowed", [])

@@ -18,8 +18,12 @@ export { ConfigError, parseConfig, TIER_NAMES } from './config.js';
 export {
   COST_CLASSES,
   DEFAULT_COST_CLASSES,
-  defaultCostClassForTier,
+  LOCAL_PROVIDER_NAMES_FOR_COST,
+  anyProviderBills,
+  costClassForProvider,
   getCostClassConfig,
+  tierCostPerToken,
+  type CostBearingProvider,
   type CostClass,
   type CostClassConfig,
 } from './types.js';

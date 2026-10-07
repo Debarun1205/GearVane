@@ -96,7 +96,8 @@ describe('CLI end to end', () => {
     const result = run(['safety', 'spend']);
     expect(result.code).toBe(0);
 
-    // One line per tier, naming what it can cost.
+    // One line per tier, naming what it can cost. mid and frontier hold
+    // local weights as well as keyed providers, so both appear.
     expect(result.stdout).toMatch(/^local\s+unlimited, \$0\.00/m);
     expect(result.stdout).toMatch(/^mid\s+metered/m);
     expect(result.stdout).toMatch(/^frontier\s+metered/m);
@@ -104,6 +105,8 @@ describe('CLI end to end', () => {
     // And the reason, so the absence of a ceiling is explained rather than
     // looking like an oversight.
     expect(result.stdout).toMatch(/cost nothing per token/i);
+    // No limit is configured or enforced, stated as fact.
+    expect(result.stdout).toMatch(/No spend limits are enforced/i);
   });
 
   it('reports spend as machine-readable JSON', () => {
@@ -112,15 +115,31 @@ describe('CLI end to end', () => {
 
     const payload = JSON.parse(result.stdout) as {
       enforced: boolean;
-      tiers: Array<{ tier: string; free: boolean }>;
+      limits: string;
+      tiers: Array<{
+        tier: string;
+        billable: boolean;
+        localProviders: string[];
+        meteredProviders: string[];
+      }>;
     };
-    // Nothing is enforced: a dollar ceiling on a local model is a ceiling on
-    // zero. Saying so in the payload is what stops a script assuming
-    // otherwise.
+    // Nothing is enforced, for any model. Saying so in the payload is what
+    // stops a script assuming otherwise.
     expect(payload.enforced).toBe(false);
+    expect(payload.limits).toBe('none configured');
     expect(payload.tiers.map((t) => t.tier)).toEqual(['local', 'mid', 'frontier']);
-    // The local tier cannot bill anyone, whatever a run does.
-    expect(payload.tiers.find((t) => t.tier === 'local')?.free).toBe(true);
+    // Per provider, not per tier: the local tier serves weights on this
+    // machine and cannot bill anyone whatever a run does.
+    const local = payload.tiers.find((t) => t.tier === 'local');
+    expect(local?.billable).toBe(false);
+    expect(local?.meteredProviders).toEqual([]);
+    expect(local?.localProviders.length).toBeGreaterThan(0);
+    // The regression this replaced: mid and frontier hold local weights too,
+    // and calling the whole tier billable priced running them on your own
+    // hardware.
+    for (const tier of payload.tiers) {
+      expect(tier.billable).toBe(tier.meteredProviders.length > 0);
+    }
   });
 
   it('says when nothing checked the answer', async () => {

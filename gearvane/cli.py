@@ -557,11 +557,11 @@ def cmd_safety(args):
         if args.json:
             print(json.dumps(status, indent=2))
         else:
-            print(
-                f"Session: ${status['session_spend']} / "
-                f"${status['session_remaining']} remaining"
-            )
-            print(f"Task:    ${status['task_spend']} / " f"${status['task_remaining']} remaining")
+            # Recording only. There is no budget, so there is nothing to print
+            # as a remaining amount against.
+            print(f"Session: ${status['session_spend']} spent")
+            print(f"Task:    ${status['task_spend']} spent")
+            print("Limits:  none enforced")
         return
 
     if action == "pending":

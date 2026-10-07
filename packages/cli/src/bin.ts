@@ -6,6 +6,8 @@ import {
   Orchestrator,
   SafetyManager,
   VERSION,
+  costClassForProvider,
+  tierCostPerToken,
   type ClassificationResult,
   type ExecutionResult,
   type HealthResult,
@@ -488,37 +490,48 @@ function cmdCost(args: ParsedArgs, config: GearVaneConfig, json: boolean): numbe
 /**
  * What `safety spend` reports.
  *
- * The tracker records usage but enforces nothing, because a dollar ceiling on
- * a local model is a ceiling on $0. What a user actually wants to know is
- * which tiers can bill them and what the ceilings are for those, so that is
- * what this prints. An earlier version returned 0 with no output at all,
- * which passed an exit-code check while telling the user nothing.
+ * Classification is per provider, never per tier. The tiers are capability
+ * bands and the mid and high bands deliberately hold local weights, so the old
+ * tier-level test -- "does this tier have a non-zero rate?" -- printed
+ * "mid, metered, $0.0001/token (embedded, ...)": billing the user for running a
+ * model on their own hardware. Cost comes from whether reaching the model needs
+ * somebody else's key.
+ *
+ * Nothing here enforces anything, and that is the point rather than an
+ * omission: there are no spend limits. What the user gets is the truth about
+ * which of their configured providers can bill, and their running cost.
  */
 function reportSpend(config: GearVaneConfig, json: boolean): number {
   const tiers = (['local', 'mid', 'frontier'] as const).map((tier) => {
     const tierConfig = config.tiers[tier];
-    const metered = tierConfig.costPerToken > 0;
-    const providers = tierConfig.providers
-      .map((provider) => provider.name)
-      .filter((name, index, all) => all.indexOf(name) === index);
+    const metered: string[] = [];
+    const local: string[] = [];
+    for (const provider of tierConfig.providers) {
+      const name = provider.name;
+      if (local.includes(name) || metered.includes(name)) continue;
+      (costClassForProvider(provider) === 'metered' ? metered : local).push(name);
+    }
     return {
       tier,
-      // A zero rate means the run cannot cost money, whatever the token count.
-      free: !metered,
-      costPerToken: tierConfig.costPerToken,
-      meteredProviders: metered ? providers : [],
-      localProviders: metered ? [] : providers,
+      // A tier is billable only if some provider in it draws on a key. A tier
+      // of local weights reports a zero rate whatever the config said.
+      billable: metered.length > 0,
+      costPerToken: tierCostPerToken(tierConfig),
+      meteredProviders: metered,
+      localProviders: local,
     };
   });
 
-  const hosted = tiers.filter((tier) => !tier.free);
+  const hosted = tiers.filter((tier) => tier.billable);
   const payload = {
     spend: { sessionUsd: 0, dayUsd: 0, taskUsd: 0 },
     enforced: false,
+    limits: 'none configured',
     tiers,
     note:
-      'Local models cost nothing per token, so no ceiling is enforced on them. ' +
-      'Usage is tracked and reported by `gearvane cost`.',
+      'No spend limits are enforced, for any model. Local models cost nothing per ' +
+      'token; keyed cloud models draw on your own key and GearVane only reports ' +
+      'the cost. `gearvane cost` shows what a session has actually used.',
   };
 
   if (json) {
@@ -528,21 +541,24 @@ function reportSpend(config: GearVaneConfig, json: boolean): number {
 
   const lines: string[] = [];
   for (const tier of tiers) {
-    if (tier.free) {
+    if (!tier.billable) {
       lines.push(
-        `${tier.tier.padEnd(9)} unlimited, $0.00  (${tier.localProviders.join(', ')})`,
+        `${tier.tier.padEnd(9)} unlimited, $0.00  (${tier.localProviders.join(', ') || 'none configured'})`,
       );
       continue;
     }
-    const names = tier.meteredProviders.length > 0
-      ? tier.meteredProviders.join(', ')
-      : 'no hosted provider configured';
-    lines.push(`${tier.tier.padEnd(9)} metered, $${tier.costPerToken}/token  (${names})`);
+    // Both lists shown: a tier can hold free local weights and billed cloud
+    // models at once, and collapsing that into one number is the original bug.
+    const parts = [
+      tier.localProviders.length > 0 ? `free: ${tier.localProviders.join(', ')}` : '',
+      `metered: ${tier.meteredProviders.join(', ')}`,
+    ].filter(Boolean);
+    lines.push(`${tier.tier.padEnd(9)} metered, $${tier.costPerToken}/token  (${parts.join(' | ')})`);
   }
 
   if (hosted.length === 0) {
     lines.push('');
-    lines.push('Cloud: not configured. Every configured tier is local and free.');
+    lines.push('Cloud: not configured. Every configured provider is local and free.');
   }
 
   lines.push('');
