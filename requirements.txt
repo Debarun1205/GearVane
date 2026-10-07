@@ -5,7 +5,7 @@
 # no HTTP client and no ML framework.
 
 pyyaml>=6.0.3
-click>=8.0
+click>=8.5.0
 rich>=13.0
 pydantic>=2.0
 
