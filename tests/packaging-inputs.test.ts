@@ -196,35 +196,53 @@ describe('packaging inputs', () => {
  * release asset at 2 GiB, and this app was measured building one at 9.7 GiB.
  */
 describe('installer weight budget', () => {
-  it('bundles exactly one model', () => {
+  it('bundles exactly the two low-tier weights', () => {
     // Regression: extraResources pointed at the whole resources/models
     // directory. That directory is gitignored, so CI always starts empty and
     // always produces a correct installer -- while a developer's `npm run
     // dist` shipped every weight that machine happened to have, which is
-    // where the 9.7 GiB came from. Naming the file removes the directory's
+    // where the 9.7 GiB came from. Naming each file removes the directory's
     // contents from the decision entirely.
-    expect(BUNDLED).toHaveLength(1);
-    expect(manifest.build.extraResources).toHaveLength(1);
+    //
+    // Two rather than one: R2 wants two low-tier models available offline at
+    // first launch, and together they are 0.65 GiB -- well inside the 2 GiB
+    // per-asset limit the release gate depends on.
+    expect(BUNDLED).toHaveLength(2);
+    expect(manifest.build.extraResources).toHaveLength(2);
   });
 
-  it('names the bundled file rather than the directory', () => {
-    const from = manifest.build.extraResources?.[0]?.from ?? '';
-    expect(from.startsWith('resources/models/')).toBe(true);
-    // A trailing slash or a bare directory means "whatever is in here".
-    expect(from.endsWith('/')).toBe(false);
+  it('keeps the installer payload under 1 GiB', () => {
+    // The 2 GiB figure is GitHub's per-asset release cap; staying under 1 GiB
+    // leaves room for the app itself. Derived from the catalog's real sizes so
+    // it cannot drift from what actually ships.
+    const bytes = BUNDLED.reduce((sum, entry) => sum + entry.bytes, 0);
+    expect(bytes).toBeLessThan(1024 * 1024 * 1024);
   });
 
-  it('ships the same file the catalog flags as bundled', () => {
-    // The filename is duplicated in package.json because electron-builder's
+  it('names each bundled file rather than the directory', () => {
+    for (const resource of manifest.build.extraResources ?? []) {
+      const from = resource.from ?? '';
+      expect(from.startsWith('resources/models/')).toBe(true);
+      // A trailing slash or a bare directory means "whatever is in here".
+      expect(from.endsWith('/')).toBe(false);
+    }
+  });
+
+  it('ships exactly the files the catalog flags as bundled', () => {
+    // The filenames are duplicated in package.json because electron-builder's
     // config is static JSON. This is the guard against the two drifting, the
-    // same way the site and README tables are guarded.
-    expect(manifest.build.extraResources?.[0]?.from).toBe(
-      `resources/models/${BUNDLED[0]?.file}`,
+    // same way the site and README tables are guarded. Set comparison rather
+    // than index-by-index, because order in a manifest is not a contract.
+    const shipped = (manifest.build.extraResources ?? []).map((r) => r.from);
+    expect(shipped.sort()).toEqual(
+      BUNDLED.map((entry) => `resources/models/${entry.file}`).sort(),
     );
   });
 
-  it('lands the weight where the app looks for it', () => {
-    expect(manifest.build.extraResources?.[0]?.to).toBe('models');
+  it('lands the weights where the app looks for them', () => {
+    for (const resource of manifest.build.extraResources ?? []) {
+      expect(resource.to).toBe('models');
+    }
   });
 
   it('keeps the installer under the 2 GiB asset cap', () => {

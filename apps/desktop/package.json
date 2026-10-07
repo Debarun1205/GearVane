@@ -26,6 +26,8 @@
     "test:e2e": "npm run build && playwright test",
     "lint": "eslint src",
     "models:fetch": "node scripts/fetch-model.mjs",
+    "models:fetch:first-boot": "node scripts/fetch-model.mjs --first-boot",
+    "models:fetch:all": "node scripts/fetch-model.mjs --all",
     "start": "npm run build && electron dist/main.js",
     "dist": "npm run build && npm run models:fetch && electron-builder",
     "dist:linux": "npm run build && npm run models:fetch && electron-builder --linux",
@@ -68,6 +70,10 @@
     "extraResources": [
       {
         "from": "resources/models/SmolLM2-360M-Instruct.Q4_K_M.gguf",
+        "to": "models"
+      },
+      {
+        "from": "resources/models/qwen2.5-coder-0.5b-instruct-q4_0.gguf",
         "to": "models"
       }
     ],

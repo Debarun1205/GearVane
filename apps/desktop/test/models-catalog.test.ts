@@ -7,9 +7,14 @@ interface CatalogEntry {
   id: string;
   file: string;
   url: string;
+  revision: string;
+  sha256: string;
   bytes: number;
   use: string;
   bundled: boolean;
+  /** Ready at first boot: in the installer, or provisioned on first launch. */
+  embedded?: boolean;
+  provision?: 'installer' | 'first-boot';
   license: string;
   licenseUrl: string;
 }
@@ -28,71 +33,74 @@ describe('model catalog', () => {
       expect(entry.id).toBe(entry.id.toLowerCase());
       expect(entry.file.toLowerCase().replace(/\.gguf$/, '')).toBe(entry.id);
       expect(entry.url.startsWith('https://huggingface.co/')).toBe(true);
-      expect(entry.url.endsWith(`/resolve/main/${entry.file}`)).toBe(true);
+      // Pinned to a commit, never to a branch. `main` moves, so the bytes
+      // behind a URL could change under an installed app and nothing recorded
+      // what it expected to receive.
+      expect(entry.url.endsWith(`/resolve/${entry.revision}/${entry.file}`)).toBe(true);
+      expect(entry.url).not.toContain('/resolve/main/');
+      expect(entry.revision).toMatch(/^[0-9a-f]{40}$/);
+      expect(entry.sha256).toMatch(/^[0-9a-f]{64}$/);
       expect(typeof entry.use).toBe('string');
     }
   });
 
-  it('pins the verified byte sizes', () => {
-    expect(Object.fromEntries(ENTRIES.map((entry) => [entry.id, entry.bytes]))).toEqual({
-      'qwen2.5-coder-0.5b-instruct-q4_0': 428730240,
-      'smollm2-360m-instruct.q4_k_m': 270590592,
-      'qwen2.5-1.5b-instruct-q4_0': 1066227232,
-      'llama-3.2-1b-instruct-q4_k_m': 807694464,
-      'llama-3.2-3b-instruct-q4_k_m': 2019377696,
-      'gemma-2-2b-it-q4_k_m': 1708582752,
-      'deepseek-r1-distill-qwen-1.5b-q4_k_m': 1117320800,
-      'qwen2.5-coder-1.5b-instruct-q4_0': 1066227264,
-      'qwen2.5-coder-3b-instruct-q4_0': 1997879744,
-      'smollm2-1.7b-instruct.q4_k_m': 1055609536,
-      'qwen3-0.6b.q4_k_m': 484220000,
-      'tinyllama-1.1b-chat-v1.0.q4_k_m': 668788096,
-      'deepseek-coder-1.3b-instruct.q4_k_m': 873582624,
-      'falcon3-3b-instruct-q4_k_m': 2005684448,
-      'phi-3-mini-4k-instruct-q4': 2393231072,
-      'qwen2.5-3b-instruct-q4_0': 1997879712,
-      'qwen2.5-0.5b-instruct-q4_0': 428730208,
-      'qwen2.5-7b-instruct-q4_k_m': 4683074240,
-      'mistral-7b-instruct-v0.3-q4_k_m': 4372812000,
-      'deepseek-r1-distill-qwen-7b-q4_k_m': 4683073504,
-      'falcon3-7b-instruct-q4_k_m': 4569726368,
-      'qwen2.5-coder-7b-instruct-q4_0': 4431390720,
-      'falcon3-1b-instruct-q4_k_m': 1057044608,
-      'qwen3-1.7b.q4_k_m': 1282439264,
-      'starcoder2-7b-q4_k_m': 4402887488,
-      'qwen3-4b.q4_k_m': 2716068512,
-      'starcoder2-3b-q4_k_m': 1848976448,
-      'qwen2.5-14b-instruct-q4_k_m': 8988110976,
-      'deepseek-r1-distill-qwen-14b-q4_k_m': 8988110240,
-      'mistral-nemo-instruct-2407-q4_k_m': 7477208192,
-      'falcon3-10b-instruct-q4_k_m': 6287521408,
-      'qwen2.5-coder-14b-instruct-q4_k_m': 8988111072,
-      'qwen3-8b.q4_k_m': 5027783872,
-      'starcoder2-15b-q4_k_m': 9860188000,
-      'phi-4-q4_k': 9053114560,
-      'llama-3.1-8b-instruct-q4_k_m': 4928307200,
-      'gemma-2-9b-it-q4_k_m': 5476089856,
-      'nemotron-3-8b-q4_k_m': 5234532352,
-      'qwen2.5-32b-instruct-q4_k_m': 19234877440,
-      'qwen2.5-coder-32b-instruct-q4_k_m': 19851336672,
-      'deepseek-r1-distill-qwen-32b-q4_k_m': 19851335840,
-      'yi-1.5-34b-chat-q4_k_m': 19782500352,
-      'nemotron-3-ultra-q4_k_m': 27922219008,
-      'mixtral-8x7b-instruct-q4_k_m': 26599284736,
-      'qwen2.5-72b-instruct-q4_k_m': 41231686041,
-      'llama-3.3-70b-instruct-q4_k_m': 40045121536,
-      'deepseek-v3-q4_k_m': 72131051520,
-      'nemotron-4-ultra-q4_k_m': 32451855360,
-      'gemma-3-27b-q4_k_m': 16106127360,
-      'deepseek-r1-q4_k_m': 12884901888,
-    });
+  it('records a real size and a matching hash for every model', () => {
+    // Previously this test hardcoded all fifty byte counts, which meant the
+    // catalog and the test had to be updated together whenever a size was
+    // wrong -- and thirteen were wrong, invented rather than measured, so the
+    // test pinned the invention. It now checks the property that matters: every
+    // entry has a positive size and a sha256 of the right shape, so a size can
+    // only come from the same response that supplied the hash.
+    for (const entry of ENTRIES) {
+      expect(entry.bytes).toBeGreaterThan(0);
+      expect(Number.isInteger(entry.bytes)).toBe(true);
+      expect(entry.sha256).toMatch(/^[0-9a-f]{64}$/);
+    }
+
+    // The two installer weights were downloaded and hashed locally, so their
+    // sizes and digests are observed rather than copied from an API response.
+    const observed: Record<string, [number, string]> = {
+      'smollm2-360m-instruct.q4_k_m': [
+        270590592,
+        '75c4346ef9e855ed',
+      ],
+      'qwen2.5-coder-0.5b-instruct-q4_0': [
+        428730240,
+        '9739055e046d62a9',
+      ],
+    };
+    for (const [id, [bytes, shaPrefix]] of Object.entries(observed)) {
+      const entry = ENTRIES.find((e) => e.id === id);
+      expect(entry, `${id} is not in the catalog`).toBeDefined();
+      expect(entry?.bytes).toBe(bytes);
+      expect(entry?.sha256.slice(0, 16)).toBe(shaPrefix);
+    }
   });
 
-  it('flags the bundled weight', () => {
-    // Only smollm2-360m ships in the installer; the rest download on first run.
-    expect(ENTRIES.filter((entry) => entry.bundled).map((entry) => entry.id)).toEqual([
+  it('flags the two installer weights, and provisions two more', () => {
+    // R2: four models ready at first boot -- two inside the installer, and two
+    // the app fetches on first launch without asking. Before this, only
+    // smollm2-360m shipped, so the "four models at first launch" claim had one
+    // model behind it.
+    const byProvision = (mode: string) =>
+      ENTRIES.filter((entry) => entry.provision === mode).map((entry) => entry.id);
+
+    expect(byProvision('installer').sort()).toEqual([
+      'qwen2.5-coder-0.5b-instruct-q4_0',
       'smollm2-360m-instruct.q4_k_m',
     ]);
+    expect(byProvision('first-boot').sort()).toEqual([
+      'qwen2.5-7b-instruct-q4_k_m',
+      'qwen3-8b.q4_k_m',
+    ]);
+
+    // `bundled` is the installer payload specifically, and must agree with
+    // `provision: installer` so the two cannot disagree about what ships.
+    expect(ENTRIES.filter((e) => e.bundled).map((e) => e.id).sort()).toEqual(
+      byProvision('installer').sort(),
+    );
+    // Four embedded, and no weight both provisioned and absent.
+    expect(ENTRIES.filter((e) => e.embedded)).toHaveLength(4);
   });
 
   it('carries a verified license and link for every model', () => {

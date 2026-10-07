@@ -1,96 +1,199 @@
 #!/usr/bin/env node
 /**
- * Fetch the bundled local models for the desktop installers.
+ * Fetch the weights the desktop app ships and provisions.
  *
- * The set comes from src/models.json (entries flagged bundled), so the
- * script, the Models dialog, and the installer payload can never drift
- * apart. The GGUFs are deliberately not committed to git: release builds
- * and local `dist` runs download them once into resources/models, and
- * electron-builder's extraResources carries them into the installer. The
- * app itself never downloads; without these files the embedded tier
- * reports unavailable.
+ * Three modes, and the distinction matters more than it looks:
  *
- * Usage: npm run models:fetch [-- --force] [--first-run] [--verify]
+ *   (default)     the weights that go inside the installer. The two low-tier
+ *                 models, 0.65 GiB together, which is what makes a fresh
+ *                 install answer the local tier offline.
+ *   --first-boot  the weights the app downloads on first launch, in the
+ *                 background: one mid and one high, 9.04 GiB. Not for the
+ *                 app's own boot path.
+ *   --all         every weight in the catalog. A developer convenience for
+ *                 populating a machine; 450 GiB, so it must never be reachable
+ *                 from anything the app runs.
  *
- * --first-run  Download only models NOT shipped in the installer (for first launch)
- * --verify     Verify SHA256 checksums after download
- * --force      Re-download even if file exists
+ * `--first-run` used to mean --all. It was never wired to the app, but a flag
+ * named "first run" in a build script is one refactor away from downloading
+ * every weight on a user's first launch, so it is now --first-boot and means
+ * only the two the app provisions.
+ *
+ * Downloads are verified against the catalog's sha256, resumed when the server
+ * supports it, and one at a time so two transfers cannot fight over the disk.
  */
-
-import { createWriteStream, existsSync, mkdirSync, readFileSync, statSync } from 'node:fs';
+import {
+  createReadStream,
+  createWriteStream,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  renameSync,
+  rmSync,
+  statSync,
+} from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createHash } from 'node:crypto';
 import { Readable } from 'node:stream';
-import { finished } from 'node:stream/promises';
+import { pipeline } from 'node:stream/promises';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const MODELS_DIR = join(HERE, '..', 'resources', 'models');
+const catalog = JSON.parse(
+  readFileSync(join(HERE, '..', 'src', 'models.json'), 'utf8'),
+);
 
-const catalog = JSON.parse(readFileSync(join(HERE, '..', 'src', 'models.json'), 'utf8'));
-const BUNDLED = catalog.filter((entry) => entry.bundled === true);
-if (BUNDLED.length === 0) throw new Error('models.json flags no bundled models');
+const args = process.argv.slice(2);
+const flag = (name) => args.includes(name);
+const force = flag('--force');
 
-// Determine which models to fetch based on mode
-const firstRun = process.argv.includes('--first-run');
-const MODELS = firstRun
-  ? catalog.filter((entry) => entry.bundled !== true)  // Download everything NOT in installer
-  : catalog.filter((entry) => entry.bundled === true);  // Download only bundled (for installer build)
-
-if (MODELS.length === 0) {
-  if (firstRun) console.log('First-run: all non-bundled models already present');
-  else throw new Error('models.json flags no bundled models');
-}
-
-const force = process.argv.includes('--force');
-const verify = process.argv.includes('--verify');
-
-async function fetchOne({ file, url, bytes }) {
-  const target = join(MODELS_DIR, file);
-  if (existsSync(target) && !force) {
-    const existingBytes = statSync(target).size;
-    if (existingBytes === bytes) {
-      console.log(`model present: ${file} (${(bytes / 1048576).toFixed(0)} MB)`);
-      return;
-    }
-    console.log(`model size mismatch: ${file} (${(existingBytes / 1048576).toFixed(0)} vs ${(bytes / 1048576).toFixed(0)} MB), re-downloading`);
-  }
-
-  mkdirSync(MODELS_DIR, { recursive: true });
-  console.log(`downloading ${url}`);
-  const response = await fetch(url);
-  if (!response.ok || !response.body) {
-    throw new Error(`download failed: HTTP ${response.status}`);
-  }
-  const total = Number(response.headers.get('content-length') ?? 0);
-  let done = 0;
-  const started = Date.now();
-  await finished(
-    Readable.fromWeb(response.body)
-      .on('data', (chunk) => {
-        done += chunk.length;
-        if (total > 0 && done % (32 * 1048576) < chunk.length) {
-          const pct = ((done / total) * 100).toFixed(0);
-          process.stdout.write(
-            `\r${file} ${pct}% (${(done / 1048576).toFixed(0)}/${(total / 1048576).toFixed(0)} MB)`,
-          );
-        }
-      })
-      .pipe(createWriteStream(target)),
+/** Reject the old name rather than silently meaning something else now. */
+if (flag('--first-run')) {
+  console.error(
+    '--first-run has been renamed. It used to download every model in the\n' +
+      'catalog (450 GiB) and must never be an app boot path. Use:\n' +
+      '  --first-boot  the two models the app provisions on first launch\n' +
+      '  --all         every model, for development only',
   );
-  const seconds = ((Date.now() - started) / 1000).toFixed(0);
-  console.log(`\nsaved ${target} (${(done / 1048576).toFixed(0)} MB in ${seconds}s)`);
+  process.exit(2);
+}
 
-  // Verify checksum if requested
-  if (verify) {
-    const crypto = await import('node:crypto');
-    const hash = crypto.createHash('sha256');
-    const stream = require('node:fs').createReadStream(target);
-    for await (const chunk of stream) hash.update(chunk);
-    const digest = hash.digest('hex');
-    console.log(`sha256: ${digest}`);
+const all = flag('--all');
+const firstBoot = flag('--first-boot');
+
+let models;
+let what;
+if (all) {
+  models = catalog;
+  what = 'every weight in the catalog';
+} else if (firstBoot) {
+  models = catalog.filter((entry) => entry.provision === 'first-boot');
+  what = 'the first-boot provisioned weights';
+} else {
+  models = catalog.filter((entry) => entry.bundled === true);
+  what = 'the installer weights';
+}
+
+if (models.length === 0) {
+  console.error(`models.json flags nothing to fetch for: ${what}`);
+  process.exit(1);
+}
+
+mkdirSync(MODELS_DIR, { recursive: true });
+
+/** True when the file on disk already matches the catalog. */
+function isGood(entry) {
+  const target = join(MODELS_DIR, entry.file);
+  if (!existsSync(target)) return false;
+  if (!entry.bytes || statSync(target).size !== entry.bytes) return false;
+  if (!entry.sha256) return true; // nothing to check against
+  return sha256Of(target) === entry.sha256;
+}
+
+function sha256Of(path) {
+  return new Promise((resolve, reject) => {
+    const hash = createHash('sha256');
+    createReadStream(path)
+      .on('data', (chunk) => hash.update(chunk))
+      .on('end', () => resolve(hash.digest('hex')))
+      .on('error', reject);
+  });
+}
+
+/**
+ * Fetch one weight, resuming from a .part when there is one.
+ *
+ * The catalog pins every URL to a commit revision, so a resumed transfer
+ * cannot pick up a different file halfway through: the bytes behind the URL
+ * cannot change.
+ */
+async function fetchOne(entry) {
+  const target = join(MODELS_DIR, entry.file);
+  if (!force && isGood(entry)) {
+    console.log(`  present  ${entry.file} (${mb(entry.bytes)})`);
+    return;
   }
+  // A stale part file from a previous run must not survive into this one: its
+  // offset would be appended to and the result would be two weights' worth of
+  // bytes in one file.
+  const stalePart = `${target}.part`;
+  if (!existsSync(target) && existsSync(stalePart)) {
+    const partSize = statSync(stalePart).size;
+    if (entry.bytes && partSize > entry.bytes) rmSync(stalePart, { force: true });
+  }
+  if (existsSync(target)) {
+    // Present but wrong size or wrong hash: do not keep it.
+    rmSync(target, { force: true });
+  }
+
+  const part = `${target}.part`;
+  const from = existsSync(part) ? statSync(part).size : 0;
+  if (entry.bytes && from > entry.bytes) {
+    rmSync(part, { force: true });
+    return fetchOne({ ...entry, bytes: entry.bytes });
+  }
+
+  const headers = {};
+  if (from > 0) headers.Range = `bytes=${from}-`;
+
+  const response = await fetch(entry.url, { headers });
+  if (!response.ok && response.status !== 206) {
+    throw new Error(`download failed: HTTP ${response.status} for ${entry.file}`);
+  }
+  // A server that ignores Range restarts the file, so the partial must go.
+  const resuming = response.status === 206 && from > 0;
+  if (!resuming && existsSync(part)) rmSync(part, { force: true });
+
+  const total = Number(response.headers.get('content-length') ?? 0) + from;
+  let done = from;
+  let lastReport = 0;
+
+  await pipeline(
+    Readable.fromWeb(response.body).on('data', (chunk) => {
+      done += chunk.length;
+      const now = Date.now();
+      // Every half second, not every chunk: progress output on a fast link
+      // costs more than the download.
+      if (now - lastReport > 500) {
+        lastReport = now;
+        const pct = total > 0 ? ` ${((done / total) * 100).toFixed(0)}%` : '';
+        process.stdout.write(`\r  ${entry.file}${pct} ${mb(done)}/${mb(total)}   `);
+      }
+    }),
+    createWriteStream(part, { flags: resuming ? 'a' : 'w' }),
+  );
+
+  process.stdout.write('\r\x1b[K');
+
+  if (entry.bytes && statSync(part).size !== entry.bytes) {
+    rmSync(part, { force: true });
+    throw new Error(
+      `size mismatch for ${entry.file}: got ${statSync(part).size}, expected ${entry.bytes}`,
+    );
+  }
+  if (entry.sha256) {
+    const digest = await sha256Of(part);
+    if (digest !== entry.sha256) {
+      rmSync(part, { force: true });
+      throw new Error(
+        `sha256 mismatch for ${entry.file}: got ${digest}, expected ${entry.sha256}`,
+      );
+    }
+  }
+
+  // Rename last: a half-written weight must never sit at the path the app
+  // serves from.
+  renameSync(part, target);
+  console.log(`  fetched  ${entry.file} (${mb(entry.bytes)})`);
 }
 
-for (const model of MODELS) {
-  await fetchOne({ file: model.file, url: model.url, bytes: model.bytes });
+const mb = (bytes) => `${(bytes / 1048576).toFixed(0)} MB`;
+
+console.log(`fetching ${models.length} weight(s): ${what}`);
+for (const entry of models) {
+  // One at a time, sequentially: two multi-gigabyte transfers to the same
+  // directory help neither.
+  await fetchOne(entry);
 }
+console.log('done');
