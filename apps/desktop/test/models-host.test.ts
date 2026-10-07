@@ -1,4 +1,5 @@
 import { mkdtempSync, readdirSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { ReadableStream as WebReadableStream } from 'node:stream/web';
@@ -17,6 +18,17 @@ function setupDir(files: string[] = []): string {
   for (const file of files) writeFileSync(join(dir, file), 'fake-bytes');
   return dir;
 }
+
+/**
+ * sha256 of a string, so a stub body can declare the hash it should verify
+ * against.
+ *
+ * A real weight's bytes cannot be reproduced here, so the checksum step needs
+ * an expected hash the test chooses. Production never overrides it: the point
+ * is that the expectation comes from the catalog, not from whatever arrived.
+ */
+const sha256 = (text: string): string =>
+  createHash('sha256').update(text).digest('hex');
 
 /** In-memory stand-in for a model file download. */
 function stubFetch(bytes: string): typeof fetch {
@@ -56,20 +68,91 @@ describe('listModels', () => {
 });
 
 describe('downloadModel', () => {
+  const ID = 'qwen2.5-coder-0.5b-instruct-q4_0';
+
   it('streams a catalog id to disk with progress', async () => {
     const dir = setupDir();
     const seen: Array<{ done: number; total: number }> = [];
-    const result = await downloadModel(dir, 'qwen2.5-coder-0.5b-instruct-q4_0', {
+    const result = await downloadModel(dir, ID, {
       fetchImpl: stubFetch('x'.repeat(1024)),
+      confirmed: true,
+      expectedSha256: sha256('x'.repeat(1024)),
       onProgress: (progress) => {
         seen.push({ done: progress.done, total: progress.total });
       },
     });
     expect(result.bytes).toBe(1024);
-    expect(listModels(dir).find((e) => e.id === 'qwen2.5-coder-0.5b-instruct-q4_0')?.present).toBe(
-      true,
-    );
+    expect(listModels(dir).find((e) => e.id === ID)?.present).toBe(true);
     expect(seen.length).toBeGreaterThan(0);
+  });
+
+  it('keeps a file whose sha256 matches', async () => {
+    // The happy path of the verification step, proved rather than assumed.
+    const dir = setupDir();
+    const result = await downloadModel(dir, ID, {
+      fetchImpl: stubFetch('good'.repeat(256)),
+      confirmed: true,
+      expectedSha256: sha256('good'.repeat(256)),
+    });
+    expect(readdirSync(dir)).toEqual([`${ID}.gguf`]);
+    expect(result.bytes).toBe(1024);
+  });
+
+  it('discards a download whose sha256 does not match', async () => {
+    // Regression: nothing verified what arrived, so a truncated transfer or a
+    // spliced resume became a weight that failed to load with no explanation,
+    // and the embedded server served it as though it were fine.
+    const dir = setupDir();
+    await expect(
+      downloadModel(dir, ID, {
+        fetchImpl: stubFetch('x'.repeat(1024)),
+        confirmed: true,
+        // The catalog's real hash, against bytes that cannot produce it: this
+        // is the path production takes.
+        expectedSha256: findCatalogEntry(ID)?.sha256,
+      }),
+    ).rejects.toThrow(/checksum mismatch/);
+    // Nothing survives: no .part, and no file that would look complete.
+    expect(readdirSync(dir)).toEqual([]);
+    expect(listModels(dir).find((e) => e.id === ID)?.present).toBe(false);
+  });
+
+  it('carries a sha256 for every catalog weight', async () => {
+    // Without this the verification above would be testing an override rather
+    // than the catalog, and a catalog entry missing a hash would silently skip
+    // the check.
+    const missing = catalogModels().filter((e) => !/^[0-9a-f]{64}$/.test(e.sha256 ?? ''));
+    expect(missing.map((e) => e.id)).toEqual([]);
+  });
+
+  it('refuses an unconfirmed download at or above the threshold', async () => {
+    // R3, enforced at the boundary. The picker's confirm dialog is the
+    // convenience; this is the half a sandboxed renderer cannot bypass.
+    //
+    // A weight over the threshold, not ID: qwen2.5-coder-0.5b is 409 MB and
+    // installs silently by design, so using it here would test nothing.
+    const big = catalogModels().find((e) => e.bytes >= 500 * 1048576);
+    expect(big, 'no catalog weight is at or above 500 MiB').toBeDefined();
+
+    const dir = setupDir();
+    let fetched = false;
+    await expect(
+      downloadModel(dir, big?.id ?? '', {
+        fetchImpl: ((async () => {
+          fetched = true;
+          return new Response('x', { status: 200 });
+        }) as unknown) as typeof fetch,
+      }),
+    ).rejects.toThrow(/not confirmed/);
+    expect(fetched).toBe(false);
+
+    // And the same weight installs once the agreement is carried through.
+    const ok = await downloadModel(dir, big?.id ?? '', {
+      fetchImpl: stubFetch('x'.repeat(16)),
+      confirmed: true,
+      expectedSha256: sha256('x'.repeat(16)),
+    });
+    expect(ok.bytes).toBe(16);
   });
 
   it('skips files that already exist', async () => {
@@ -195,6 +278,8 @@ describe('downloadModel cancellation', () => {
     const result = await downloadModel(dir, 'qwen2.5-coder-0.5b-instruct-q4_0', {
       fetchImpl: stubFetch('y'.repeat(512)),
       signal: controller.signal,
+      confirmed: true,
+      expectedSha256: sha256('y'.repeat(512)),
     });
     expect(result.bytes).toBe(512);
     expect(readdirSync(dir)).toEqual(['qwen2.5-coder-0.5b-instruct-q4_0.gguf']);

@@ -9,18 +9,24 @@
  */
 
 import { ipcMain } from 'electron';
-import { createWriteStream, existsSync, mkdirSync, readFileSync, renameSync, statSync, unlinkSync, type WriteStream } from 'node:fs';
+import { createWriteStream, createReadStream, existsSync, mkdirSync, readFileSync, renameSync, rmSync, statSync, unlinkSync, type WriteStream } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 
 import { isRemoteOnly, remoteOnlyReason } from './catalog.js';
+import { AUTO_INSTALL_LIMIT } from './model-picker.js';
 
 export interface CatalogModel {
   id: string;
   file: string;
   url: string;
+  /** Commit sha the url resolves at, so the bytes cannot change under us. */
+  revision: string;
+  /** sha256 of the file as published. Verified after every download. */
+  sha256: string;
   bytes: number;
   use: string;
   bundled: boolean;
@@ -118,6 +124,23 @@ export async function downloadModel(
     fetchImpl?: typeof fetch;
     /** Aborts the transfer. The partial file is removed either way. */
     signal?: AbortSignal;
+    /**
+     * The user agreed to this weight, for a size at or above
+     * AUTO_INSTALL_LIMIT. Set by the confirm dialog. Required for large
+     * weights: without it the host refuses rather than downloading in
+     * silence.
+     */
+    confirmed?: boolean;
+    /**
+     * Override the expected sha256.
+     *
+     * Defaults to the catalog's, and production never overrides it: the whole
+     * point is that the expected hash comes from the catalog rather than from
+     * whatever the transfer produced. It exists so a test can verify the
+     * verification -- a real weight's bytes cannot be reproduced in a stub, so
+     * without this the only observable behaviour would be the mismatch path.
+     */
+    expectedSha256?: string;
   } = {},
 ): Promise<{ path: string; bytes: number }> {
   const entry = findCatalogEntry(id);
@@ -130,9 +153,21 @@ export async function downloadModel(
   // The picker already withholds the download affordance for these, but the
   // main process is the boundary that matters: the renderer is sandboxed and
   // every argument arrives over IPC, so a crafted `models:fetch` must not be
-  // able to start a 67 GiB transfer the UI never offered.
+  // able to start a transfer the UI never offered.
   if (isRemoteOnly(entry)) {
     throw new Error(remoteOnlyReason(entry.bytes));
+  }
+
+  // R3: the 500 MiB rule lives in one place and both sides use it. The picker
+  // decides whether to ask; this is the half that cannot be bypassed, because a
+  // renderer that skipped the confirm dialog would otherwise start a silent
+  // multi-gigabyte transfer. Callers that did not confirm declare it here.
+  if (entry.bytes >= AUTO_INSTALL_LIMIT && !options.confirmed) {
+    throw new Error(
+      `${entry.id} is ${(entry.bytes / 1048576).toFixed(0)} MB, at or above the ` +
+        `${AUTO_INSTALL_LIMIT / 1048576} MB threshold, and was not confirmed. ` +
+        'A silent install of a weight this size is not something the host may do unasked.',
+    );
   }
 
   const fetchImpl = options.fetchImpl ?? fetch;
@@ -208,8 +243,43 @@ export async function downloadModel(
     throw error;
   }
   detach();
+
+  // The catalog records a sha256 for every weight, so a fetched file can be
+  // checked rather than trusted. Without this a corrupted transfer -- a proxy
+  // that truncated the body, a resume that spliced two versions together --
+  // becomes a model that fails to load with no indication of why, and the
+  // embedded server will serve it as though it were fine.
+  const expected = options.expectedSha256 ?? entry.sha256;
+  if (expected) {
+    const digest = await sha256Of(partial);
+    if (digest !== expected) {
+      rmSync(partial, { force: true });
+      throw new Error(
+        `checksum mismatch for ${entry.id}: got sha256 ${digest.slice(0, 16)}..., ` +
+          `expected ${expected.slice(0, 16)}... The download was discarded.`,
+      );
+    }
+  }
+
   renameSync(partial, target);
   return { path: target, bytes: sizeOf(target) };
+}
+
+/**
+ * sha256 of a file, streamed.
+ *
+ * Read in chunks rather than whole: the largest weight in the catalog is
+ * 19.24 GiB, and reading that into a Buffer to hash it is a 19 GiB allocation
+ * in the main process on a machine that may not have 19 GiB free.
+ */
+function sha256Of(path: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const hash = createHash('sha256');
+    createReadStream(path)
+      .on('data', (chunk) => hash.update(chunk))
+      .on('error', reject)
+      .on('end', () => resolve(hash.digest('hex')));
+  });
 }
 
 /** Live transfers, so a cancel can find the right one to abort. */
@@ -231,9 +301,16 @@ export function cancelDownload(id: string): boolean {
 export function registerModelsHandlers(modelDir: string): void {
   ipcMain.handle('models:list', () => listModels(modelDir));
 
-  ipcMain.handle('models:fetch', async (event, id: unknown) => {
+  ipcMain.handle('models:fetch', async (event, id: unknown, request: unknown) => {
     const entry = findCatalogEntry(id);
     if (!entry) return { ok: false, error: `unknown model: ${String(id)}` };
+
+    // The agreement arrives over IPC from a sandboxed renderer, so it is read
+    // as a strict boolean rather than trusted as whatever shape it took.
+    const confirmed =
+      typeof request === 'object' &&
+      request !== null &&
+      (request as { confirmed?: unknown }).confirmed === true;
 
     // One transfer per weight: a second request for the same id replaces the
     // first, so a double click cannot leave two writers on one .part file.
@@ -245,6 +322,7 @@ export function registerModelsHandlers(modelDir: string): void {
     try {
       const result = await downloadModel(modelDir, entry.id, {
         signal: controller.signal,
+        confirmed,
         onProgress: (progress) => {
           if (!sender.isDestroyed()) sender.send('models:progress', progress);
         },
