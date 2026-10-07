@@ -28,6 +28,7 @@ import { registerIdeFsHandlers } from './ide-fs-host.js';
 import { KeyVault, vaultPath } from './keys-host.js';
 import { registerModelsHandlers } from './models-host.js';
 import { registerHardwareHandlers } from './hardware-host.js';
+import { Provisioner, registerProvisionHandlers } from './provision-host.js';
 import { registerTerminalHandlers } from './terminal-host.js';
 
 const HERE = fileURLToPath(new URL('.', import.meta.url));
@@ -236,6 +237,27 @@ app.whenReady().then(() => {
   // native module only logs, never stops the app booting.
   void embeddedHandle();
 
+  // First-boot provisioning: fetch the two non-installer weights in the
+  // background, one at a time, with no prompt. Started after the window exists
+  // so the progress chip has somewhere to appear, and not awaited -- a first
+  // launch must not wait on 9 GiB of network to show a window.
+  //
+  // Each finished weight is usable immediately: it lands in the directory the
+  // embedded server serves, so Auto routing picks it up without a restart.
+  void provisioner
+    .start()
+    .then(() => {
+      const ready = provisioner.status().items.filter((item) => item.state === 'done');
+      if (ready.length > 0) {
+        mainWindow?.webContents.send('provision:ready', ready.map((item) => item.id));
+      }
+    })
+    .catch((cause: unknown) => {
+      // Provisioning is a convenience. A failure here must not be able to stop
+      // the app booting, so it is logged and nothing else.
+      console.error('first-boot provisioning failed:', cause);
+    });
+
   if (error) {
     // Surface a bad config immediately rather than letting it look like a
     // routing problem later.
@@ -326,6 +348,16 @@ registerIdeAgentHandlers(
 // Model downloads land in the same directory the embedded server serves,
 // so a finished fetch is usable without a restart. See models-host.ts.
 registerModelsHandlers(findModelDir());
+
+// First-boot provisioning, and the IPC the progress chip needs. The instance is
+// module-level because both the boot path and the handlers refer to it, and
+// there is exactly one model directory per process.
+const provisioner = new Provisioner(findModelDir(), {
+  onChange: (status) => {
+    mainWindow?.webContents.send('provision:status', status);
+  },
+});
+registerProvisionHandlers(provisioner);
 
 // The renderer cannot statfs or read os.totalmem from a sandboxed context, so
 // the fit checks in the install dialog and the onboarding scan get their

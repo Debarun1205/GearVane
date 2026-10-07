@@ -14,6 +14,33 @@ const api = {
   openExternal: (url) => ipcRenderer.invoke('shell:open', url),
 
   /**
+   * First-boot provisioning.
+   *
+   * There is deliberately no `start`. The app decides on first launch what to
+   * fetch; a renderer must not be able to kick off 9 GiB by asking again.
+   */
+  provision: {
+    status: () => ipcRenderer.invoke('provision:status'),
+    pause: () => ipcRenderer.invoke('provision:pause'),
+    resume: (options) =>
+      ipcRenderer.invoke('provision:resume', { metered: options?.metered === true }),
+    cancel: (id) => ipcRenderer.invoke('provision:cancel', id),
+    /** The renderer's guess at whether this connection costs money. */
+    reportMetered: (metered) => ipcRenderer.invoke('provision:metered', metered === true),
+    onStatus: (handler) => {
+      const listener = (_event, status) => handler(status);
+      ipcRenderer.on('provision:status', listener);
+      return () => ipcRenderer.removeListener('provision:status', listener);
+    },
+    /** Ids that finished downloading, so the UI can say which is now in use. */
+    onReady: (handler) => {
+      const listener = (_event, ids) => handler(ids);
+      ipcRenderer.on('provision:ready', listener);
+      return () => ipcRenderer.removeListener('provision:ready', listener);
+    },
+  },
+
+  /**
    * Builder surface.
    *
    * The renderer can plan and write a scaffold but has no filesystem of its

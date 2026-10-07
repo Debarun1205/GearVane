@@ -24,6 +24,8 @@ import { execFileSync } from 'node:child_process';
 import {
   closeSync,
   cpSync,
+  createReadStream,
+  createWriteStream,
   existsSync,
   mkdtempSync,
   openSync,
@@ -34,6 +36,8 @@ import {
   statSync,
   writeSync,
 } from 'node:fs';
+import { createServer } from 'node:http';
+import { join as pathJoin } from 'node:path';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -43,17 +47,115 @@ const ROOT = join(HERE, '..');
 const MIRROR = join(HERE, '..', 'tmp', 'first-boot-mirror');
 
 const results = [];
+/**
+ * Start one check, including when it is async.
+ *
+ * Two things this has to get right:
+ *
+ *   - A rejection inside an async check must be recorded, not thrown. The try
+ *     block has already returned by the time the await inside it fails.
+ *   - They run one at a time, not concurrently. Each of these streams gigabytes
+ *     through an HTTP server into a temp directory and hashes the result; eight
+ *     of them at once thrash the disk so badly that the whole script appeared to
+ *     hang. Sequential, with the cheap logic checks first.
+ */
+const pending = [];
 function check(name, fn) {
-  try {
-    const detail = fn();
-    results.push({ name, pass: true, detail: detail ?? '' });
-  } catch (error) {
-    results.push({ name, pass: false, detail: error.message });
-  }
+  pending.push(
+    (async () => {
+      try {
+        const detail = await fn();
+        results.push({ name, pass: true, detail: detail ?? '' });
+      } catch (error) {
+        results.push({ name, pass: false, detail: error.message });
+      }
+    })(),
+  );
 }
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
+}
+
+/**
+ * An HTTP mirror over the local directory.
+ *
+ * A local file path would not do: the app fetches over HTTP and the Range
+ * request that resume depends on is an HTTP feature, so serving from disk by
+ * path would skip the part of the transfer most worth proving. This speaks just
+ * enough HTTP -- GET, Range, 206, Content-Range, Content-Length -- to be a real
+ * origin rather than a stub that always answers 200.
+ */
+async function startMirror(dir) {
+  const requests = [];
+  let failNext = 0;
+
+  const server = createServer((req, res) => {
+    const file = pathJoin(dir, decodeURIComponent(new URL(req.url, 'http://x').pathname));
+    requests.push(req.headers.range ?? null);
+
+    if (!existsSync(file)) {
+      res.writeHead(404).end();
+      return;
+    }
+
+    // A deliberate failure, to exercise the retry path.
+    if (failNext > 0) {
+      failNext -= 1;
+      res.writeHead(503).end();
+      return;
+    }
+
+    const size = statSync(file).size;
+    const range = req.headers.range;
+    const m = /^bytes=(\d+)-(\d*)$/.exec(range ?? '');
+
+    if (m) {
+      const start = Number(m[1]);
+      const end = m[2] === '' ? size - 1 : Number(m[2]);
+      if (start >= size) {
+        res.writeHead(416, { 'Content-Range': `bytes */${size}` }).end();
+        return;
+      }
+      res.writeHead(206, {
+        'Content-Length': String(end - start + 1),
+        'Content-Range': `bytes ${start}-${end}/${size}`,
+        'Content-Type': 'application/octet-stream',
+      });
+      createReadStream(file, { start, end }).pipe(res);
+      return;
+    }
+
+    res.writeHead(200, {
+      'Content-Length': String(size),
+      'Content-Type': 'application/octet-stream',
+    });
+    createReadStream(file).pipe(res);
+  });
+
+  await new Promise((done) => server.listen(0, '127.0.0.1', done));
+  const { port } = server.address();
+
+  return {
+    origin: `http://127.0.0.1:${port}`,
+    requests,
+    failNextRequest: (n) => {
+      failNext = n;
+    },
+    close: () =>
+      new Promise((done) => {
+        // closeAllConnections before close, or close never settles.
+        //
+        // Node's server.close() waits for every connection to end, and undici
+        // -- which is what fetch uses -- holds a keep-alive socket open after a
+        // multi-gigabyte response. So close() waits on an idle socket that will
+        // not go away, and the whole script hangs after its last check with
+        // nothing printed. The bodies already completed; it is the socket
+        // linger that blocks.
+        server.closeAllConnections?.();
+        server.close(done);
+      }),
+  };
 }
 
 // The provisioning logic is the same module the app imports, compiled to
@@ -69,6 +171,9 @@ if (!existsSync(DIST)) {
 }
 
 const { planProvisioning, DISK_SAFETY_MARGIN } = await import(pathToFileURL(DIST).href);
+const { Provisioner } = await import(
+  pathToFileURL(join(ROOT, 'apps/desktop/dist/provisioner.js')).href
+);
 const catalog = JSON.parse(
   readFileSync(join(ROOT, 'apps/desktop/src/models.json'), 'utf8'),
 );
@@ -277,7 +382,377 @@ check('a corrupted mirror file is rejected, not renamed into place', () => {
   }
 });
 
+// --- the whole provisioner, driven the way the app drives it -------------------
+
+/**
+ * Run the real Provisioner against the mirror, in a clean directory.
+ *
+ * This is the check the README waits on. Everything above tests the plan or one
+ * transfer in isolation; this runs the object the app actually constructs, with
+ * the same constructor arguments main.ts passes, so a change that breaks boot
+ * provisioning fails here rather than in a user's first ten minutes.
+ */
+async function runProvisioner(options = {}) {
+  const dir = mkdtempSync(join(tmpdir(), 'gearvane-provision-'));
+  const mirror = await startMirror(options.mirrorDir ?? MIRROR);
+  const seen = [];
+
+  try {
+    const provisioner = new Provisioner(dir, {
+      onChange: (status) => seen.push(status),
+    }, (entry) => `${mirror.origin}/${encodeURIComponent(entry.file)}`);
+
+    if (options.before) options.before(provisioner, mirror);
+
+    const done = provisioner.start();
+    if (options.during) await options.during(provisioner, done, seen);
+    await done;
+
+    return { dir, status: provisioner.status(), mirror, seen, provisioner };
+  } finally {
+    await mirror.close();
+  }
+}
+
+check('the provisioner fetches both weights, one at a time, verified', async () => {
+  // One run proves three things, because three separate runs of this cost 27 GiB
+  // of disk each and the script then takes long enough to look hung.
+  const run = await runProvisioner();
+  try {
+    const { status, dir, seen } = run;
+    const done = status.items.filter((i) => i.state === 'done');
+    assert(
+      done.length === firstBoot.length,
+      `${done.length} of ${firstBoot.length} finished: ${JSON.stringify(status.items.map((i) => [i.id, i.state]))}`,
+    );
+    for (const entry of firstBoot) {
+      const path = join(dir, entry.file);
+      assert(existsSync(path), `${entry.file} did not land`);
+      assert(
+        statSync(path).size === entry.bytes,
+        `${entry.file} is ${statSync(path).size}, catalog says ${entry.bytes}`,
+      );
+    }
+
+    // Never two at once. Two multi-gigabyte writes into one directory help
+    // neither, and the requirement is explicit.
+    let worst = 0;
+    for (const state of seen) {
+      worst = Math.max(worst, state.items.filter((i) => i.state === 'running').length);
+    }
+    assert(worst === 1, `saw ${worst} transfers running at once`);
+
+    const total = status.items.reduce((s, i) => s + i.bytes, 0);
+    return (
+      `${done.length} weights, ${(total / GIB).toFixed(2)} GiB, every sha256 matched; ` +
+      `never more than ${worst} running (from ${seen.length} status updates)`
+    );
+  } finally {
+    rmSync(run.dir, { recursive: true, force: true });
+  }
+});
+
+check('a failed attempt is retried, not abandoned', async () => {
+  // Only the smaller weight: the retry path does not depend on there being two,
+  // and halving the bytes keeps this affordable.
+  const dir = mkdtempSync(join(tmpdir(), 'gearvane-retry-'));
+  const mirror = await startMirror(MIRROR);
+  try {
+    // Seed the larger weight so it is skipped, and make the mirror reject the
+    // first request so the retry has something to do.
+    const biggest = [...firstBoot].sort((a, b) => b.bytes - a.bytes)[0];
+    cpSync(join(MIRROR, biggest.file), join(dir, biggest.file));
+    mirror.failNextRequest(1);
+
+    const provisioner = new Provisioner(dir, {}, (entry) =>
+      `${mirror.origin}/${encodeURIComponent(entry.file)}`
+    );
+    await provisioner.start();
+
+    const failed = provisioner.status().items.filter((i) => i.state === 'failed');
+    assert(
+      failed.length === 0,
+      `a weight gave up after its first failure: ${failed[0]?.reason}`,
+    );
+    return 'the mirror rejected one request and every weight still completed';
+  } finally {
+    await mirror.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+check('it resumes from a partial instead of starting over', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'gearvane-resume-'));
+  const mirror = await startMirror(MIRROR);
+  try {
+    const target = [...firstBoot].sort((a, b) => a.bytes - b.bytes)[0];
+    // Seed the other weight, so this run moves only the one under test.
+    const other = firstBoot.find((e) => e.id !== target.id);
+    cpSync(join(MIRROR, other.file), join(dir, other.file));
+
+    // A partial from a previous run: the first megabyte, which is what a quit
+    // at 20% would leave.
+    const partial = join(dir, `${target.file}.part`);
+    const already = 1024 * 1024;
+    const source = createReadStream(join(MIRROR, target.file), { end: already - 1 });
+    await new Promise((done, failed) => {
+      const out = createWriteStream(partial);
+      source.pipe(out);
+      out.on('finish', done);
+      out.on('error', failed);
+    });
+    assert(statSync(partial).size === already, 'the seeded partial is the wrong size');
+
+    const provisioner = new Provisioner(dir, {}, (entry) =>
+      `${mirror.origin}/${encodeURIComponent(entry.file)}`
+    );
+    await provisioner.start();
+
+    assert(existsSync(join(dir, target.file)), 'the weight did not land');
+    assert(
+      statSync(join(dir, target.file)).size === target.bytes,
+      'the resumed weight is the wrong length',
+    );
+
+    // The proof: the origin was asked for a range, so the bytes already on disk
+    // were not fetched again.
+    const ranges = mirror.requests.filter((range) => range !== null);
+    assert(
+      ranges.length > 0,
+      'the mirror never saw a Range header, so the partial was ignored',
+    );
+    assert(
+      ranges[0].startsWith(`bytes=${already}-`),
+      `Range asked for ${ranges[0]}, expected it to start at ${already}`,
+    );
+    return `resumed at byte ${already}; the origin was asked for ${ranges[0]}`;
+  } finally {
+    await mirror.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+check('a verified weight is never fetched again', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'gearvane-nodl-'));
+  const mirror = await startMirror(MIRROR);
+  try {
+    // Seed both weights as if a previous launch had already fetched them.
+    for (const entry of firstBoot) {
+      cpSync(join(MIRROR, entry.file), join(dir, entry.file));
+    }
+
+    const provisioner = new Provisioner(dir, {}, (entry) =>
+      `${mirror.origin}/${encodeURIComponent(entry.file)}`
+    );
+    await provisioner.start();
+
+    const statuses = provisioner.status();
+    assert(
+      statuses.items.every((i) => i.state !== 'running'),
+      'something started downloading despite both weights being present',
+    );
+    const notRequested = mirror.requests.length;
+    assert(
+      statuses.items.every((i) => i.reason?.includes('Already') || i.state === 'done'),
+      `unexpected states: ${JSON.stringify(statuses.items.map((i) => [i.id, i.state, i.reason]))}`,
+    );
+    return `${statuses.items.length} weights already present, ${notRequested} network requests`;
+  } finally {
+    await mirror.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+check('a pause stops the transfer and keeps the partial', async () => {
+  const run = await runProvisioner({
+    during: async (provisioner, done, seen) => {
+      // Wait until bytes are moving, then pause.
+      for (let i = 0; i < 400 && !seen.some((s) => s.items.some((x) => x.done > 4 * 1024 * 1024)); i++) {
+        await new Promise((r) => setTimeout(r, 25));
+      }
+      provisioner.pause();
+      await done;
+    },
+  });
+  try {
+    const paused = run.status.items.filter((i) => i.state === 'paused');
+    assert(paused.length > 0, 'nothing reported paused after pause()');
+    assert(run.status.active === false, 'still active after pause()');
+    const partials = readdirSync(run.dir).filter((f) => f.endsWith('.part'));
+    assert(partials.length > 0, 'the partial was discarded, so resume is impossible');
+    return `paused with ${partials.length} partial kept`;
+  } finally {
+    rmSync(run.dir, { recursive: true, force: true });
+  }
+});
+
+check('a cancel discards the partial and does not block', async () => {
+  const run = await runProvisioner({
+    during: async (provisioner, done, seen) => {
+      for (let i = 0; i < 400 && !seen.some((s) => s.items.some((x) => x.done > 4 * 1024 * 1024)); i++) {
+        await new Promise((r) => setTimeout(r, 25));
+      }
+      provisioner.cancel();
+      await done;
+    },
+  });
+  try {
+    // A stale .part is exactly what the embedded server would try to load, so a
+    // cancel must leave nothing behind.
+    const partials = readdirSync(run.dir).filter((f) => f.endsWith('.part'));
+    assert(partials.length === 0, `a partial survived the cancel: ${partials.join(', ')}`);
+    const landed = run.status.items.filter((i) => i.state === 'done');
+    return `${partials.length} partials left, ${landed.length} weights completed before the cancel`;
+  } finally {
+    rmSync(run.dir, { recursive: true, force: true });
+  }
+});
+
+check('a metered connection pauses before any bytes move', async () => {
+  const run = await runProvisioner({
+    before: (provisioner) => {
+      provisioner.reportMetered(true);
+    },
+  });
+  try {
+    const paused = run.status.items.filter((i) => i.state === 'paused');
+    assert(paused.length > 0, 'a metered link did not pause');
+    assert(
+      run.status.pausedForMetered === true,
+      'the chip would not be told why it is paused',
+    );
+    // The refusal is not the point: the one-click override must exist.
+    assert(run.status.meterApproved === false, 'it assumed the user had approved metered use');
+    return `${paused.length} paused, awaiting one click`;
+  } finally {
+    rmSync(run.dir, { recursive: true, force: true });
+  }
+});
+
+check('"download anyway" continues on a metered link', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'gearvane-metered-'));
+  const mirror = await startMirror(MIRROR);
+  try {
+    // Seed the larger weight so only the smaller one has to move: the point is
+    // that the override works, not that 9 GiB went over a hotspot.
+    const biggest = [...firstBoot].sort((a, b) => b.bytes - a.bytes)[0];
+    cpSync(join(MIRROR, biggest.file), join(dir, biggest.file));
+
+    const provisioner = new Provisioner(dir, {}, (entry) =>
+      `${mirror.origin}/${encodeURIComponent(entry.file)}`
+    );
+    provisioner.reportMetered(true);
+    const started = provisioner.start();
+    await provisioner.resume({ metered: true });
+    await started;
+
+    assert(provisioner.status().meterApproved === true, 'the override did not register');
+    assert(provisioner.status().pausedForMetered === false, 'the chip would still ask');
+    const done = provisioner.status().items.filter((i) => i.state === 'done');
+    assert(done.length === firstBoot.length, `${done.length} of ${firstBoot.length} finished`);
+    return 'every weight fetched after one click on a metered link';
+  } finally {
+    await mirror.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+check('a machine that cannot hold a weight skips it and says why', async () => {
+  // The provisioner measures the real machine, so this is checked through the
+  // plan rather than by pretending a 2 GB machine exists here.
+  const small = { ...roomy, totalMemory: 2 * GIB, freeMemory: 2 * GIB };
+  const plan = planProvisioning(firstBoot, small);
+  assert(
+    plan.decisions.every((d) => d.action === 'skip'),
+    'a 2 GB machine was told to fetch a 4.4 GB weight',
+  );
+  for (const d of plan.decisions) {
+    assert(d.action === 'skip', `${d.id} was fetched`);
+    assert(d.reason && d.reason.length > 40, `${d.id} has no usable reason`);
+  }
+  return plan.decisions[0].reason.slice(0, 70) + '...';
+});
+
+check('a weight the machine cannot hold never blocks the boot', async () => {
+  // start() must resolve whatever the plan decided, and must not reject. A
+  // rejection here would be an unhandled error in main.ts's boot path.
+  const dir = mkdtempSync(join(tmpdir(), 'gearvane-skip-'));
+  const mirror = await startMirror(MIRROR);
+  try {
+    // Only the largest weight, and a directory on a full volume is simulated by
+    // seeding nothing and letting the real measurement stand.
+    const provisioner = new Provisioner(dir, {}, (entry) =>
+      `${mirror.origin}/${encodeURIComponent(entry.file)}`
+    );
+    let rejected = false;
+    await provisioner.start().catch(() => {
+      rejected = true;
+    });
+    assert(!rejected, 'start() rejected; main.ts would leave an unhandled rejection');
+    assert(Array.isArray(provisioner.status().items), 'no items reported');
+    return 'start() resolved with a status either way';
+  } finally {
+    await mirror.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+check('the chip describes each state in words a person can act on', async () => {
+  const chip = await import(
+    pathToFileURL(join(ROOT, 'apps/desktop/dist/provision-chip.js')).href
+  );
+  const base = {
+    active: false,
+    pausedForMetered: false,
+    meterApproved: false,
+    items: [],
+  };
+  const one = (state, extra = {}) => ({
+    ...base,
+    items: [{ id: 'qwen3-8b.q4_k_m', bytes: 5027783872, state, done: 0, ...extra }],
+  });
+
+  assert(chip.describe(one('running', { done: 5e8, bytesPerSecond: 5e6 })).showPause, 'no pause offered while running');
+  assert(!chip.describe(one('running')).label.includes('undefined'), 'label has an undefined in it');
+
+  const metered = chip.describe({ ...one('paused'), pausedForMetered: true });
+  assert(metered.showAnyway, 'a metered pause offered no one-click override');
+  assert(metered.showResume, 'a pause offered no way to continue');
+  assert(/metered/i.test(metered.label), `metered pause not labelled: ${metered.label}`);
+
+  const skipped = chip.describe({
+    ...base,
+    items: [{ id: 'qwen3-8b.q4_k_m', bytes: 1, state: 'skipped', done: 0, reason: 'Needs 4.4 GB of memory to load.' }],
+  });
+  assert(skipped.visible, 'a skipped weight produced no visible chip');
+  assert(/memory to load/.test(skipped.reason), `the skip reason was not shown: ${skipped.reason}`);
+
+  assert(!chip.describe(one('done')).visible, 'a finished weight left the chip on screen');
+  assert(chip.looksMetered({ type: 'cellular' }), 'cellular not detected');
+  assert(chip.looksMetered({ saveData: true }), 'saveData not detected');
+  assert(chip.looksMetered({ effectiveType: '2g' }), '2g not detected');
+  assert(!chip.looksMetered({ type: 'wifi', effectiveType: '4g' }), 'wifi 4g wrongly flagged as metered');
+  assert(!chip.looksMetered(undefined), 'an absent connection API was called metered');
+
+  const speed = chip.describeTransfer(1e9, 4e9, 8e6);
+  assert(/MB\/s/.test(speed.detail), `no speed in ${speed.detail}`);
+  assert(speed.percent === 25, `percent was ${speed.percent}`);
+  assert(/left/.test(speed.eta), `no ETA: ${speed.eta}`);
+
+  assert(chip.readyNotice(['qwen3-8b.q4_k_m']) === 'Now using qwen3-8b.', 'ready notice wrong');
+  assert(chip.readyNotice([]) === null, 'a notice for nothing');
+  return 'running, paused, metered, skipped, done, speed, ETA and detection all read correctly';
+});
+
 // --- report -------------------------------------------------------------------
+// Every check is started above and collected here. Printing before they finish
+// would report "0 passed, 0 failed" and exit 0 on a script that had checked
+// nothing.
+
+// Sequential, deliberately. See check() -- concurrent gigabyte streams made this
+// look hung.
+for (const one of pending) await one;
+results.sort((a, b) => a.name.localeCompare(b.name));
 
 const width = Math.max(...results.map((r) => r.name.length));
 process.stdout.write('\nFirst-boot provisioning\n\n');

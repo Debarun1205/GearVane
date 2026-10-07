@@ -56,12 +56,19 @@ export interface CatalogModel {
   bytes: number;
   use: string;
   bundled: boolean;
+  /**
+   * How this weight reaches a user: inside the installer, or fetched by the app
+   * on first launch. Absent means the user installs it from the picker.
+   */
+  provision?: 'installer' | 'first-boot';
 }
 
 export interface DownloadProgress {
   id: string;
   done: number;
   total: number;
+  /** Current transfer rate, so the UI can show speed and an ETA. */
+  bytesPerSecond?: number;
 }
 
 export function catalogModels(): CatalogModel[] {
@@ -136,6 +143,21 @@ export async function downloadModel(
      * without this the only observable behaviour would be the mismatch path.
      */
     expectedSha256?: string;
+    /**
+     * Continue from an existing `.part` rather than starting over.
+     *
+     * Default true. The catalog pins every URL to a commit, so the bytes behind
+     * it cannot change and a resumed transfer cannot splice two different files.
+     */
+    resume?: boolean;
+    /**
+     * Keep the `.part` when the transfer is aborted.
+     *
+     * For a pause and for a quit, where the point is to pick up where it left
+     * off. A cancel leaves this false: the user asked it to stop, and a stale
+     * partial is what the embedded server would otherwise serve.
+     */
+    keepPartialOnAbort?: boolean;
   } = {},
 ): Promise<{ path: string; bytes: number }> {
   const entry = findCatalogEntry(id);
@@ -171,9 +193,35 @@ export async function downloadModel(
 
   inFlight.set(entry.id, controller);
 
+  // Resume. A first-boot weight is 4-5 GiB, and a user who quits the app at 60%
+  // should not start again from zero. The catalog pins every URL to a commit,
+  // so the bytes behind it cannot change and a resumed transfer cannot splice
+  // two different files together.
+  //
+  // The `.part` size is the offset. A server that ignores Range answers 200
+  // with the whole file, and appending that to what is already on disk would
+  // produce a file of roughly double length -- so on a 200 the partial is
+  // discarded and the transfer starts clean.
+  const partial = `${target}.part`;
+  let offset = 0;
+  if (options.resume !== false && existsSync(partial)) {
+    offset = statSync(partial).size;
+    // Longer than the real file: a corrupted leftover from a previous version.
+    if (entry.bytes && offset > entry.bytes) {
+      rmSync(partial, { force: true });
+      offset = 0;
+    }
+  }
+
+  const headers: Record<string, string> = {};
+  if (offset > 0) headers.Range = `bytes=${offset}-`;
+
   let response: Response;
   try {
-    response = await fetchImpl(entry.url, { signal: controller.signal });
+    response = await fetchImpl(entry.url, {
+      signal: controller.signal,
+      ...(Object.keys(headers).length > 0 ? { headers } : {}),
+    });
   } catch (error) {
     detach();
     inFlight.delete(entry.id);
@@ -185,9 +233,23 @@ export async function downloadModel(
     throw new Error(`download failed: HTTP ${response.status}`);
   }
 
-  const total = Number(response.headers.get('content-length') ?? 0);
-  const partial = `${target}.part`;
-  let done = 0;
+  // 206 is "here is the rest". Anything else with a 200 status means the server
+  // ignored the Range and is sending the whole file again.
+  const resuming = response.status === 206;
+  if (offset > 0 && !resuming) {
+    rmSync(partial, { force: true });
+  }
+  const startAt = resuming ? offset : 0;
+
+  // The catalog's byte count is the authority when it has one. The header is a
+  // fallback, and on a resume the header describes only the tail, so it is added
+  // to the offset rather than used alone.
+  const contentLength = Number(response.headers.get('content-length') ?? 0);
+  const total = entry.bytes || contentLength + startAt;
+
+  const startedAt = Date.now();
+  const startedBytes = startAt;
+  let done = startAt;
   let sink: WriteStream | undefined;
   try {
     const source = Readable.fromWeb(
@@ -195,7 +257,15 @@ export async function downloadModel(
     );
     source.on('data', (chunk: Buffer) => {
       done += chunk.length;
-      options.onProgress?.({ id: entry.id, done, total });
+      const elapsed = Math.max(1, Date.now() - startedAt);
+      options.onProgress?.({
+        id: entry.id,
+        done,
+        total,
+        // Over the whole transfer, not the resumed tail, so the figure does not
+        // jump every time a paused download picks back up.
+        bytesPerSecond: ((done - startedBytes) / elapsed) * 1000,
+      });
     });
     // pipeline, not pipe + finished: .pipe() returns the destination, so
     // finished() would only ever watch the write side. A cancelled transfer
@@ -203,11 +273,16 @@ export async function downloadModel(
     // settled, the download hung after being cancelled, and the .part file
     // below was never cleaned up. pipeline watches both ends and tears down the
     // whole chain, which is what the catch block relies on.
-    sink = createWriteStream(partial);
+    sink = createWriteStream(partial, { flags: startAt > 0 ? 'a' : 'w' });
     await pipeline(source, sink);
   } catch (error) {
     await handleReleased(sink);
-    unlinkWithRetry(partial);
+    // A pause or a quit keeps the partial, so the next attempt resumes from it.
+    // A cancel removes it, because the user asked it to stop and a stale .part
+    // is exactly what the embedded server would otherwise try to load.
+    if (!options.keepPartialOnAbort) {
+      unlinkWithRetry(partial);
+    }
     detach();
     inFlight.delete(entry.id);
     throw error;

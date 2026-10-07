@@ -114,6 +114,44 @@
         </div>
       </header>
 
+      <!--
+        First-boot provisioning.
+
+        Non-blocking by construction: it sits above the transcript, it never
+        takes focus, and it never blocks a run. Hidden entirely when there is
+        nothing to fetch, so a user who already has every weight never sees it.
+      -->
+      <div
+        id="provision-chip"
+        class="provision-chip"
+        role="status"
+        aria-live="polite"
+        hidden
+      >
+        <div class="provision-main">
+          <span id="provision-label" class="provision-label"></span>
+          <span id="provision-detail" class="provision-detail"></span>
+          <span id="provision-reason" class="provision-reason"></span>
+        </div>
+        <div class="provision-bar" aria-hidden="true">
+          <span id="provision-fill" class="provision-fill"></span>
+        </div>
+        <div class="provision-actions">
+          <button id="provision-pause" class="ghost-button" type="button">
+            Pause
+          </button>
+          <button id="provision-resume" class="ghost-button" type="button" hidden>
+            Resume
+          </button>
+          <button id="provision-anyway" class="ghost-button" type="button" hidden>
+            Download anyway
+          </button>
+          <button id="provision-cancel" class="ghost-button" type="button">
+            Cancel
+          </button>
+        </div>
+      </div>
+
       <main id="transcript" class="transcript" aria-live="polite">
         <section class="welcome" id="welcome">
           <h1>Ask, and pay for the right model.</h1>

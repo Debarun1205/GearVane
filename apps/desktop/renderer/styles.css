@@ -567,6 +567,75 @@ html[data-bg='grid'] .ambience::after {
   background: var(--danger);
 }
 
+/* --- first-boot provisioning ---------------------------------------------- */
+
+/*
+ * Sits above the transcript, never over it, and never takes focus. A background
+ * download that steals the caret would be worse than one the user cannot see.
+ */
+.provision-chip {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin: 0.75rem 1.25rem 0;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  font-size: 0.8rem;
+}
+
+.provision-chip[hidden] {
+  display: none;
+}
+
+.provision-main {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: baseline;
+}
+
+.provision-label {
+  font-weight: 600;
+}
+
+.provision-detail,
+.provision-reason {
+  color: var(--text-dim);
+}
+
+/*
+ * The skip reason is the whole point of showing this at all: a machine that
+ * cannot hold a weight needs to say which one and why, rather than leaving the
+ * picker looking broken.
+ */
+.provision-reason {
+  flex-basis: 100%;
+}
+
+.provision-bar {
+  display: block;
+  width: 100%;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--border);
+  overflow: hidden;
+}
+
+.provision-fill {
+  display: block;
+  height: 100%;
+  width: 0;
+  background: var(--accent);
+  transition: width 0.3s ease;
+}
+
+.provision-actions {
+  display: flex;
+  gap: 0.4rem;
+}
+
 /* --- transcript ---------------------------------------------------------- */
 
 .transcript {

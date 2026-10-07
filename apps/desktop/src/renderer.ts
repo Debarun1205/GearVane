@@ -50,6 +50,12 @@ import {
 // entry point. It is loaded on demand below, and only where the bridge exists.
 import type { BuilderBridge } from './builder-view.js';
 import type { TerminalBridge } from './ide/terminal.js';
+import {
+  mountProvisionChip,
+  readyNotice,
+  type ProvisionBridge,
+} from './provision-chip.js';
+
 import type { AgentResult, AgentStep } from '@gearvane/harness';
 import { createWebBackend, type WebFsStorage } from './web-backend.js';
 import { hostedModelRows } from './hosted-models.js';
@@ -163,6 +169,15 @@ interface HostBridge {
      */
     cancel?(id: string): Promise<{ ok: boolean }>;
   };
+
+  /**
+   * First-boot provisioning. Absent in the webview and on any host that does not
+   * ship weights, so the chip stays hidden rather than showing an empty bar.
+   *
+   * Deliberately no `start`: the app decides what to fetch on first launch, and
+   * a renderer must not be able to kick off a multi-gigabyte transfer by asking.
+   */
+  provision?: ProvisionBridge;
 
   /**
    * Machine facts for the fit checks. Absent in the webview, which has no
@@ -324,6 +339,15 @@ const els = {
   tierBadge: byId('tier-badge'),
   spendFill: byId('spend-fill'),
   spendMeter: byId('spend-meter'),
+  provisionChip: byId('provision-chip'),
+  provisionLabel: byId('provision-label'),
+  provisionDetail: byId('provision-detail'),
+  provisionReason: byId('provision-reason'),
+  provisionFill: byId('provision-fill'),
+  provisionPause: byId<HTMLButtonElement>('provision-pause'),
+  provisionResume: byId<HTMLButtonElement>('provision-resume'),
+  provisionAnyway: byId<HTMLButtonElement>('provision-anyway'),
+  provisionCancel: byId<HTMLButtonElement>('provision-cancel'),
   hint: byId('hint'),
   appearanceDialog: byId<HTMLDialogElement>('appearance-dialog'),
   appearanceTitle: byId('appearance-title'),
@@ -847,11 +871,10 @@ function renderTierBadge(): void {
 /**
  * The running-cost readout.
  *
- * A meter, not a budget. It fills as a session spends against a keyed
- * provider, and GearVane enforces nothing here: there is no cap behind this
- * bar, so filling it is a statement about what has been spent rather than a
- * countdown to being cut off. A session that has spent nothing reads as
- * exactly that rather than as "100% used".
+ * A meter, not a budget. There is no cap behind it and nothing is cut off when
+ * it fills -- `BudgetExceeded` was deleted from both engines rather than left
+ * present and unreachable. A session that has spent nothing reads as exactly
+ * that rather than as "100% used".
  */
 function renderSpend(): void {
   els.spendFill.style.width = '100%';
@@ -2715,6 +2738,35 @@ async function main(): Promise<void> {
     // assumed it is noise, and an empty banner reads as nothing to say.
     els.capabilityBanner.hidden = summary === '' || isFullFeatured(host);
   }
+
+  // First-boot provisioning. Mounted here because it is the same shape of
+  // decision: what does this host support, and what does it say about it.
+  mountProvisionChip(
+    bridge.provision,
+    {
+      chip: els.provisionChip,
+      label: els.provisionLabel,
+      detail: els.provisionDetail,
+      reason: els.provisionReason,
+      fill: els.provisionFill,
+      pause: els.provisionPause,
+      resume: els.provisionResume,
+      anyway: els.provisionAnyway,
+      cancel: els.provisionCancel,
+    },
+  );
+
+  // A weight finishing changes what Auto will pick, and the user watched nothing
+  // happen, so it is worth one line. The weight lands in the directory the
+  // embedded server serves, so the next run uses it with no restart.
+  //
+  // The pickers need no refresh here: they re-read `catalogEntries()`, which
+  // asks the host which weights are present, every time they open. Forcing one
+  // open instead would be more code and a worse experience.
+  bridge.provision?.onReady?.((ids: string[]) => {
+    const notice = readyNotice(ids);
+    if (notice) els.hint.textContent = notice;
+  });
   if (builderHost && bridge.builder) {
     try {
       const { BuilderView } = await import('./builder-view.js');
