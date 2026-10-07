@@ -36,6 +36,16 @@ import { measureMachine } from './machine.js';
 export interface ProvisionItem {
   id: string;
   bytes: number;
+  /**
+   * The weight's filename, e.g. `Qwen2.5-7B-Instruct-Q4_K_M.gguf`.
+   *
+   * Not the id, and the two differ: the id is `qwen2.5-7b-instruct-q4_k_m`. The
+   * partial is written next to the *file*, so anything that has to find or remove
+   * one needs this field. cancel() used the id, deleted a path that never existed,
+   * and left a 4 GiB `.part` in the directory the embedded server serves -- the
+   * exact outcome its own comment said it was preventing.
+   */
+  file: string;
   /** 'fetch' queued, 'running', 'done', 'skipped', 'paused', 'failed'. */
   state: 'queued' | 'running' | 'done' | 'skipped' | 'paused' | 'failed';
   /** Bytes on disk, including a partial from a previous run. */
@@ -143,6 +153,7 @@ export class Provisioner {
       const partial = join(this.modelDir, `${candidate.file}.part`);
       return {
         id: decision.id,
+        file: candidate.file,
         bytes: decision.bytes,
         state: decision.action === 'fetch' ? ('queued' as const) : ('skipped' as const),
         // A resumed transfer starts from whatever survived the last quit.
@@ -163,6 +174,11 @@ export class Provisioner {
    * that failed. A `for` with a `break` left the item 'queued' and returned, so
    * a single failed attempt silently ended provisioning with a weight still
    * marked as pending -- and start() resolved, so nothing reported it.
+   *
+   * Work is anything 'queued' *or* 'paused'. Only accepting 'queued' meant a
+   * pause mid-transfer set the item to 'paused', and resume() then found nothing
+   * to do and provisioning stopped for good -- the Pause button looked like it
+   * worked, because it did, and nothing ever came back.
    */
   private async drain(): Promise<void> {
     this.running = true;
@@ -170,11 +186,17 @@ export class Provisioner {
 
     try {
       for (;;) {
-        const item = this.items.find((i) => i.state === 'queued');
+        const item = this.items.find((i) => i.state === 'queued' || i.state === 'paused');
         if (!item) break;
         if (this.stopped) break;
-        // A metered link pauses before the first byte, not after 4 GiB.
-        if (this.paused) break;
+        // A metered link pauses before the first byte, not after 4 GiB. Report
+        // the truth first: an item that says "queued" and will not start is a
+        // lie the chip cannot render honestly.
+        if (this.paused) {
+          item.state = 'paused';
+          this.emit();
+          break;
+        }
 
         this.controller = new AbortController();
         item.state = 'running';
@@ -238,8 +260,11 @@ export class Provisioner {
         // already decided.
         signal: this.controller?.signal,
         resume: true,
-        // Pause and quit keep the partial so the next launch resumes.
-        keepPartialOnAbort: true,
+        // A pause and a quit keep the partial so the next launch resumes. A cancel
+        // does not, and downloadModel is the one that knows when the abort
+        // settles -- having cancel() unlink the file while the transfer is still
+        // unwinding races it against the writer.
+        keepPartialOnAbort: !this.stopped,
         onProgress: (progress: DownloadProgress) => {
           item.done = progress.done;
           if (progress.bytesPerSecond !== undefined) {
@@ -306,7 +331,11 @@ export class Provisioner {
       if (item.state === 'done' || item.state === 'skipped') continue;
       item.state = 'skipped';
       item.reason = 'Cancelled.';
-      rmSync(join(this.modelDir, `${item.id}.part`), { force: true });
+      // The file name, not the id. See ProvisionItem.file.
+      rmSync(join(this.modelDir, `${item.file}.part`), { force: true });
+      // Nothing on disk means nothing on the progress bar, and leaving it would
+      // show "3.1 of 4.4 GiB" for a file that no longer exists.
+      item.done = 0;
     }
     this.emit();
   }
