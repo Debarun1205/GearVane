@@ -59,6 +59,7 @@
     "appId": "dev.gearvane.app",
     "productName": "GearVane",
     "electronVersion": "44.5.1",
+    "npmRebuild": false,
     "directories": {
       "output": "release",
       "buildResources": "resources"
