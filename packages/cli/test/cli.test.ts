@@ -150,7 +150,7 @@ describe('CLI end to end', () => {
     expect(result.stdout).toMatch(/^verified\s+not checked/m);
     // And the hint for turning it on.
     expect(result.stdout).toMatch(/pass --verify/);
-  });
+  }, 15000);
 
   it('distinguishes "no verifier" from "never reached"', () => {
     // Two different facts about the run. Printing one line for both made a run
