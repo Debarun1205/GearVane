@@ -208,7 +208,7 @@ jobs:
       # Binaries are unsigned: macOS Gatekeeper and Windows SmartScreen will
       # warn. Signing needs certificates that do not belong in this repository.
       - name: Create the GitHub release
-        uses: softprops/action-gh-release@da05d552573ad5aba039eaac05058a918a7bf631 # v2.2.2
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           files: artifacts/*
           generate_release_notes: true
