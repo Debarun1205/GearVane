@@ -131,6 +131,7 @@ if (!existsSync(modelsDir)) {
 const asarPath = join(resources, 'app.asar');
 const unpackedModules = join(resources, 'app.asar.unpacked', 'node_modules');
 const looseApp = join(resources, 'app');
+const looseModules = join(resources, 'app', 'node_modules');
 
 if (existsSync(asarPath)) {
   let tree = null;
@@ -153,26 +154,37 @@ if (existsSync(asarPath)) {
     }
   }
 } else if (existsSync(looseApp)) {
-  notes.push('app is not packed in an asar; archive content checks skipped');
+  notes.push('app is not packed in an asar (asar:false build); archive content checks use loose app/');
+  for (const required of ['dist/main.js', 'package.json']) {
+    if (existsSync(join(looseApp, required))) pass(`app/ contains ${required}`);
+    else fail(`app/ is missing ${required}`);
+  }
+  for (const module of ['node_modules/@gearvane/core', 'node_modules/@gearvane/harness', 'node_modules/@gearvane/app-core', 'node_modules/node-llama-cpp']) {
+    if (existsSync(join(looseModules, module, 'package.json'))) pass(`${module} is resolvable at runtime`);
+    else fail(`${module} is not in the build: the main process would die on launch with "Cannot find module"`);
+  }
 } else {
   fail('neither app.asar nor an app/ directory is present');
 }
 
 // 3. The native inference binary is loadable.
-const natives = findFiles(unpackedModules, (file) => file.endsWith('.node') && /node-llama-cpp/.test(file));
+// With asar, natives are in app.asar.unpacked/; with asar:false, they are in app/node_modules/ directly.
+const nativeSearchRoot = existsSync(unpackedModules) ? unpackedModules : looseModules;
+const natives = findFiles(nativeSearchRoot, (file) => file.endsWith('.node') && /node-llama-cpp/.test(file));
 if (natives.length > 0) {
-  pass(`node-llama-cpp native binary is unpacked (${natives.length} .node file${natives.length === 1 ? '' : 's'})`);
+  pass(`node-llama-cpp native binary is loadable (${natives.length} .node file${natives.length === 1 ? '' : 's'})`);
 } else {
   fail(
-    'no node-llama-cpp .node file under app.asar.unpacked: a native binary cannot be loaded from inside ' +
-      'an archive, so the embedded model would never start. Add asarUnpack for node-llama-cpp and @node-llama-cpp/*',
+    'no node-llama-cpp .node file found: a native binary cannot be loaded from inside ' +
+      'an archive. With asar builds, add asarUnpack for node-llama-cpp; with asar:false builds ' +
+      'ensure node_modules is included in the files list.',
   );
 }
 
 // node-pty is an optional dependency with a runtime fallback, so its absence is a warning.
-const pty = findFiles(unpackedModules, (file) => file.endsWith('.node') && /node-pty/.test(file));
-if (pty.length > 0) pass('node-pty native binary is unpacked');
-else notes.push('node-pty has no unpacked .node file: the in-app terminal will report itself unavailable');
+const pty = findFiles(nativeSearchRoot, (file) => file.endsWith('.node') && /node-pty/.test(file));
+if (pty.length > 0) pass('node-pty native binary is loadable');
+else notes.push('node-pty has no .node file: the in-app terminal will report itself unavailable');
 
 for (const note of notes) console.log(`  [NOTE] ${note}`);
 console.log(`\n${failures.length === 0 ? 'OK' : `${failures.length} problem(s)`}\n`);
