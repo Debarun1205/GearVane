@@ -1,15 +1,7 @@
-chore(release): 0.4.2 — fix installer, download path, fetch-model, native modules, pipeline
+fix(desktop): use **/*.node asarUnpack
 
-Bug fixes:
-- extraResources destination paths: GGUF files now land as files inside models/, not overwrite a file named "models"
-- asarUnpack native modules: node-llama-cpp, @node-llama-cpp, node-pty unpacked from asar
-- Architecture narrowing: deb=x64 only, dmg=arm64 only (matching host native modules)
-- Model download directory: writable per-user userData/models in packaged builds
-- embedded-server: extraModelDirs support (shipped weights + downloaded weights)
-- models-host: multi-directory listModels, shipped weights counted as installed
-- fetch-model: async isGood(), .part full-size rename, correct size error message
-
-New tools: tools/versions.mjs, tools/release-notes.mjs, tools/verify-packaged.mjs
-New test: apps/desktop/e2e/packaged.pw.ts (packaged smoke test)
-CI: preflight job, draft publish, asset counting, SHA256SUMS.txt
-Version bump: 0.3.0 → 0.4.2 across all 38 manifests
+The broad node_modules/**/* glob followed workspace symlinks that
+resolve to paths outside apps/desktop/ (e.g. apps/app-core/dist/).
+electron-builder rejects any asarUnpack pattern that points outside
+the app root. Using **/*.node targets only native binaries, which
+is exactly what needs to be unpacked from the asar archive.
