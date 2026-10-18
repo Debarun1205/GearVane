@@ -51,11 +51,12 @@
           <p class="eyebrow">Open source AI harness, MIT licensed</p>
           <h1>The AI coding harness that starts free.</h1>
           <p class="lede">
-            Four models are ready the moment you install. Fifty more are one
-            click away. GearVane classifies what you asked for, runs it through
-            a tool-using agent loop with approvals and diff review, and picks
-            the cheapest tier that can do the job. No account, no API key, and
-            in Local-only mode nothing leaves your machine.
+            Two embedded models are ready the moment you install, answering
+            offline. Fifty unique models categorized across Local, Mid, and
+            Frontier tiers are one click away. GearVane classifies what you asked
+            for, runs it through a tool-using agent loop with approvals and diff
+            review, and picks the cheapest tier that can do the job. No account,
+            no API key, and in Local-only mode nothing leaves your machine.
           </p>
           <div class="hero-actions">
             <a class="button" href="#download">Download</a>
@@ -139,13 +140,14 @@
             <article class="tier tier-local">
               <header>
                 <h3>local</h3>
-                <span class="tier-cost">free</span>
+                <span class="tier-cost">free &amp; embedded</span>
               </header>
-              <p>Small weights, up to about 2 GB. Qwen, SmolLM2, Llama 3.2, TinyLlama, Phi.</p>
+              <p>Small, fast weights up to ~2 GB. 19 models in catalog. Two come <strong>pre-installed</strong> in the installer (Qwen 2.5 Coder 0.5B &amp; SmolLM2 360M) for instant offline answers.</p>
               <ul>
                 <li>Typos, formatting, renames</li>
                 <li>Small mechanical refactors</li>
                 <li>Boilerplate and documentation</li>
+                <li>Instant offline startup without download</li>
               </ul>
             </article>
 
@@ -154,11 +156,12 @@
                 <h3>mid</h3>
                 <span class="tier-cost">free</span>
               </header>
-              <p>Mid-size weights, roughly 2 to 6 GB. Qwen 3, Mistral, Falcon3, DeepSeek R1 distills.</p>
+              <p>Mid-size weights, ~2 to 6 GB. 14 models in catalog. Includes Qwen 2.5 7B, Mistral, Falcon3, and DeepSeek R1 distills. One-click install with memory safety check.</p>
               <ul>
-                <li>Multi-file changes</li>
-                <li>Adding an endpoint or a test</li>
-                <li>Edge-case reasoning</li>
+                <li>Multi-file code changes</li>
+                <li>Adding an endpoint or a test suite</li>
+                <li>Edge-case reasoning and bug fixing</li>
+                <li>Background provisioning on first boot</li>
               </ul>
             </article>
 
@@ -167,11 +170,12 @@
                 <h3>frontier</h3>
                 <span class="tier-cost">free</span>
               </header>
-              <p>The heaviest local weights, over about 6 GB. Qwen 3 8B, Llama 3.3, DeepSeek R1 distills.</p>
+              <p>Heavier local weights, over 6 GB. 17 models in catalog. Includes Qwen 3 8B, Llama 3.3, and heavy reasoning distills. Optional BYO-key cloud escalation.</p>
               <ul>
-                <li>Architecture and design</li>
-                <li>Concurrency and debugging</li>
-                <li>Performance investigation</li>
+                <li>Architecture, design, and complex systems</li>
+                <li>Concurrency, deadlocks, and deep debugging</li>
+                <li>Deep multi-step reasoning</li>
+                <li>Hardware-verified RAM allocation checks</li>
               </ul>
             </article>
           </div>
@@ -458,35 +462,66 @@
           <div class="download-grid">
             <article class="download-card">
               <h3>Windows</h3>
-              <p>NSIS installer and a portable executable, x64.</p>
-              <a
-                class="button button-small"
-                href="https://github.com/Debarun1205/GearVane/releases/download/v0.3.0/Waypoint.Setup.0.3.0.exe"
-                rel="noopener"
-                >Download .exe</a
-              >
+              <p>Setup installer (recommended) and portable executable, x64.</p>
+              <div class="card-actions">
+                <a
+                  class="button button-small"
+                  href="https://github.com/Debarun1205/GearVane/releases/download/v0.4.2/GearVane.Setup.0.4.2.exe"
+                  rel="noopener"
+                  >Download Installer (.exe)</a
+                >
+                <a
+                  class="button button-small button-ghost"
+                  href="https://github.com/Debarun1205/GearVane/releases/download/v0.4.2/GearVane.0.4.2.exe"
+                  rel="noopener"
+                  >Portable (.exe)</a
+                >
+              </div>
             </article>
 
             <article class="download-card">
               <h3>Linux</h3>
-              <p>AppImage (x64) and .deb (x64 and arm64).</p>
-              <a
-                class="button button-small"
-                href="https://github.com/Debarun1205/GearVane/releases/download/v0.3.0/Waypoint-0.3.0.AppImage"
-                rel="noopener"
-                >Download AppImage</a
-              >
+              <p>AppImage (x64) and .deb package (x64).</p>
+              <div class="card-actions">
+                <a
+                  class="button button-small"
+                  href="https://github.com/Debarun1205/GearVane/releases/download/v0.4.2/GearVane-0.4.2.AppImage"
+                  rel="noopener"
+                  >Download AppImage</a
+                >
+                <a
+                  class="button button-small button-ghost"
+                  href="https://github.com/Debarun1205/GearVane/releases/download/v0.4.2/gearvane-app_0.4.2_amd64.deb"
+                  rel="noopener"
+                  >Download .deb</a
+                >
+              </div>
             </article>
 
             <article class="download-card">
               <h3>macOS</h3>
-              <p>Separate .dmg for Intel and Apple Silicon.</p>
-              <a
-                class="button button-small"
-                href="https://github.com/Debarun1205/GearVane/releases/download/v0.3.0/Waypoint-0.3.0-arm64.dmg"
-                rel="noopener"
-                >Download .dmg</a
-              >
+              <p>Apple Silicon (arm64) disk image with bundled weights.</p>
+              <div class="card-actions">
+                <a
+                  class="button button-small"
+                  href="https://github.com/Debarun1205/GearVane/releases/download/v0.4.2/GearVane-0.4.2-arm64.dmg"
+                  rel="noopener"
+                  >Download .dmg</a
+                >
+              </div>
+            </article>
+
+            <article class="download-card">
+              <h3>VS Code Extension</h3>
+              <p>Agent panel, diff reviews, and prompt-driven building in VS Code.</p>
+              <div class="card-actions">
+                <a
+                  class="button button-small"
+                  href="https://github.com/Debarun1205/GearVane/releases/download/v0.4.2/gearvane-0.4.2.vsix"
+                  rel="noopener"
+                  >Download .vsix</a
+                >
+              </div>
             </article>
 
             <article class="download-card">
@@ -507,12 +542,14 @@
                 runtime, which is Node, and this is a webview. On a phone, point
                 GearVane at a local server or add a cloud key.
               </p>
-              <a
-                class="button button-small"
-                href="https://github.com/Debarun1205/GearVane/releases/download/v0.3.0/app-debug.apk"
-                rel="noopener"
-                >Download APK</a
-              >
+              <div class="card-actions">
+                <a
+                  class="button button-small"
+                  href="https://github.com/Debarun1205/GearVane/releases/download/v0.4.2/app-debug.apk"
+                  rel="noopener"
+                  >Download APK</a
+                >
+              </div>
             </article>
           </div>
 
@@ -580,7 +617,7 @@ gearvane route --task "fix a typo"</code></pre>
 npm install
 npm run build
 npx @vscode/vsce package
-code --install-extension waypoint-0.3.0.vsix</code></pre>
+code --install-extension gearvane-0.4.2.vsix</code></pre>
             </div>
           </div>
 
@@ -609,13 +646,72 @@ code --install-extension waypoint-0.3.0.vsix</code></pre>
               <div class="release-head">
                 <h3>
                   <a
+                    href="https://github.com/Debarun1205/GearVane/releases/tag/v0.4.2"
+                    rel="noopener">v0.4.2</a
+                  >
+                </h3>
+                <p class="release-meta">
+                  <time datetime="2026-10-18">18 October 2026</time>
+                  <span class="tag tag-current">current</span>
+                </p>
+              </div>
+
+              <p class="release-summary">
+                The working installer and model ecosystem release. Ships working
+                native installers for Windows, macOS, Linux, and Android with two
+                bundled local models ready immediately offline, automatic
+                first-boot background provisioning, 50 unique models categorized
+                across tiers, and hardened release pipelines.
+              </p>
+
+              <div class="release-cols">
+                <div>
+                  <h4>In this release</h4>
+                  <ul>
+                    <li>Two pre-bundled offline models (Qwen 2.5 Coder 0.5B and SmolLM2 360M)</li>
+                    <li>50 verified, pinned GGUF models across Local, Mid, and Frontier tiers</li>
+                    <li>Background provisioning for mid-tier weights with pause/resume</li>
+                    <li>Per-user writable data directory for model downloads (AppImage/macOS safe)</li>
+                    <li>Hardware-aware memory and disk fit checks before downloading</li>
+                    <li>Packaged installers: Windows (.exe), Linux (.AppImage, .deb), macOS (.dmg)</li>
+                    <li>VS Code extension (v0.4.2) and Android debug APK</li>
+                  </ul>
+                </div>
+                <div>
+                  <h4>Known limitations</h4>
+                  <ul class="limitation-list">
+                    <li>Artifacts are <strong>unsigned</strong> (Gatekeeper and SmartScreen warning on first run)</li>
+                    <li>macOS is Apple Silicon only; <code>.deb</code> is x64 only</li>
+                    <li>Android runs webview IDE only (no terminal, no local inference)</li>
+                    <li>Cloud tier models require bringing your own provider API keys</li>
+                  </ul>
+                </div>
+              </div>
+
+              <p class="release-links">
+                <a
+                  class="button button-small"
+                  href="https://github.com/Debarun1205/GearVane/releases/tag/v0.4.2"
+                  rel="noopener"
+                  >Release notes and downloads</a
+                >
+                <a
+                  href="https://github.com/Debarun1205/GearVane/compare/v0.3.0...v0.4.2"
+                  rel="noopener"
+                  >Commits since v0.3.0</a
+                >
+              </p>
+            </li>
+            <li class="release">
+              <div class="release-head">
+                <h3>
+                  <a
                     href="https://github.com/Debarun1205/GearVane/releases/tag/v0.3.0"
                     rel="noopener">v0.3.0</a
                   >
                 </h3>
                 <p class="release-meta">
                   <time datetime="2026-10-03">3 October 2026</time>
-                  <span class="tag tag-current">current</span>
                 </p>
               </div>
 

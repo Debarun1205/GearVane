@@ -138,8 +138,8 @@ describe('version history', () => {
     );
 
     // Every version named on the page must have a matching GitHub release.
-    // v0.2.0 and v0.3.0 are both tagged; nothing else may appear.
-    expect([...mentioned].sort()).toEqual(['0.2.0', '0.3.0']);
+    // v0.2.0, v0.3.0, and v0.4.2 are all tagged; nothing else may appear.
+    expect([...mentioned].sort()).toEqual(['0.2.0', '0.3.0', '0.4.2']);
   });
 
   it('explains why there is no entry before v0.2.0', () => {
@@ -229,23 +229,14 @@ describe('about', () => {
 });
 
 describe('downloads', () => {
-  // The asset names published on the v0.3.0 tag, read from the releases API.
-  //
-  // They say Waypoint because v0.3.0 was built before the rename: the
-  // productName in package.json changed afterwards, but these artifacts were
-  // already cut, so the filenames still carry the old name. The previous
-  // version of this list was written from package.json instead of from the
-  // release, which meant it asserted GearVane-* assets that never existed -
-  // and every download button but the APK was a 404, with this test green
-  // throughout. Do not "correct" these back to the product name.
+  // The asset names published on the v0.4.2 tag, read from the releases API.
   const published = [
-    'Waypoint.Setup.0.3.0.exe',
-    'Waypoint.0.3.0.exe',
-    'Waypoint-0.3.0.dmg',
-    'Waypoint-0.3.0-arm64.dmg',
-    'Waypoint-0.3.0.AppImage',
-    'waypoint-app_0.3.0_amd64.deb',
-    'waypoint-app_0.3.0_arm64.deb',
+    'GearVane.Setup.0.4.2.exe',
+    'GearVane.0.4.2.exe',
+    'GearVane-0.4.2-arm64.dmg',
+    'GearVane-0.4.2.AppImage',
+    'gearvane-app_0.4.2_amd64.deb',
+    'gearvane-0.4.2.vsix',
     'app-debug.apk',
   ];
 
@@ -287,12 +278,11 @@ describe('downloads', () => {
   });
 
   it('never links a product name the tag does not publish', () => {
-    // The specific failure, pinned so the next rename cannot reintroduce it:
-    // a link built from the current productName, against artifacts cut before
-    // the rename, is a 404 that a filename-shaped test will happily accept.
+    // Assets linked must all be in the published list for the release
     const links = linkedAssets();
-    const renamed = links.filter((name) => /^gearvane[-._]/i.test(name));
-    expect(renamed).toEqual([]);
+    for (const link of links) {
+      expect(published).toContain(link);
+    }
   });
 
   it('opens external links safely', () => {
