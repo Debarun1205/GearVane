@@ -30,6 +30,7 @@ import { registerModelsHandlers } from './models-host.js';
 import { registerHardwareHandlers } from './hardware-host.js';
 import { Provisioner, registerProvisionHandlers } from './provision-host.js';
 import { registerTerminalHandlers } from './terminal-host.js';
+import { registerUpdaterHandlers } from './updater-host.js';
 
 const HERE = fileURLToPath(new URL('.', import.meta.url));
 const RENDERER_DIR = join(HERE, '..', 'renderer');
@@ -397,6 +398,9 @@ registerIdeAgentHandlers(
   () => vault.env(),
   () => fileFeedbackStorage(userDataFeedbackFile()),
 );
+
+// In-app updater: poll for new GitHub releases and provide download/install triggers.
+registerUpdaterHandlers(() => mainWindow);
 
 /**
  * The model-related IPC, and the first-boot provisioner it drives.

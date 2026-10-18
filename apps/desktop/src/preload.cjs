@@ -171,13 +171,37 @@ const api = {
   },
 
   /**
+   * In-app updater.
+   */
+  updater: {
+    check: () => ipcRenderer.invoke('updater:check'),
+    download: (asset) => ipcRenderer.invoke('updater:download', asset),
+    openUrl: (url) => ipcRenderer.invoke('updater:open-url', url),
+    onAvailable: (handler) => {
+      const listener = (_event, info) => handler(info);
+      ipcRenderer.on('updater:available', listener);
+      return () => ipcRenderer.removeListener('updater:available', listener);
+    },
+    onProgress: (handler) => {
+      const listener = (_event, progress) => handler(progress);
+      ipcRenderer.on('updater:progress', listener);
+      return () => ipcRenderer.removeListener('updater:progress', listener);
+    },
+    onDownloaded: (handler) => {
+      const listener = (_event, result) => handler(result);
+      ipcRenderer.on('updater:downloaded', listener);
+      return () => ipcRenderer.removeListener('updater:downloaded', listener);
+    },
+  },
+
+  /**
    * Subscribe to a main-process message.
    *
    * Returns an unsubscribe function so the renderer cannot leak listeners
    * across re-renders.
    */
   on: (channel, handler) => {
-    const allowed = new Set(['config:error']);
+    const allowed = new Set(['config:error', 'updater:available']);
     if (!allowed.has(channel)) {
       throw new Error(`Unsupported channel: ${channel}`);
     }

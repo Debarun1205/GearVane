@@ -83,6 +83,27 @@
         but has no shell and cannot load the tool layer. Hidden by default so a
         script-less load does not show an empty strip.
       -->
+      <!-- In-app update notification banner -->
+      <div id="update-banner" class="update-banner" role="status" hidden>
+        <div class="update-banner-header">
+          <div class="update-banner-info">
+            <span class="update-banner-icon" aria-hidden="true">&#9650;</span>
+            <span id="update-banner-text" class="update-banner-text">A new version of GearVane is available.</span>
+          </div>
+          <div class="update-banner-actions">
+            <button id="update-download-btn" class="update-btn update-btn-primary" type="button">Update Now</button>
+            <button id="update-notes-btn" class="update-btn update-btn-ghost" type="button">Release Notes</button>
+            <button id="update-dismiss-btn" class="update-btn-close" type="button" aria-label="Dismiss update notification">Dismiss</button>
+          </div>
+        </div>
+        <div id="update-progress-row" class="update-progress-row" hidden>
+          <div class="update-progress-track">
+            <div id="update-progress-fill" class="update-progress-fill" style="width: 0%"></div>
+          </div>
+          <span id="update-progress-label" class="update-progress-label">0%</span>
+        </div>
+      </div>
+
       <p id="capability-banner" class="capability-banner" role="status" hidden></p>
 
       <header class="topbar">

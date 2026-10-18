@@ -50,6 +50,7 @@ import {
 // entry point. It is loaded on demand below, and only where the bridge exists.
 import type { BuilderBridge } from './builder-view.js';
 import type { TerminalBridge } from './ide/terminal.js';
+import type { DownloadProgress, UpdateAsset, UpdateInfo } from './updater.js';
 import {
   mountProvisionChip,
   readyNotice,
@@ -209,6 +210,18 @@ interface HostBridge {
     read(): Promise<{ keys: Record<string, string>; persistent: boolean }>;
     save(keys: Record<string, string>): Promise<Record<string, string>>;
     clear(): Promise<void>;
+  };
+
+  /**
+   * In-app updater bridge, present only in the desktop app.
+   */
+  updater?: {
+    check?(): Promise<UpdateInfo | null>;
+    download?(asset: UpdateAsset): Promise<{ ok: boolean; filePath?: string; error?: string }>;
+    openUrl?(url: string): Promise<boolean>;
+    onAvailable?(handler: (info: UpdateInfo) => void): () => void;
+    onProgress?(handler: (progress: DownloadProgress) => void): () => void;
+    onDownloaded?(handler: (result: { filePath: string }) => void): () => void;
   };
 }
 
@@ -2681,6 +2694,94 @@ function applyPosture(config: GearVaneConfig): GearVaneConfig {
   };
 }
 
+function mountUpdateBanner(hostBridge: HostBridge): void {
+  const banner = document.getElementById('update-banner');
+  const bannerText = document.getElementById('update-banner-text');
+  const downloadBtn = document.getElementById('update-download-btn') as HTMLButtonElement | null;
+  const notesBtn = document.getElementById('update-notes-btn') as HTMLButtonElement | null;
+  const dismissBtn = document.getElementById('update-dismiss-btn') as HTMLButtonElement | null;
+  const progressRow = document.getElementById('update-progress-row');
+  const progressFill = document.getElementById('update-progress-fill');
+  const progressLabel = document.getElementById('update-progress-label');
+
+  if (!banner || !hostBridge.updater) return;
+
+  let currentUpdate: UpdateInfo | null = null;
+  let isDownloading = false;
+
+  hostBridge.updater.onAvailable?.((info) => {
+    currentUpdate = info;
+    if (bannerText) {
+      bannerText.textContent = `GearVane v${info.latestVersion} is available! (Installed: v${info.currentVersion})`;
+    }
+    banner.hidden = false;
+  });
+
+  hostBridge.updater.onProgress?.((progress) => {
+    if (progressRow) progressRow.hidden = false;
+    if (progressFill) progressFill.style.width = `${progress.percent}%`;
+    if (progressLabel) {
+      const mbDone = (progress.done / (1024 * 1024)).toFixed(1);
+      const mbTotal = (progress.total / (1024 * 1024)).toFixed(1);
+      progressLabel.textContent = `${progress.percent}% (${mbDone}/${mbTotal} MB)`;
+    }
+  });
+
+  hostBridge.updater.onDownloaded?.(() => {
+    isDownloading = false;
+    if (downloadBtn) {
+      downloadBtn.disabled = false;
+      downloadBtn.textContent = 'Install & Restart';
+    }
+    if (bannerText) {
+      bannerText.textContent = 'Update downloaded! Installer launched.';
+    }
+  });
+
+  downloadBtn?.addEventListener('click', async () => {
+    if (!currentUpdate || isDownloading) return;
+    if (currentUpdate.asset && hostBridge.updater?.download) {
+      isDownloading = true;
+      downloadBtn.disabled = true;
+      downloadBtn.textContent = 'Downloading...';
+      if (progressRow) progressRow.hidden = false;
+      try {
+        const res = await hostBridge.updater.download(currentUpdate.asset);
+        if (!res.ok) {
+          isDownloading = false;
+          downloadBtn.disabled = false;
+          downloadBtn.textContent = 'Retry Update';
+          if (bannerText) {
+            bannerText.textContent = `Download failed: ${res.error ?? 'Unknown error'}`;
+          }
+        }
+      } catch (err) {
+        isDownloading = false;
+        downloadBtn.disabled = false;
+        downloadBtn.textContent = 'Retry Update';
+        if (bannerText) {
+          bannerText.textContent = `Download failed: ${(err as Error).message}`;
+        }
+      }
+    } else if (currentUpdate.releaseUrl) {
+      void (hostBridge.updater?.openUrl
+        ? hostBridge.updater.openUrl(currentUpdate.releaseUrl)
+        : window.open(currentUpdate.releaseUrl, '_blank'));
+    }
+  });
+
+  notesBtn?.addEventListener('click', () => {
+    if (!currentUpdate?.releaseUrl) return;
+    void (hostBridge.updater?.openUrl
+      ? hostBridge.updater.openUrl(currentUpdate.releaseUrl)
+      : window.open(currentUpdate.releaseUrl, '_blank'));
+  });
+
+  dismissBtn?.addEventListener('click', () => {
+    banner.hidden = true;
+  });
+}
+
 async function main(): Promise<void> {
   renderSamples();
 
@@ -2855,6 +2956,9 @@ async function main(): Promise<void> {
     const notice = readyNotice(ids);
     if (notice) els.hint.textContent = notice;
   });
+
+  // In-app update notification banner: listens for releases and handles downloads
+  mountUpdateBanner(bridge);
   if (builderHost && bridge.builder) {
     try {
       const { BuilderView } = await import('./builder-view.js');
