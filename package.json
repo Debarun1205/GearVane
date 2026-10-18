@@ -27,5 +27,16 @@
     "typescript": "^5.6.0",
     "typescript-eslint": "^8.8.0",
     "vitest": "^3.2.7"
+  },
+  "overrides": {
+    "tinypool": "^2.2.0",
+    "simple-git": {
+      "@simple-git/argv-parser": "^2.0.1"
+    },
+    "@simple-git/argv-parser": "^2.0.1",
+    "electron-builder": "^26.15.3",
+    "app-builder-lib": "^26.15.3",
+    "builder-util-runtime": "^9.7.0",
+    "tar": "^7.5.22"
   }
 }

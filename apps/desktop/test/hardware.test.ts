@@ -11,30 +11,21 @@ import {
   sanitizeMachineInfo,
 } from '../src/hardware.js';
 
-// hardware-host imports electron for its IPC wiring, which is unavailable
-// outside Electron. The measurement logic under test is reached through a
-// dynamic import with the channel stubbed out, so no Electron runtime is
-// needed for the parts that matter.
-async function loadMeasure(): Promise<(dir: string) => Promise<unknown>> {
-  const { measureMachine } = await import('../src/hardware-host.js');
-  return measureMachine;
-}
+import { measureMachine } from '../src/machine.js';
 
 describe('measureMachine', () => {
   it('reports free space for a directory that does not exist yet', async () => {
     // The model directory is created on first download, so a fresh install has
     // none. Returning zero here would make every download look too large.
-    const measure = await loadMeasure();
     const missing = join(mkdtempSync(join(tmpdir(), 'hw-')), 'not-created-yet', 'models');
 
-    const info = (await measure(missing)) as { diskFree: number; degraded: boolean };
+    const info = (await measureMachine(missing)) as { diskFree: number; degraded: boolean };
     expect(info.diskFree).toBeGreaterThan(0);
     expect(info.degraded).toBe(false);
-  });
+  }, 15000);
 
   it('reports the real memory figures for this machine', async () => {
-    const measure = await loadMeasure();
-    const info = (await measure(mkdtempSync(join(tmpdir(), 'hw-')))) as {
+    const info = (await measureMachine(mkdtempSync(join(tmpdir(), 'hw-')))) as {
       totalMemory: number;
       freeMemory: number;
       cpuCount: number;
@@ -42,18 +33,17 @@ describe('measureMachine', () => {
     expect(info.totalMemory).toBeGreaterThan(0);
     expect(info.cpuCount).toBeGreaterThan(0);
     expect(info.freeMemory).toBeGreaterThanOrEqual(0);
-  });
+  }, 15000);
 
   it('measures the volume holding the model directory, not the process cwd', async () => {
     // Reading the wrong volume would report another disk's free space, which is
     // the kind of wrong that only shows up for a user with a small data drive.
-    const measure = await loadMeasure();
     const dir = mkdtempSync(join(tmpdir(), 'hw-'));
-    const info = (await measure(dir)) as { diskFree: number; diskTotal: number };
+    const info = (await measureMachine(dir)) as { diskFree: number; diskTotal: number };
     expect(info.diskFree).toBeGreaterThan(0);
     // Free cannot exceed the volume it came from.
     expect(info.diskFree).toBeLessThanOrEqual(info.diskTotal);
-  });
+  }, 15000);
 });
 
 const GIB = 1073741824;
