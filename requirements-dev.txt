@@ -13,7 +13,7 @@ pytest-cov>=4.0
 # Linting
 flake8>=6.0
 black>=26.5.1
-isort>=5.12
+isort>=9.0.2
 mypy>=2.4.0
 
 # Build
