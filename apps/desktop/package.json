@@ -60,13 +60,18 @@
     "productName": "GearVane",
     "electronVersion": "44.5.1",
     "npmRebuild": false,
+    "asar": false,
     "directories": {
       "output": "release",
       "buildResources": "resources"
     },
     "files": [
       "dist/**/*",
-      "renderer/**/*"
+      "renderer/**/*",
+      "node_modules/**/*",
+      "!node_modules/.cache",
+      "!**/node_modules/*/{test,__tests__,tests,example,examples}",
+      "package.json"
     ],
     "extraResources": [
       {
@@ -123,10 +128,7 @@
         }
       ],
       "category": "public.app-category.developer-tools"
-    },
-    "asarUnpack": [
-      "**/*.node"
-    ]
+    }
   },
   "optionalDependencies": {
     "node-pty": "^1.1.0"

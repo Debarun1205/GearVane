@@ -1,7 +1,13 @@
-fix(desktop): use **/*.node asarUnpack
+fix(desktop): asar:false — bypass electron-builder symlink path check
 
-The broad node_modules/**/* glob followed workspace symlinks that
-resolve to paths outside apps/desktop/ (e.g. apps/app-core/dist/).
-electron-builder rejects any asarUnpack pattern that points outside
-the app root. Using **/*.node targets only native binaries, which
-is exactly what needs to be unpacked from the asar archive.
+electron-builder v25 AsarPackager resolves symlinks before comparing
+paths against the app root. In an npm workspace, @gearvane/* packages
+are symlinked from node_modules/ to their real locations (apps/app-core,
+packages/core, etc.) which are outside apps/desktop/. Any asarUnpack
+glob that matches a file inside those symlinks fails with:
+  "must be under apps/desktop/"
+
+Disabling asar entirely (asar:false) avoids the symlink resolution path
+entirely — files are copied directly to the app directory tree, and
+native .node binaries work without needing asarUnpack. Also explicitly
+declare node_modules in files to prevent auto-discovery edge cases.
