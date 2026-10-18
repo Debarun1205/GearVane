@@ -1,6 +1,6 @@
 {
   "name": "gearvane-monorepo",
-  "version": "0.3.0",
+  "version": "0.4.2",
   "private": true,
   "description": "GearVane: route each task to the cheapest model tier that can do the job",
   "license": "MIT",

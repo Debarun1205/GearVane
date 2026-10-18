@@ -28,14 +28,17 @@ export type CatalogModel = ReturnType<typeof catalogModels>[number];
 /** Catalog annotated with what is already on disk. */
 export function listModels(
   modelDir: string,
+  /** Read-only directories that also count as installed (the installer's weights). */
+  extraDirs: string[] = [],
 ): Array<CatalogModel & { present: boolean; sizeOnDisk: number }> {
   return catalogModels().map((entry) => {
-    const path = join(modelDir, entry.file);
-    const present = existsSync(path);
+    const path = [modelDir, ...extraDirs]
+      .map((dir) => join(dir, entry.file))
+      .find((candidate) => existsSync(candidate));
     return {
       ...entry,
-      present,
-      sizeOnDisk: present ? sizeOf(path) : 0,
+      present: path !== undefined,
+      sizeOnDisk: path !== undefined ? sizeOf(path) : 0,
     };
   });
 }
@@ -49,8 +52,8 @@ function sizeOf(path: string): number {
   }
 }
 
-export function registerModelsHandlers(modelDir: string): void {
-  ipcMain.handle('models:list', () => listModels(modelDir));
+export function registerModelsHandlers(modelDir: string, readOnlyDirs: string[] = []): void {
+  ipcMain.handle('models:list', () => listModels(modelDir, readOnlyDirs));
 
   ipcMain.handle('models:fetch', async (event, id: unknown, request: unknown) => {
     const entry = findCatalogEntry(id);
@@ -62,6 +65,13 @@ export function registerModelsHandlers(modelDir: string): void {
       typeof request === 'object' &&
       request !== null &&
       (request as { confirmed?: unknown }).confirmed === true;
+
+    // A weight that shipped in the installer is already installed. Without this
+    // a second copy would be downloaded into the writable directory.
+    const shipped = readOnlyDirs
+      .map((dir) => join(dir, entry.file))
+      .find((candidate) => existsSync(candidate));
+    if (shipped) return { ok: true, path: shipped, bytes: sizeOf(shipped) };
 
     const sender = event.sender;
     try {

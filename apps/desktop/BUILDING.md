@@ -38,18 +38,39 @@ npm run dist:win       # or dist:linux / dist
 ```
 
 The `dist` scripts run `models:fetch` themselves, so a local build matches a
-CI build. `extraResources` names that single GGUF rather than the
+CI build. `extraResources` names each bundled GGUF rather than the
 `resources/models` directory, which matters: the directory is gitignored, so
 naming it meant a build copied whatever weights the machine happened to have
 — several GiB of them, past the 2 GiB per-asset limit GitHub enforces on
-release uploads. Naming the file makes that impossible.
+release uploads. Naming the files makes that impossible.
 
-The weight lands beside the app under `resources/models`, where the main
-process serves it on loopback. Without it the embedded tier reports
-unavailable and the other local providers carry on — the app never downloads a
-model on its own. Point `GEARVANE_MODEL_DIR` elsewhere, or
-`GEARVANE_EMBEDDED_MODEL` at a different GGUF name, to run another model.
-The release workflow fetches automatically on tag builds.
+Each entry also gives its **full destination path** (`models/<file>`), never
+the bare directory `models`. For a single-file source, electron-builder treats
+`to` as a directory only if it already exists, so `to: "models"` wrote the
+first weight as a file called `models` and the second overwrote it. The
+installer then held one file where the app expects a directory.
+`tools/verify-packaged.mjs` checks the result after packaging.
+
+Where weights live in an installed app:
+
+- **Shipped weights** (the two small ones) sit in `resources/models`, inside
+  the install. That location is read-only for an AppImage, a `.deb`, and a
+  per-machine Windows install, so nothing is ever written there.
+- **Downloaded weights** (first-boot and one-click installs) go to
+  `<userData>/models` (for example `%APPDATA%\GearVane\models`). The embedded
+  server serves both directories; the picker counts both as installed.
+- Installed builds fetch the two first-boot weights in the background on a
+  first launch. An unpackaged run (`npm start`, the Playwright tests) does not;
+  set `GEARVANE_PROVISION=1` to try the chip by hand, or `GEARVANE_PROVISION=0`
+  to stop a packaged build downloading (the packaged smoke test does).
+- In development the single directory is `resources/models`, where
+  `npm run models:fetch` puts weights.
+
+Without a weight the embedded tier reports unavailable and the other local
+providers carry on. Point `GEARVANE_MODEL_DIR` elsewhere (it replaces both
+directories), or `GEARVANE_EMBEDDED_MODEL` at a different GGUF name, to run
+another model. The release workflow fetches the bundled weights automatically
+on tag builds.
 
 ## Model catalog
 
@@ -81,9 +102,14 @@ an elevated shell. CI runners are unaffected.
 npm run dist:linux
 ```
 
-Output lands in `release/` as an `AppImage` and a `.deb`, for x64 and arm64.
-Build this on Linux; electron-builder cannot produce a Linux AppImage from
-Windows or macOS.
+Output lands in `release/` as an `AppImage` and a `.deb`, for x64. Build this
+on Linux; electron-builder cannot produce a Linux AppImage from Windows or
+macOS.
+
+arm64 is not built. The embedded model runtime and the terminal are native
+modules, and `npm ci` installs them for the machine it runs on, so an arm64
+package built on an x64 runner would have no working local model. Add it with a
+native arm64 runner.
 
 ## macOS
 
@@ -91,7 +117,9 @@ Windows or macOS.
 npm run dist
 ```
 
-Runs on macOS and produces a universal `.dmg`. Unsigned builds are blocked
+Runs on macOS and produces an Apple Silicon (arm64) `.dmg`. Intel Macs are not
+built, for the same native-module reason as Linux arm64; add them with an Intel
+runner. Unsigned builds are blocked
 by Gatekeeper, so a distribution build needs an Apple Developer certificate
 configured in `electron-builder`.
 
@@ -131,12 +159,34 @@ Never commit a keystore or a signing password.
 ## Release automation
 
 `.github/workflows/release.yml` builds all three desktop targets on their
-own runners and assembles the APK on Linux. It triggers on a `v*.*.*` tag:
+own runners and assembles the APK on Linux. It triggers on a `v*.*.*` tag.
+
+To release:
 
 ```bash
-git tag v0.3.0        # the version being released, X.Y.Z bumped everywhere
-git push origin v0.3.0
+node tools/versions.mjs set 0.4.3      # every version string, in one command
+# add a "## [0.4.3] - YYYY-MM-DD" section to CHANGELOG.md; it becomes the notes
+git commit -am "chore(release): 0.4.3"
+git tag -a v0.4.3 -m "GearVane 0.4.3"
+git push origin master v0.4.3
 ```
+
+The pipeline then, in order:
+
+1. **preflight**: the tag equals every version string, the changelog has a
+   section for it, and `tools/verify-requirements.mjs` passes.
+2. **desktop** (per platform): build, fetch the bundled weights, package, check
+   the installers exist and are named for the version, run
+   `tools/verify-packaged.mjs` on the unpacked output, run the packaged smoke
+   test, upload.
+3. **publish**: requires the desktop and VS Code jobs to have succeeded. It
+   writes `SHA256SUMS.txt`, creates a **draft** release with the changelog
+   section as its notes, checks that every file uploaded, and only then
+   publishes. A failed run leaves a draft nobody can see.
+
+Run the workflow from the Actions tab (`workflow_dispatch`) on a branch to build
+and download every installer without tagging or publishing anything. Do that
+before tagging.
 
 ## Verifying a build without running it
 

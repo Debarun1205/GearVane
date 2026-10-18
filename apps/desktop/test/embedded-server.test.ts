@@ -292,6 +292,41 @@ describe('startEmbeddedServer', () => {
       await server.stop();
     }
   });
+
+  it('serves weights from a second directory, the first winning on a shared id', async () => {
+    // Regression: a packaged build keeps the installer's weights in a read-only
+    // resources directory and downloads into a writable per-user one. The
+    // server scanned only the first, so every downloaded model was invisible.
+    const shipped = setupDir(['shipped.gguf', 'both.gguf']);
+    const downloaded = setupDir(['downloaded.gguf', 'both.gguf']);
+    const server = await startEmbeddedServer({
+      port: 0,
+      modelDir: shipped,
+      extraModelDirs: [downloaded],
+      onLog: () => {},
+      loadLlama: (path) =>
+        Promise.resolve({ ...stubBackend(), chat: async () => ({ content: path, stopReason: 'stop' }) }),
+    });
+    expect(server.started).toBe(true);
+    try {
+      const base = `http://127.0.0.1:${server.port}`;
+      const models = (await (await fetch(`${base}/v1/models`)).json()) as {
+        data: Array<{ id: string }>;
+      };
+      expect(models.data.map((entry) => entry.id).sort()).toEqual(['both', 'downloaded', 'shipped']);
+
+      const completion = (await (
+        await fetch(`${base}/v1/chat/completions`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ model: 'both', messages: [{ role: 'user', content: 'hi' }] }),
+        })
+      ).json()) as { choices: Array<{ message: { content: string } }> };
+      expect(completion.choices[0]?.message.content).toContain(shipped);
+    } finally {
+      await server.stop();
+    }
+  });
 });
 
 describe('loopback hardening', () => {

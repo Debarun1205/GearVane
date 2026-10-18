@@ -77,6 +77,16 @@ export interface EmbeddedServerOptions {
   token?: string;
   /** Directory holding *.gguf files. Defaults to the bundled models dir. */
   modelDir?: string;
+  /**
+   * Further directories scanned after `modelDir`, first match per id winning.
+   *
+   * A packaged build serves the installer's weights from its read-only
+   * resources directory and keeps every downloaded weight in a writable
+   * per-user directory (the install directory is not writable for an AppImage,
+   * a .deb, or a per-machine Windows install). Both have to be served, and the
+   * server cannot tell which a model came from.
+   */
+  extraModelDirs?: string[];
   /** Exact GGUF file name to prefer inside the dir. */
   modelFile?: string;
   contextSize?: number;
@@ -326,9 +336,11 @@ export async function startEmbeddedServer(options: EmbeddedServerOptions = {}): 
   // app restart. Loaded backends stay cached by id.
   const discover = (): Map<string, string> => {
     const found = new Map<string, string>();
-    for (const modelPath of findModelFiles(modelDir, preferred)) {
-      const id = modelIdFor(modelPath);
-      if (!found.has(id)) found.set(id, modelPath);
+    for (const dir of [modelDir, ...(options.extraModelDirs ?? [])]) {
+      for (const modelPath of findModelFiles(dir, preferred)) {
+        const id = modelIdFor(modelPath);
+        if (!found.has(id)) found.set(id, modelPath);
+      }
     }
     return found;
   };

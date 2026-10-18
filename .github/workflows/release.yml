@@ -10,12 +10,50 @@ permissions:
   contents: read
 
 jobs:
+  # Cheap checks that fail in seconds, before three runners spend half an hour
+  # building something that cannot be released. The first release of 0.4.x was
+  # tagged while every manifest still said 0.3.0, so its installers would have
+  # been named for the wrong version.
+  preflight:
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 20
+
+      - name: Every version string agrees with the tag
+        run: |
+          if [ "$GITHUB_REF_TYPE" = "tag" ]; then
+            node tools/versions.mjs check --tag "$GITHUB_REF_NAME"
+          else
+            node tools/versions.mjs check
+          fi
+
+      - name: The changelog has notes for this version
+        if: github.ref_type == 'tag'
+        run: node tools/release-notes.mjs "$GITHUB_REF_NAME" > /dev/null
+
+      - name: The owner's requirements still hold
+        run: node tools/verify-requirements.mjs
+
   # Desktop installers. Each platform builds on its own runner: electron-builder
   # cannot produce a macOS installer off macOS, and a Linux AppImage built on
   # Windows is not supported.
+  #
+  # The native modules (the embedded model runtime and the terminal) are
+  # installed for the runner's own architecture, so each build can only carry
+  # that architecture: macOS arm64, Windows x64, Linux x64.
   desktop:
+    needs: preflight
     permissions:
       contents: read
+    defaults:
+      run:
+        shell: bash
     strategy:
       fail-fast: false
       matrix:
@@ -48,15 +86,73 @@ jobs:
           npm run build --workspace @gearvane/app-core
           npm run build --workspace gearvane-app
 
-      - name: Fetch the bundled local model (smallest only for installer)
-        # Only the smallest model (smollm2-360m, ~258 MB) ships in the installer.
-        # The other 49 models are downloaded on first run via --first-run.
+      - name: Fetch the weights that ship inside the installer
+        # The two small models (about 0.65 GiB together) are bundled so the app
+        # answers offline on first launch. The larger ones are downloaded by the
+        # app after install; they are not fetched here.
         working-directory: apps/desktop
         run: npm run models:fetch
 
       - name: Package installers
         working-directory: apps/desktop
         run: npx electron-builder --${{ matrix.platform }} --publish never
+
+      - name: Check the installers were produced and are named for this version
+        working-directory: apps/desktop/release
+        run: |
+          set -euo pipefail
+          ls -la
+          version=$(node -p "require('../package.json').version")
+          need() {
+            ls -1 | grep -E "$1" > /dev/null || { echo "::error::no file matching $1 in apps/desktop/release"; exit 1; }
+          }
+          case "${{ matrix.platform }}" in
+            win)   need 'Setup.*\.exe$'; need '\.exe$' ;;
+            mac)   need '\.dmg$' ;;
+            linux) need '\.AppImage$'; need '\.deb$' ;;
+          esac
+          for file in *.exe *.dmg *.AppImage *.deb; do
+            [ -e "$file" ] || continue
+            case "$file" in
+              *"$version"*) ;;
+              *) echo "::error::$file is not named for version $version"; exit 1 ;;
+            esac
+            # GitHub rejects a release asset of 2 GiB or more.
+            size=$(wc -c < "$file")
+            if [ "$size" -ge 2147483648 ]; then
+              echo "::error::$file is $size bytes; GitHub release assets must be under 2 GiB"
+              exit 1
+            fi
+          done
+
+      - name: Check the packaged build can run
+        # Static checks on the unpacked output (see tools/verify-packaged.mjs):
+        # the bundled weights are a directory of real files, the app code and
+        # workspace packages are in the archive, and the native inference binary
+        # is outside it where it can be loaded.
+        run: node tools/verify-packaged.mjs "${{ matrix.platform }}"
+
+      - name: Packaged app smoke test
+        # Launches the real packaged executable and asks the bundled model for a
+        # reply. Advisory until it has been seen passing on all three runners;
+        # remove continue-on-error then, so a build that cannot answer a prompt
+        # cannot be released.
+        continue-on-error: true
+        working-directory: apps/desktop
+        run: |
+          set -euo pipefail
+          case "${{ matrix.platform }}" in
+            win)   exe="release/win-unpacked/GearVane.exe" ;;
+            mac)   exe="$(ls -d release/mac*/GearVane.app | head -n1)/Contents/MacOS/GearVane" ;;
+            linux) exe="$(find release/linux-unpacked -maxdepth 1 -type f -perm -u+x ! -name '*.so*' ! -name 'chrome-sandbox' ! -name 'chrome_crashpad_handler' | head -n1)" ;;
+          esac
+          echo "packaged executable: $exe"
+          export GEARVANE_PACKAGED_EXE="$PWD/$exe"
+          if [ "${{ matrix.platform }}" = "linux" ]; then
+            xvfb-run -a npx playwright test e2e/packaged.pw.ts
+          else
+            npx playwright test e2e/packaged.pw.ts
+          fi
 
       - name: Collect artifacts
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -67,10 +163,10 @@ jobs:
             apps/desktop/release/*.dmg
             apps/desktop/release/*.AppImage
             apps/desktop/release/*.deb
-            apps/desktop/release/*.zip
           if-no-files-found: error
 
   android:
+    needs: preflight
     permissions:
       contents: read
     # Pinned to 22.04: android-actions/setup-android has been unreliable on
@@ -134,6 +230,7 @@ jobs:
           if-no-files-found: error
 
   vscode:
+    needs: preflight
     permissions:
       contents: read
     runs-on: ubuntu-latest
@@ -167,17 +264,33 @@ jobs:
           path: apps/vscode-extension/*.vsix
           if-no-files-found: error
 
+  # Publishing is the last step and the strictest. v0.4.0 went out with no
+  # installers because the old condition published when EITHER the desktop OR
+  # the VS Code job succeeded; the desktop build had failed, the extension had
+  # not, and a release holding one .vsix was published.
+  #
+  # So: the release is created as a DRAFT, its contents are checked, and only
+  # then is it published. A failed run leaves an invisible draft, never a
+  # public release with missing downloads.
   publish:
-    # Android is not required to publish: a missing APK should not withhold
-    # the desktop installers, which take far longer to build. The release
-    # notes state which platforms are present.
-    needs: [desktop, vscode]
+    # Android is listed so its APK is ready when it exists, but the condition
+    # below does not require it: a failed APK must not withhold the desktop
+    # installers.
+    needs: [preflight, desktop, vscode, android]
     runs-on: ubuntu-latest
-    if: always() && (needs.desktop.result == 'success' || needs.vscode.result == 'success')
+    if: ${{ !cancelled() && github.ref_type == 'tag' && needs.preflight.result == 'success' && needs.desktop.result == 'success' && needs.vscode.result == 'success' }}
     permissions:
       contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      TAG: ${{ github.ref_name }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 20
 
       - name: Download every artifact
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
@@ -185,8 +298,51 @@ jobs:
           path: artifacts
           merge-multiple: true
 
-      - name: List what will be published
-        run: ls -lh artifacts
+      - name: Name the files the way GitHub will
+        # GitHub turns spaces in an asset name into dots. Doing it here means the
+        # names in SHA256SUMS.txt are the names people download.
+        working-directory: artifacts
+        run: |
+          set -euo pipefail
+          for file in *\ *; do
+            [ -e "$file" ] || continue
+            mv -- "$file" "${file// /.}"
+          done
+          ls -lh
+
+      - name: Check the release is complete
+        working-directory: artifacts
+        run: |
+          set -euo pipefail
+          version="${TAG#v}"
+          missing=0
+          require() {
+            if ! ls -1 | grep -Eq "$1"; then
+              echo "::error::missing release asset matching: $1"
+              missing=1
+            fi
+          }
+          require 'Setup.*\.exe$'
+          require '\.dmg$'
+          require '\.AppImage$'
+          require '\.deb$'
+          require '\.vsix$'
+          for file in *; do
+            case "$file" in
+              *.apk) continue ;;
+              *"$version"*) ;;
+              *) echo "::error::$file is not named for version $version"; missing=1 ;;
+            esac
+          done
+          [ "$missing" = "0" ] || exit 1
+
+      - name: Write the checksums
+        working-directory: artifacts
+        run: |
+          set -euo pipefail
+          sha256sum -- * > ../SHA256SUMS.txt
+          mv ../SHA256SUMS.txt SHA256SUMS.txt
+          cat SHA256SUMS.txt
 
       - name: Record which platforms built
         run: |
@@ -205,34 +361,60 @@ jobs:
             done | sort -u
           } >> "$GITHUB_STEP_SUMMARY"
 
-      # Binaries are unsigned: macOS Gatekeeper and Windows SmartScreen will
-      # warn. Signing needs certificates that do not belong in this repository.
-      - name: Create the GitHub release
-        uses: softprops/action-gh-release@da05d552573ad5aba039eaac05058a918a7bf631 # v2.2.2
-        with:
-          files: artifacts/*
-          generate_release_notes: true
-          fail_on_unmatched_files: false
-          body: |
-            ## Unsigned builds
+      - name: Write the release notes
+        # The notes are the changelog section written alongside the work, not a
+        # list of commit titles, followed by what a person needs to know to
+        # install an unsigned build.
+        run: |
+          set -euo pipefail
+          node tools/release-notes.mjs "$TAG" > release-notes.md
+          cat >> release-notes.md <<'NOTES'
 
-            These artifacts are **not code signed**. macOS Gatekeeper and Windows
-            SmartScreen will warn on first launch.
+          ---
 
-            - macOS: right-click the app and choose Open, or
-              `xattr -d com.apple.quarantine /Applications/GearVane.app`
-            - Windows: choose More info then Run anyway
+          ## Installing
 
-            ## Linux AppImage is x64 only
+          These builds are **not code signed**, so Windows and macOS will warn on first launch.
 
-            The `.deb` covers both x64 and arm64. The AppImage is x64 only,
-            because arm64 AppImages cannot be cross-built reliably on an x64
-            runner.
+          - **Windows**: run `GearVane.Setup.<version>.exe`. If SmartScreen appears, choose *More info*, then *Run anyway*. The other `.exe` is a portable build that needs no install.
+          - **macOS (Apple Silicon)**: open the `.dmg` and drag GearVane to Applications. If macOS says it cannot be opened, go to *System Settings > Privacy & Security* and choose *Open Anyway*, or run `xattr -dr com.apple.quarantine /Applications/GearVane.app`. Intel Macs are not covered by this release.
+          - **Linux (x64)**: `chmod +x GearVane-*.AppImage` and run it, or install the `.deb`. An AppImage may need `libfuse2` on newer Ubuntu.
+          - **Android**: a debug-signed APK is attached when it built. It runs chat and routing only: no terminal and no local models.
+          - **VS Code**: install the `.vsix` with *Extensions > ... > Install from VSIX*.
 
-            ## Checksums
+          ## First launch
 
-            Verify before running:
+          Two small models are bundled and answer immediately, offline. The two larger models (about 9 GiB) download in the background after you open the app; you can pause or cancel them. Every other model in the picker installs when you choose it.
 
-            ```
-            sha256sum *
-            ```
+          ## Verify your download
+
+          ```
+          sha256sum -c SHA256SUMS.txt
+          ```
+          NOTES
+
+      - name: Create the release as a draft
+        run: |
+          set -euo pipefail
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            if [ "$(gh release view "$TAG" --json isDraft --jq .isDraft)" = "true" ]; then
+              # A draft left by an earlier failed run. It was never public.
+              gh release delete "$TAG" --yes
+            else
+              echo "::error::$TAG is already published. Delete that release by hand if you mean to replace it."
+              exit 1
+            fi
+          fi
+          gh release create "$TAG" artifacts/* --draft --verify-tag --title "GearVane $TAG" --notes-file release-notes.md
+
+      - name: Check every file uploaded, then publish
+        run: |
+          set -euo pipefail
+          expected=$(ls -1 artifacts | wc -l)
+          actual=$(gh release view "$TAG" --json assets --jq '.assets | length')
+          echo "expected $expected assets, release has $actual"
+          if [ "$expected" != "$actual" ]; then
+            echo "::error::the draft has $actual of $expected assets, so it was not published"
+            exit 1
+          fi
+          gh release edit "$TAG" --draft=false

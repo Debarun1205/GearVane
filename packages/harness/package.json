@@ -1,6 +1,6 @@
 {
   "name": "@gearvane/harness",
-  "version": "0.3.0",
+  "version": "0.4.2",
   "description": "Agent loop, tool execution, and workspace containment",
   "license": "MIT",
   "type": "module",
@@ -16,7 +16,9 @@
       "import": "./dist/builder/node-fs.js"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "engines": {
     "node": ">=20"
   },
@@ -29,6 +31,6 @@
     "clean": "tsc --build tsconfig.json --clean && rm -rf dist"
   },
   "dependencies": {
-    "@gearvane/core": "0.3.0"
+    "@gearvane/core": "0.4.2"
   }
 }

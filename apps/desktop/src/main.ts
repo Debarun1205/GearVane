@@ -8,7 +8,7 @@
  */
 
 import { app, BrowserWindow, ipcMain, shell } from 'electron';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { homedir, platform } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -153,14 +153,38 @@ function describePlatform(): Record<string, string> {
 }
 
 /**
- * Where the bundled GGUF lives.
+ * The directory downloaded weights are written to, and so the one that has to
+ * be writable.
  *
- * Packaged builds carry resources/models via extraResources; development
- * uses the same path under the package root. GEARVANE_MODEL_DIR overrides
- * both. A missing directory is fine: the embedded server reports itself
- * unavailable and the other local providers carry on.
+ * Packaged builds used to download into resources/models, which is inside the
+ * install. That is read-only for an AppImage (a squashfs mount) and for a .deb
+ * (root-owned under /opt), re-extracted on every launch for the Windows
+ * portable build, and inside the signed bundle on macOS. First-boot
+ * provisioning and every one-click install would have failed or vanished on
+ * those. Packaged builds therefore write under the per-user data directory.
+ *
+ * Development keeps resources/models, where `npm run models:fetch` puts
+ * weights. GEARVANE_MODEL_DIR overrides both and is used for everything.
+ *
+ * Call this after the app is ready: it reads app.getPath('userData').
  */
 export function findModelDir(): string {
+  const override = process.env[EMBEDDED_MODEL_DIR_ENV];
+  if (override) return override;
+  if (isDevelopment()) return join(HERE, '..', 'resources', 'models');
+  return join(app.getPath('userData'), 'models');
+}
+
+/**
+ * The weights that shipped inside the installer, which are read-only.
+ *
+ * Packaged builds carry resources/models via extraResources. The embedded
+ * server serves this directory and findModelDir() together, so an installed
+ * weight is served from wherever it landed. A missing directory is fine: the
+ * embedded server reports itself unavailable and the other local providers
+ * carry on.
+ */
+export function findBundledModelDir(): string {
   const override = process.env[EMBEDDED_MODEL_DIR_ENV];
   if (override) return override;
   if (isDevelopment()) return join(HERE, '..', 'resources', 'models');
@@ -183,7 +207,8 @@ function embeddedHandle(): Promise<EmbeddedHandle> {
   if (!embedded) {
     embedded = startEmbeddedServer({
       port: 0,
-      modelDir: findModelDir(),
+      modelDir: findBundledModelDir(),
+      extraModelDirs: [findModelDir()],
       token: generateToken(),
       onLog: (message) => console.log(`[gearvane] ${message}`),
     }).then(
@@ -227,8 +252,34 @@ async function serveConfig(): Promise<GearVaneConfig> {
   return { ...config, tiers };
 }
 
+/**
+ * Whether this launch should fetch the first-boot weights.
+ *
+ * Installed builds do. An unpackaged run (`npm start`, and every Playwright
+ * test that launches dist/main.js) does not: it used to start the same 9 GiB of
+ * downloads, so each end-to-end run began transferring real weights into a temp
+ * directory and was then killed, leaving gigabytes behind. A developer fetches
+ * weights on purpose with `npm run models:fetch`.
+ *
+ * GEARVANE_PROVISION=1 opts an unpackaged run in (to try the chip by hand);
+ * GEARVANE_PROVISION=0 opts a packaged one out (the packaged-app smoke test,
+ * which must not download weights on a CI runner).
+ */
+export function shouldProvision(): boolean {
+  const setting = process.env['GEARVANE_PROVISION'];
+  if (setting === '0') return false;
+  if (setting === '1') return true;
+  return app.isPackaged;
+}
+
 app.whenReady().then(() => {
   const { error } = loadConfigFile();
+
+  // Registered here rather than at import time: the writable model directory is
+  // under app.getPath('userData'), which is only meaningful once the app is
+  // ready. The handlers exist before the window loads, so the renderer cannot
+  // call one that is not there yet.
+  const provisioner = registerModelHosts();
 
   mainWindow = createWindow();
 
@@ -244,19 +295,21 @@ app.whenReady().then(() => {
   //
   // Each finished weight is usable immediately: it lands in the directory the
   // embedded server serves, so Auto routing picks it up without a restart.
-  void provisioner
-    .start()
-    .then(() => {
-      const ready = provisioner.status().items.filter((item) => item.state === 'done');
-      if (ready.length > 0) {
-        mainWindow?.webContents.send('provision:ready', ready.map((item) => item.id));
-      }
-    })
-    .catch((cause: unknown) => {
-      // Provisioning is a convenience. A failure here must not be able to stop
-      // the app booting, so it is logged and nothing else.
-      console.error('first-boot provisioning failed:', cause);
-    });
+  if (shouldProvision()) {
+    void provisioner
+      .start()
+      .then(() => {
+        const ready = provisioner.status().items.filter((item) => item.state === 'done');
+        if (ready.length > 0) {
+          mainWindow?.webContents.send('provision:ready', ready.map((item) => item.id));
+        }
+      })
+      .catch((cause: unknown) => {
+        // Provisioning is a convenience. A failure here must not be able to stop
+        // the app booting, so it is logged and nothing else.
+        console.error('first-boot provisioning failed:', cause);
+      });
+  }
 
   if (error) {
     // Surface a bad config immediately rather than letting it look like a
@@ -345,23 +398,40 @@ registerIdeAgentHandlers(
   () => fileFeedbackStorage(userDataFeedbackFile()),
 );
 
-// Model downloads land in the same directory the embedded server serves,
-// so a finished fetch is usable without a restart. See models-host.ts.
-registerModelsHandlers(findModelDir());
+/**
+ * The model-related IPC, and the first-boot provisioner it drives.
+ *
+ * Model downloads land in a directory the embedded server also serves, so a
+ * finished fetch is usable without a restart (see models-host.ts). The
+ * installer's own weights are read-only and are passed separately, so they
+ * count as installed but are never written to.
+ *
+ * Returns the provisioner because the boot path starts it: there is exactly
+ * one model directory per process, so there is exactly one provisioner.
+ */
+function registerModelHosts(): Provisioner {
+  const writable = findModelDir();
+  const bundled = findBundledModelDir();
+  // The directory is created here so a first launch can measure free space on
+  // it before any weight has been written.
+  mkdirSync(writable, { recursive: true });
 
-// First-boot provisioning, and the IPC the progress chip needs. The instance is
-// module-level because both the boot path and the handlers refer to it, and
-// there is exactly one model directory per process.
-const provisioner = new Provisioner(findModelDir(), {
-  onChange: (status) => {
-    mainWindow?.webContents.send('provision:status', status);
-  },
-});
-registerProvisionHandlers(provisioner);
+  registerModelsHandlers(writable, bundled === writable ? [] : [bundled]);
 
-// The renderer cannot statfs or read os.totalmem from a sandboxed context, so
-// the fit checks in the install dialog and the onboarding scan get their
-// numbers from here.
-registerHardwareHandlers(findModelDir());
+  // First-boot provisioning, and the IPC the progress chip needs.
+  const provisioner = new Provisioner(writable, {
+    onChange: (status) => {
+      mainWindow?.webContents.send('provision:status', status);
+    },
+  });
+  registerProvisionHandlers(provisioner);
+
+  // The renderer cannot statfs or read os.totalmem from a sandboxed context, so
+  // the fit checks in the install dialog and the onboarding scan get their
+  // numbers from here.
+  registerHardwareHandlers(writable);
+
+  return provisioner;
+}
 
 export { mainWindow, createWindow };

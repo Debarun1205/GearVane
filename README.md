@@ -124,7 +124,7 @@ distributable.
 ```bash
 # The VS Code extension
 cd apps/vscode-extension && npm install && npm run build
-npx @vscode/vsce package && code --install-extension gearvane-0.3.0.vsix
+npx @vscode/vsce package && code --install-extension gearvane-0.4.2.vsix
 
 # The TypeScript CLI
 git clone https://github.com/Debarun1205/GearVane && cd GearVane

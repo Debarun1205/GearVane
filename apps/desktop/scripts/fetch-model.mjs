@@ -82,13 +82,20 @@ if (models.length === 0) {
 
 mkdirSync(MODELS_DIR, { recursive: true });
 
-/** True when the file on disk already matches the catalog. */
-function isGood(entry) {
+/**
+ * True when the file on disk already matches the catalog.
+ *
+ * Async because hashing is. This used to be synchronous and compare the
+ * Promise from sha256Of to the expected string, which is never equal: every
+ * weight already on disk was judged bad, deleted, and downloaded again, on
+ * every run, however correct it was.
+ */
+async function isGood(entry) {
   const target = join(MODELS_DIR, entry.file);
   if (!existsSync(target)) return false;
   if (!entry.bytes || statSync(target).size !== entry.bytes) return false;
   if (!entry.sha256) return true; // nothing to check against
-  return sha256Of(target) === entry.sha256;
+  return (await sha256Of(target)) === entry.sha256;
 }
 
 function sha256Of(path) {
@@ -110,7 +117,7 @@ function sha256Of(path) {
  */
 async function fetchOne(entry) {
   const target = join(MODELS_DIR, entry.file);
-  if (!force && isGood(entry)) {
+  if (!force && (await isGood(entry))) {
     console.log(`  present  ${entry.file} (${mb(entry.bytes)})`);
     return;
   }
@@ -132,6 +139,14 @@ async function fetchOne(entry) {
   if (entry.bytes && from > entry.bytes) {
     rmSync(part, { force: true });
     return fetchOne({ ...entry, bytes: entry.bytes });
+  }
+
+  // A part that is already the full size means the last run finished the
+  // transfer but died before the rename. Asking for a range past the end gets
+  // HTTP 416, so verify and rename what is there instead.
+  if (entry.bytes && from === entry.bytes) {
+    await verifyAndPromote(entry, part, target);
+    return;
   }
 
   const headers = {};
@@ -166,11 +181,17 @@ async function fetchOne(entry) {
 
   process.stdout.write('\r\x1b[K');
 
+  await verifyAndPromote(entry, part, target);
+}
+
+/** Check a finished .part against the catalog, then move it into place. */
+async function verifyAndPromote(entry, part, target) {
   if (entry.bytes && statSync(part).size !== entry.bytes) {
+    // Read the size before removing the file: the message used to stat the part
+    // after deleting it, so the real error was replaced by an ENOENT.
+    const got = statSync(part).size;
     rmSync(part, { force: true });
-    throw new Error(
-      `size mismatch for ${entry.file}: got ${statSync(part).size}, expected ${entry.bytes}`,
-    );
+    throw new Error(`size mismatch for ${entry.file}: got ${got}, expected ${entry.bytes}`);
   }
   if (entry.sha256) {
     const digest = await sha256Of(part);

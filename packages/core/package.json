@@ -1,6 +1,6 @@
 {
   "name": "@gearvane/core",
-  "version": "0.3.0",
+  "version": "0.4.2",
   "description": "Tier routing, escalation, provider clients, and cost control",
   "license": "MIT",
   "type": "module",
@@ -12,7 +12,9 @@
       "import": "./dist/index.js"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "engines": {
     "node": ">=20"
   },

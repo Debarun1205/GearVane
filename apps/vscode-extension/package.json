@@ -2,7 +2,7 @@
   "name": "gearvane",
   "displayName": "GearVane",
   "description": "Route each task to the cheapest model tier that can do the job",
-  "version": "0.3.0",
+  "version": "0.4.2",
   "publisher": "gearvane",
   "license": "MIT",
   "engines": {
@@ -129,8 +129,8 @@
     "clean": "rm -rf dist out"
   },
   "dependencies": {
-    "@gearvane/core": "0.3.0",
-    "@gearvane/harness": "0.3.0"
+    "@gearvane/core": "0.4.2",
+    "@gearvane/harness": "0.4.2"
   },
   "devDependencies": {
     "@types/vscode": "^1.85.0",

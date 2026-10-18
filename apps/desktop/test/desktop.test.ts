@@ -42,20 +42,34 @@ describe('desktop manifest', () => {
     }
   });
 
-  it('covers both Linux architectures via deb', () => {
+  it('builds the deb for x64 only', () => {
+    // The embedded model runtime (node-llama-cpp) and the terminal (node-pty)
+    // are native, and `npm ci` installs the binary for the runner's own
+    // architecture only. An arm64 deb built on the x64 runner would launch and
+    // then have no working local model. Add arm64 back with a native arm64
+    // runner, not by listing the arch.
     const linux = manifest.build.linux as unknown as {
       target: Array<{ target: string; arch?: string[] }>;
     };
 
     const deb = linux.target.find((entry) => entry.target === 'deb');
-    expect(deb?.arch).toContain('x64');
-    expect(deb?.arch).toContain('arm64');
+    expect(deb?.arch).toEqual(['x64']);
+  });
+
+  it('builds the macOS image for the architecture of its runner', () => {
+    // The same reasoning as the deb: macos-latest is arm64, so the dmg carries
+    // arm64 native modules. An x64 image built there would have the wrong ones.
+    const mac = manifest.build.mac as unknown as {
+      target: Array<{ target: string; arch?: string[] }>;
+    };
+
+    const dmg = mac.target.find((entry) => entry.target === 'dmg');
+    expect(dmg?.arch).toEqual(['arm64']);
   });
 
   it('builds the AppImage for x64 only', () => {
     // arm64 AppImages cannot be cross-built reliably on an x64 runner, so
-    // they are dropped rather than failing the whole release. deb covers
-    // arm64.
+    // they are dropped rather than failing the whole release.
     const linux = manifest.build.linux as unknown as {
       target: Array<{ target: string; arch?: string[] }>;
     };
@@ -79,7 +93,7 @@ describe('desktop manifest', () => {
     // empty and never showed it. tests/packaging-inputs.test.ts pins which
     // file, and why; this only cares that it still lands in `models/`.
     const extra = (manifest.build.extraResources ?? []) as Array<{ from?: string; to?: string }>;
-    expect(extra.some((entry) => entry.to === 'models')).toBe(true);
+    expect(extra.every((entry) => entry.to?.startsWith('models/'))).toBe(true);
     expect(extra.every((entry) => entry.from?.startsWith('resources/models/'))).toBe(true);
   });
 

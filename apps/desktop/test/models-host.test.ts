@@ -285,3 +285,21 @@ describe('downloadModel cancellation', () => {
     expect(readdirSync(dir)).toEqual(['qwen2.5-coder-0.5b-instruct-q4_0.gguf']);
   });
 });
+
+describe('listModels with a read-only directory', () => {
+  it('counts a weight that shipped in the installer as installed', () => {
+    // Regression: packaged builds download into a writable directory but ship
+    // the small weights in a read-only one. Looking only in the writable one
+    // showed the shipped models as not installed, and offered to download them.
+    const entry = catalogModels().find((candidate) => candidate.bundled === true);
+    expect(entry).toBeDefined();
+    const writable = setupDir();
+    const shipped = setupDir([entry!.file]);
+
+    expect(listModels(writable).find((e) => e.id === entry!.id)?.present).toBe(false);
+    const listed = listModels(writable, [shipped]).find((e) => e.id === entry!.id);
+    expect(listed?.present).toBe(true);
+    expect(listed?.sizeOnDisk).toBeGreaterThan(0);
+  });
+});
+

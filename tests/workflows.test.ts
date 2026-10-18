@@ -73,17 +73,67 @@ describe('publish job', () => {
   });
 
   it('does not hard-require android', () => {
-    // A missing APK should not withhold installers that already built.
+    // A missing APK should not withhold installers that already built. android
+    // may be in `needs` (so its APK is ready when it exists) as long as the
+    // condition does not demand that it succeeded.
     const publishBlock = RELEASE.slice(RELEASE.indexOf('\n  publish:'));
-    const needsLine = publishBlock
+    const condition = publishBlock
       .split('\n')
-      .find((line) => line.trim().startsWith('needs:'));
-    expect(needsLine).toBeDefined();
-    expect(needsLine).not.toContain('android');
+      .find((line) => line.trim().startsWith('if:'));
+    expect(condition).toBeDefined();
+    expect(condition).not.toContain('needs.android');
+  });
+
+  it('requires the desktop installers, not just any job', () => {
+    // Regression: the condition was `desktop success || vscode success`, so a
+    // failed desktop build with a passing extension published a release that
+    // held one .vsix and no installers. v0.4.0 shipped that way.
+    const publishBlock = RELEASE.slice(RELEASE.indexOf('\n  publish:'));
+    const condition = publishBlock
+      .split('\n')
+      .find((line) => line.trim().startsWith('if:'));
+    expect(condition).toContain("needs.desktop.result == 'success'");
+    expect(condition).not.toContain('||');
+  });
+
+  it('creates a draft and publishes only after the assets are counted', () => {
+    expect(RELEASE).toContain('--draft');
+    expect(RELEASE).toContain('--draft=false');
+    // The publish edit must come after the upload and the count.
+    expect(RELEASE.indexOf('gh release create')).toBeLessThan(
+      RELEASE.indexOf('--draft=false'),
+    );
+    expect(RELEASE).toContain('.assets | length');
+  });
+
+  it('writes the changelog into the release instead of generating notes', () => {
+    expect(RELEASE).toContain('tools/release-notes.mjs');
+    expect(RELEASE).not.toContain('generate_release_notes');
+  });
+});
+
+describe('preflight job', () => {
+  it('compares every version string with the tag before building', () => {
+    // Regression: v0.4.0 was tagged while every manifest said 0.3.0.
+    expect(RELEASE).toContain('tools/versions.mjs check --tag');
+    const desktop = RELEASE.slice(RELEASE.indexOf('\n  desktop:'));
+    expect(desktop.split('\n').find((line) => line.trim().startsWith('needs:'))).toContain(
+      'preflight',
+    );
   });
 });
 
 describe('desktop job', () => {
+  it('inspects the packaged output before uploading it', () => {
+    // The static checks on the unpacked build: bundled weights are a directory,
+    // app code and workspace packages are in the archive, the native inference
+    // binary is outside it.
+    expect(RELEASE).toContain('tools/verify-packaged.mjs');
+    expect(RELEASE.indexOf('tools/verify-packaged.mjs')).toBeLessThan(
+      RELEASE.indexOf('actions/upload-artifact'),
+    );
+  });
+
   it('builds each platform on a runner that can produce it', () => {
     // A macOS installer cannot be produced off macOS, so the matrix is not
     // collapsed into one job.

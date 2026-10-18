@@ -240,8 +240,16 @@ describe('installer weight budget', () => {
   });
 
   it('lands the weights where the app looks for them', () => {
+    // Regression: `to` was the bare directory name "models" for a `from` that
+    // is a single file. electron-builder only treats `to` as a directory when
+    // it already exists, and nothing had created it, so the first file was
+    // copied AS a file named `models` and the second overwrote it. The
+    // installer then held one file where the app expects a directory of two,
+    // and the bundled models never loaded. Naming the destination file
+    // removes the ambiguity: it is a path into resources/models either way.
     for (const resource of manifest.build.extraResources ?? []) {
-      expect(resource.to).toBe('models');
+      const file = (resource.from ?? '').split('/').pop();
+      expect(resource.to).toBe(`models/${file}`);
     }
   });
 

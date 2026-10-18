@@ -1,6 +1,6 @@
 {
   "name": "@gearvane/app-core",
-  "version": "0.3.0",
+  "version": "0.4.2",
   "description": "Platform-neutral app logic shared by the desktop and Android builds",
   "license": "MIT",
   "type": "module",
@@ -12,7 +12,9 @@
       "import": "./dist/index.js"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "engines": {
     "node": ">=20"
   },
@@ -24,6 +26,6 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@gearvane/core": "0.3.0"
+    "@gearvane/core": "0.4.2"
   }
 }
