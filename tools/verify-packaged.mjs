@@ -160,7 +160,7 @@ if (existsSync(asarPath)) {
     else fail(`app/ is missing ${required}`);
   }
   for (const module of ['node_modules/@gearvane/core', 'node_modules/@gearvane/harness', 'node_modules/@gearvane/app-core', 'node_modules/node-llama-cpp']) {
-    if (existsSync(join(looseModules, module, 'package.json'))) pass(`${module} is resolvable at runtime`);
+    if (existsSync(join(looseApp, module, 'package.json'))) pass(`${module} is resolvable at runtime`);
     else fail(`${module} is not in the build: the main process would die on launch with "Cannot find module"`);
   }
 } else {

@@ -1,11 +1,6 @@
-fix(desktop): update verify-packaged for asar:false layout
+fix(tools): fix module path resolution in verify-packaged for loose app
 
-With asar:false, electron-builder produces resources/app/ (a directory)
-instead of resources/app.asar. The verify-packaged script was checking
-for .node files only under app.asar.unpacked/node_modules, which does
-not exist in a no-asar build.
-
-Changes:
-- Loose app/ build: check dist/main.js and workspace packages exist there
-- Native binary search: use app/node_modules/ when app.asar.unpacked/ absent
-- node-pty: same search root fix
+The loop over required modules checked join(looseModules, module, 'package.json'),
+where looseModules was resources/app/node_modules and module was
+'node_modules/<pkg>', resulting in a duplicate 'node_modules/node_modules/'.
+Fixed to join(looseApp, module, 'package.json').
