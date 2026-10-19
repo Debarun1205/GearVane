@@ -11,7 +11,7 @@ pytest>=7.0
 pytest-cov>=4.0
 
 # Linting
-flake8>=6.0
+flake8>=7.4.1
 black>=26.5.1
 isort>=5.12
 mypy>=2.4.0
