@@ -23,14 +23,14 @@ if (!/^\d+\.\d+\.\d+$/.test(version)) {
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const lines = readFileSync(join(root, 'CHANGELOG.md'), 'utf8').split(/\r?\n/);
 
-const heading = new RegExp(`^## \\[${version.replace(/\./g, '\\.')}\\]`);
-const start = lines.findIndex((line) => heading.test(line));
+const prefix = `## [${version}]`;
+const start = lines.findIndex((line) => line.startsWith(prefix));
 if (start === -1) {
   console.error(`CHANGELOG.md has no "## [${version}]" section.`);
   process.exit(1);
 }
 
-let end = lines.findIndex((line, index) => index > start && /^## \[/.test(line));
+let end = lines.findIndex((line, index) => index > start && line.startsWith('## ['));
 if (end === -1) end = lines.length;
 
 const body = lines.slice(start + 1, end).join('\n').trim();

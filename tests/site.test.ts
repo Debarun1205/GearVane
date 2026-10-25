@@ -906,7 +906,7 @@ describe('accessibility', () => {
 
 describe('security and hygiene', () => {
   it('uses no inline scripts', () => {
-    expect(html).not.toMatch(/<script>[^<]/);
+    expect(html.includes('<script>')).toBe(false);
     expect(html).not.toMatch(/on(click|load|error)=/i);
   });
 

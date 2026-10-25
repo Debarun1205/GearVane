@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Project scaffolding.
  *
  * ## What this is
@@ -72,12 +72,21 @@ export function escapeRegex(value: string): string {
 
 /** Lowercase, hyphenated, safe as a directory name and a URL segment. */
 export function slugify(value: string): string {
-  return value
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 60);
+  const lower = value.toLowerCase().trim();
+  let result = '';
+  let prevWasDash = false;
+  for (const ch of lower) {
+    if ((ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9')) {
+      result += ch;
+      prevWasDash = false;
+    } else if (!prevWasDash && result.length > 0) {
+      result += '-';
+      prevWasDash = true;
+    }
+  }
+  // Trim trailing dash
+  while (result.endsWith('-')) result = result.slice(0, -1);
+  return result.slice(0, 60);
 }
 
 /** Validate a name that becomes a directory. */

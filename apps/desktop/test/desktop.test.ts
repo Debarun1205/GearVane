@@ -277,7 +277,7 @@ describe('renderer assets', () => {
     // directives both fall back to default-src and are refused at runtime.
     expect(html).toMatch(/worker-src 'self' blob:/);
     expect(html).toMatch(/font-src 'self' data:/);
-    expect(html).not.toMatch(/<script>[^<]/);
+    expect(html.includes('<script>')).toBe(false);
   });
 
   it('does not allow remote scripts', () => {
@@ -375,7 +375,7 @@ describe('stylesheet', () => {
     for (const name of classes) {
       if (name === '') continue;
       expect(css, `${name} is emitted by the picker but never styled`).toMatch(
-        new RegExp('\\.' + name.replace(/[-]/g, '\\-') + '[\\s,{:.]'),
+        new RegExp('\\.' + name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '[\\s,{:.]'),
       );
     }
   });

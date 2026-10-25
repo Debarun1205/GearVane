@@ -46,8 +46,17 @@ export class SafetyManager {
     // classifies as an ordinary shell command but runs a push. Quoting
     // tricks defeat every substring check, so the construct itself is
     // consequential and always requires approval.
-    if (/(^|\s)(\S*\/)?(bash|sh|zsh|ksh|cmd|powershell|pwsh)(\s+[^\s]+)*\s+(-c\b|-encodedcommand\b|\/c\b)/.test(normalized)) {
-      return 'shell_injection';
+    const tokens = normalized.trim().split(/\s+/);
+    const shells = new Set(['bash', 'sh', 'zsh', 'ksh', 'cmd', 'powershell', 'pwsh']);
+    const shellIdx = tokens.findIndex((t) => {
+      const base = t.includes('/') ? t.slice(t.lastIndexOf('/') + 1) : t;
+      return shells.has(base);
+    });
+    if (shellIdx !== -1) {
+      const rest = tokens.slice(shellIdx + 1);
+      if (rest.some((t) => t === '-c' || t === '-encodedcommand' || t === '/c')) {
+        return 'shell_injection';
+      }
     }
 
     // "git push --delete" removes a remote branch, so it must be classified as

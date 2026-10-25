@@ -121,7 +121,7 @@ export function matchesAllowlist(command: string, allowlist: readonly string[]):
 export function rejoinArgv(argv: string[]): string {
   const quote = (arg: string): string => {
     if (arg !== '' && !/[\s"']/.test(arg)) return arg;
-    if (process.platform === 'win32') return `"${arg.replace(/"/g, '\\"')}"`;
+    if (process.platform === 'win32') return `"${arg.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
     return `'${arg.replace(/'/g, `'\\''`)}'`;
   };
   return argv.map(quote).join(' ');

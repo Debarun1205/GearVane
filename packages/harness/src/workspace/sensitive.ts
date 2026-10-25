@@ -132,8 +132,17 @@ const GENERIC_SECRETS = new Set([
 
 /** Normalise a path for matching: forward slashes, no trailing slash. */
 function normalise(path: string): string {
-  const unified = path.replace(/[\\/]+/g, '/').replace(/^\.\//, '');
-  return unified.length > 1 ? unified.replace(/\/+$/, '') : unified;
+  let unified = path.replaceAll('\\', '/');
+  while (unified.includes('//')) {
+    unified = unified.replaceAll('//', '/');
+  }
+  if (unified.startsWith('./')) {
+    unified = unified.slice(2);
+  }
+  while (unified.length > 1 && unified.endsWith('/')) {
+    unified = unified.slice(0, -1);
+  }
+  return unified;
 }
 
 /**
