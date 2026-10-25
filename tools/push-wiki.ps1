@@ -33,9 +33,11 @@ if ($token) {
     git remote add origin "https://github.com/Debarun1205/GearVane.wiki.git"
 }
 
-try {
-    git push -u origin master --force
+git push -u origin master --force
+if ($LASTEXITCODE -eq 0) {
     Write-Host "Wiki successfully pushed to https://github.com/Debarun1205/GearVane/wiki" -ForegroundColor Green
-} catch {
-    Write-Host "Wiki push failed. Note: If the wiki was never initialized on GitHub, create the first page on https://github.com/Debarun1205/GearVane/wiki and then rerun this script." -ForegroundColor Yellow
+} else {
+    Write-Host "Wiki git repository is not yet initialized on GitHub." -ForegroundColor Yellow
+    Write-Host "To initialize: Visit https://github.com/Debarun1205/GearVane/wiki, click 'Create the first page', and save." -ForegroundColor Yellow
+    Write-Host "Once created, re-run this script to automatically push all 10 documentation pages." -ForegroundColor Yellow
 }
