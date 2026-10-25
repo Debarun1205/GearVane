@@ -21,7 +21,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.10.0",
-    "@types/node": "^22.0.0",
+    "@types/node": "^26.6.5",
     "esbuild": "^0.28.2",
     "eslint": "^9.10.0",
     "typescript": "^5.6.0",
@@ -34,9 +34,10 @@
       "@simple-git/argv-parser": "^2.0.1"
     },
     "@simple-git/argv-parser": "^2.0.1",
-    "electron-builder": "^26.15.3",
-    "app-builder-lib": "^26.15.3",
+    "electron-builder": "^26.18.0",
+    "app-builder-lib": "^26.18.0",
     "builder-util-runtime": "^9.7.0",
-    "tar": "^7.5.22"
+    "tar": "^7.5.22",
+    "uuid": "^11.1.1"
   }
 }

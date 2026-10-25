@@ -8,11 +8,11 @@
 
 # Testing
 pytest>=9.1.1
-pytest-cov>=4.0
+pytest-cov>=7.1.0
 
 # Linting
 flake8>=7.4.1
-black>=24.0.0; python_version >= "3.10"
+black>=26.10.1; python_version >= "3.10"
 black>=23.0.0; python_version < "3.10"
 isort>=9.0.2
 mypy>=2.4.0
