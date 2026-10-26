@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @gearvane/harness
  *
  * The agent layer that sits on top of @gearvane/core's routing engine.
@@ -253,7 +253,7 @@ export interface AgentOptions {
    * Frame untrusted tool output before the model sees it.
    *
    * Defaults to true. Off is for callers that have already framed the content
-   * themselves, or that genuinely need the raw bytes — nothing about the
+   * themselves, or that genuinely need the raw bytes â€” nothing about the
    * framing sanitizes the text, so turning it off removes the labelling and
    * the warning, not a filter.
    */
@@ -574,3 +574,13 @@ export {
   shellTool,
   type ShellToolOptions,
 } from './tools/shell.js';
+
+export {
+  gitStatusTool,
+  gitLogTool,
+  gitDiffTool,
+  gitCommitTool,
+  gitPullTool,
+  gitPushTool,
+  gitTools,
+} from './tools/git.js';

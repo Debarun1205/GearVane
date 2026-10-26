@@ -580,6 +580,12 @@ describe('toolsForMode', () => {
         'edit_file',
         'scaffold_project',
         'search_files',
+        'git_status',
+        'git_log',
+        'git_diff',
+        'git_commit',
+        'git_pull',
+        'git_push',
       ]),
     );
     expect(names).not.toContain('run_command');

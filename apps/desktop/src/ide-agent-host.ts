@@ -1,9 +1,9 @@
-/**
+﻿/**
  * Agent runner for the IDE.
  *
  * The agent loop runs here, in the main process, rather than in the renderer.
  * The renderer bundle also ships inside the Android webview, where a bare
- * `node:` import fails the whole module — so anything that touches the
+ * `node:` import fails the whole module â€” so anything that touches the
  * filesystem, including the harness tool layer, stays on this side of the IPC
  * boundary. This is the same split the builder, terminal, and IDE filesystem
  * already use, and for the same reason.
@@ -21,6 +21,7 @@ import {
   Workspace,
   builderTools,
   fileTools,
+  gitTools,
   installNodeFileSystem,
   listDirTool,
   readFileTool,
@@ -118,7 +119,7 @@ export function toolsForMode(mode: AgentMode): Tool[] {
   if (mode === 'ask') {
     return [readFileTool, listDirTool, searchFilesTool];
   }
-  return [...fileTools(), ...builderTools(), searchFilesTool];
+  return [...fileTools(), ...builderTools(), ...gitTools(), searchFilesTool];
 }
 
 export interface AgentRunResponse {
@@ -193,7 +194,7 @@ export async function snapshotWorkspace(root: string): Promise<Map<string, strin
  * Compare a snapshot against the workspace now.
  *
  * Detection is by content, not by tool calls: whatever the agent used to
- * write — scaffold, edit, or write — a changed file is a changed file. Files
+ * write â€” scaffold, edit, or write â€” a changed file is a changed file. Files
  * the agent deleted cannot happen (no tool deletes), so absence from the
  * current listing is treated as unchanged rather than guessed about.
  */
