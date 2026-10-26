@@ -586,6 +586,13 @@ describe('toolsForMode', () => {
         'git_commit',
         'git_pull',
         'git_push',
+        'ask_question',
+        'define_subagent',
+        'invoke_subagent',
+        'host_app',
+        'stop_server',
+        'load_skill',
+        'schedule_task',
       ]),
     );
     expect(names).not.toContain('run_command');

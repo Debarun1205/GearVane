@@ -19,14 +19,21 @@ import { ProviderFactory, type FeedbackStorage, type GearVaneConfig } from '@gea
 import {
   ToolRegistry,
   Workspace,
+  askQuestionTool,
   builderTools,
+  defineSubagentTool,
   fileTools,
   gitTools,
+  hostAppTool,
   installNodeFileSystem,
+  invokeSubagentTool,
   listDirTool,
+  loadSkillTool,
   readFileTool,
   runAgent,
+  scheduleTaskTool,
   searchFilesTool,
+  stopServerTool,
   type AgentModel,
   type AgentResult,
   type AgentStep,
@@ -117,9 +124,21 @@ export function listIdeModels(tiers: GearVaneConfig['tiers']): IdeModel[] {
  */
 export function toolsForMode(mode: AgentMode): Tool[] {
   if (mode === 'ask') {
-    return [readFileTool, listDirTool, searchFilesTool];
+    return [readFileTool, listDirTool, searchFilesTool, loadSkillTool];
   }
-  return [...fileTools(), ...builderTools(), ...gitTools(), searchFilesTool];
+  return [
+    ...fileTools(),
+    ...builderTools(),
+    ...gitTools(),
+    searchFilesTool,
+    askQuestionTool,
+    defineSubagentTool,
+    invokeSubagentTool,
+    hostAppTool,
+    stopServerTool,
+    loadSkillTool,
+    scheduleTaskTool,
+  ];
 }
 
 export interface AgentRunResponse {

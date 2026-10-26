@@ -584,3 +584,31 @@ export {
   gitPushTool,
   gitTools,
 } from './tools/git.js';
+
+export {
+  askQuestionTool,
+  setQuestionHandler,
+  type QuestionOption,
+  type QuestionPrompt,
+  type QuestionHandler,
+} from './tools/question.js';
+
+export {
+  defineSubagentTool,
+  invokeSubagentTool,
+  getAvailableSubagents,
+  type SubagentDefinition,
+} from './tools/subagent.js';
+
+export {
+  hostAppTool,
+  stopServerTool,
+  getActiveDevServers,
+} from './tools/server.js';
+
+export {
+  loadSkillTool,
+  scheduleTaskTool,
+  discoverSkills,
+  type SkillManifest,
+} from './tools/customization.js';
