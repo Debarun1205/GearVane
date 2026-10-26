@@ -20,6 +20,7 @@ import {
 } from '@gearvane/app-core';
 import {
   defaultConfig,
+  MODEL_BENCHMARKS,
   type GearVaneConfig,
 } from '@gearvane/core';
 import {
@@ -467,13 +468,29 @@ async function catalogEntries(): Promise<ModelPickerEntry[]> {
     }
   }
 
-  // Grouped by `use`, which the catalog already carries: general, code,
-  // small. Fifty flat rows are a list to scroll, not to choose from.
-  return (MODEL_CATALOG as CatalogEntry[]).map((entry) => {
+  // Grouped by tier and benchmark capability: Local, Mid, Frontier.
+  // Models are sorted so each tier is contiguous, displaying humanEval ratings.
+  const tierWeight: Record<string, number> = { local: 1, mid: 2, frontier: 3 };
+  const sorted = [...(MODEL_CATALOG as CatalogEntry[])].sort((a, b) => {
+    const tierA = MODEL_BENCHMARKS[a.id]?.tier ?? 'local';
+    const tierB = MODEL_BENCHMARKS[b.id]?.tier ?? 'local';
+    const weightDiff = (tierWeight[tierA] ?? 1) - (tierWeight[tierB] ?? 1);
+    if (weightDiff !== 0) return weightDiff;
+    return a.bytes - b.bytes;
+  });
+
+  return sorted.map((entry) => {
+    const bench = MODEL_BENCHMARKS[entry.id];
+    const groupName = bench?.tier === 'frontier'
+      ? 'Frontier Tier (Deep Reasoning & Hard Tasks)'
+      : bench?.tier === 'mid'
+        ? 'Mid Tier (Medium Complexity & Logic)'
+        : 'Local Tier (Fast & Mechanical Tasks)';
+
     const common = {
       id: entry.id,
       label: entry.id,
-      group: entry.use,
+      group: groupName,
       license: entry.license,
       licenseUrl: entry.licenseUrl,
     };
@@ -481,16 +498,14 @@ async function catalogEntries(): Promise<ModelPickerEntry[]> {
       return { ...common, detail: 'desktop app only' };
     }
     const onDisk = present.has(entry.id);
-    // A remote-only weight keeps its row -- hiding it would be pretending the
-    // catalog is smaller than it is -- but carries no `download`, which is
-    // exactly how the picker already marks a row it cannot install. The detail
-    // says why, so an absent button reads as a decision rather than a bug.
+    const baseDetail = rowDetail(entry);
+    const detail = bench ? `${baseDetail} • HE ${bench.humanEval}%` : baseDetail;
     if (isRemoteOnly(entry)) {
-      return { ...common, detail: rowDetail(entry), present: onDisk };
+      return { ...common, detail, present: onDisk };
     }
     return {
       ...common,
-      detail: rowDetail(entry),
+      detail,
       present: onDisk,
       download: { bytes: entry.bytes },
     };

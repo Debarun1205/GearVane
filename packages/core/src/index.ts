@@ -130,4 +130,12 @@ export {
 } from './command-parse.js';
 export { defaultConfig } from './defaults.js';
 
+export {
+  MODEL_BENCHMARKS,
+  getModelBenchmark,
+  listTierBenchmarks,
+  getTierForBenchmark,
+  type ModelBenchmarkInfo,
+} from './benchmarks.js';
+
 export const VERSION = '0.4.2';
