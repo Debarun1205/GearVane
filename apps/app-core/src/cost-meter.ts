@@ -24,6 +24,10 @@ export interface CostReading {
   day: number;
   /** Whether any of it could have cost anything. */
   kind: CostKind;
+  /** Total tokens processed (session + day). */
+  tokens?: number;
+  /** Estimated cost saved by running free local models vs cloud APIs. */
+  savedUsd?: number;
   /** What to put on screen. Empty when nothing has run yet. */
   label: string;
   /** Longer text for the tooltip and for a screen reader. */
@@ -119,29 +123,37 @@ export function describe(reading: {
   session: number;
   day: number;
   kind: CostKind;
+  tokens?: number;
+  savedUsd?: number;
 }): CostReading {
-  const { session, day, kind } = reading;
+  const { session, day, kind, tokens = 0, savedUsd = 0 } = reading;
+
+  const tokenStr = tokens >= 1000 ? `${(tokens / 1000).toFixed(1)}k` : `${tokens}`;
+  const savedStr = `${savedUsd.toFixed(2)}`;
 
   if (kind === 'free') {
+    const label = tokens > 0
+      ? `Free, unlimited • ${tokenStr} tok (Saved ${savedStr})`
+      : 'Free, unlimited';
     return {
       ...reading,
-      // "Free, unlimited" whether or not something has run. It is a statement
-      // about the model, not about the day's arithmetic -- and it is the honest
-      // thing to show after a local run, where "$0.00" would invite the question
-      // of what the zero was a fraction of.
-      label: 'Free, unlimited',
+      label,
       detail:
-        'This ran on a local weight, on your own machine. Local models cost ' +
-        'nothing per token, and no limit is enforced on any model.',
+        `Free, unlimited access on local models. ${tokens.toLocaleString()} tokens consumed so far, ` +
+        `saving ~${savedStr} compared to cloud models. Local models cost nothing per token and have no limits.`,
     };
   }
 
-  const usd = `$${day.toFixed(4)}`;
+  const usd = `${day.toFixed(4)}`;
+  const label = tokens > 0
+    ? `${usd} • ${tokenStr} tok (Saved ${savedStr})`
+    : usd;
   return {
     ...reading,
-    label: usd,
+    label,
     detail:
-      `$${session.toFixed(4)} this session, ${usd} today, through your own API key. ` +
+      `${session.toFixed(4)} this session, ${usd} today, through your own API key. ` +
+      `${tokens.toLocaleString()} total tokens consumed (saved ~${savedStr} on local models). ` +
       'Nothing is capped: this is a readout, not a limit, and no run is stopped ' +
       'for costing anything.',
   };

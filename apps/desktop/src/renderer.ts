@@ -964,7 +964,31 @@ function setRoutingNote(text: string, notable: boolean): void {
  * does not convey. A run through a keyed provider shows the day's figure.
  */
 function renderSpend(): void {
-  const reading = describeCost({ ...dayTotals(), kind: costKind() });
+  // Tally total token consumption and calculate cost saved by running on free local models.
+  let totalTokens = 0;
+  let localTokens = 0;
+  for (const message of state.messages) {
+    const inTokens = message.tokensIn ?? 0;
+    const outTokens = message.tokensOut ?? 0;
+    const msgTokens = (inTokens + outTokens) > 0
+      ? (inTokens + outTokens)
+      : (message.content ? Math.max(1, Math.ceil(message.content.length / 4)) : 0);
+    totalTokens += msgTokens;
+    const provider = message.provider?.toLowerCase();
+    if (!provider || LOCAL_PROVIDER_NAMES_FOR_COST.includes(provider)) {
+      localTokens += msgTokens;
+    }
+  }
+
+  // Savings baseline: ~$0.005 / 1k tokens = $0.000005 per token on cloud tiers
+  const savedUsd = Math.round(localTokens * 0.000005 * 100) / 100;
+
+  const reading = describeCost({
+    ...dayTotals(),
+    kind: costKind(),
+    tokens: totalTokens,
+    savedUsd,
+  });
   els.spendFill.style.width = reading.kind === 'metered' ? '100%' : '0';
   els.spendFill.className = 'spend-fill';
   els.spendMeter.title = reading.detail;

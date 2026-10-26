@@ -38,6 +38,8 @@ export interface Message {
   routingReasons?: string[];
   confidence?: number;
   costUsd?: number;
+  tokensIn?: number;
+  tokensOut?: number;
   durationMs?: number;
   /** Set when the turn failed, so the UI can offer a retry. */
   error?: string;
@@ -144,6 +146,8 @@ export function reducer(state: AppState, action: Action): AppState {
             : {}),
           confidence: action.result.confidence,
           costUsd: action.result.costUsd,
+          tokensIn: action.result.tokensIn,
+          tokensOut: action.result.tokensOut,
           durationMs: action.result.durationMs,
         }),
         busy: false,
