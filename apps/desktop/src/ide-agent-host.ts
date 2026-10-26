@@ -20,6 +20,7 @@ import {
   ToolRegistry,
   Workspace,
   askQuestionTool,
+  setQuestionHandler,
   builderTools,
   defineSubagentTool,
   fileTools,
@@ -247,6 +248,7 @@ export async function diffSnapshot(
 }
 
 let active: AbortController | undefined;
+let pendingQuestionResolver: ((ans: string) => void) | undefined;
 
 /**
  * First configured provider, same choice the CLI and the VS Code panel make.
@@ -484,6 +486,12 @@ export function registerIdeAgentHandlers(
       if (!sender.isDestroyed()) sender.send('agent:step', step);
     };
 
+    setQuestionHandler(async () => {
+      return new Promise<string>((resolve) => {
+        pendingQuestionResolver = resolve;
+      });
+    });
+
     try {
       // Host vault keys win over the shell, then renderer keys on top: the
       // webview has no host vault and passes them through the request.
@@ -509,11 +517,20 @@ export function registerIdeAgentHandlers(
       } as AgentRunResponse;
     } finally {
       active = undefined;
+      pendingQuestionResolver = undefined;
+      setQuestionHandler(undefined);
     }
+  });
+
+  ipcMain.on('agent:question:response', (_event, answer: string) => {
+    pendingQuestionResolver?.(answer);
+    pendingQuestionResolver = undefined;
   });
 
   ipcMain.on('agent:cancel', () => {
     active?.abort();
     active = undefined;
+    pendingQuestionResolver?.('');
+    pendingQuestionResolver = undefined;
   });
 }

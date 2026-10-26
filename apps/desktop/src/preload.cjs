@@ -124,6 +124,7 @@ const api = {
     run: (prompt, root, options) =>
       ipcRenderer.invoke('agent:run', { prompt, root, ...(options ?? {}) }),
     cancel: () => ipcRenderer.send('agent:cancel'),
+    answerQuestion: (answer) => ipcRenderer.send('agent:question:response', answer),
     onStep: (handler) => {
       const listener = (_event, step) => handler(step);
       ipcRenderer.on('agent:step', listener);

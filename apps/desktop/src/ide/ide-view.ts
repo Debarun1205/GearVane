@@ -503,17 +503,44 @@ export class IdeView {
     this.problemsHost = problemsHost;
     this.renderProblems();
 
+    // Preview pane: shows a live iframe when the agent starts a dev server.
+    const previewHost = document.createElement('div');
+    previewHost.className = 'ide-preview-host';
+    previewHost.setAttribute('hidden', '');
+    const previewFrame = document.createElement('iframe');
+    previewFrame.className = 'ide-preview-frame';
+    previewFrame.src = 'about:blank';
+    previewFrame.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms');
+    previewFrame.setAttribute('loading', 'lazy');
+    previewFrame.setAttribute('title', 'Live preview');
+    previewHost.append(previewFrame);
+    pane.append(previewHost);
+    this.previewHost = previewHost;
+    this.previewFrame = previewFrame;
+
     const showTerminal = (): void => {
       terminalHost.removeAttribute('hidden');
       problemsHost.setAttribute('hidden', '');
+      previewHost.setAttribute('hidden', '');
       terminalTab?.classList.add('ide-tab-active');
       problemsTab.classList.remove('ide-tab-active');
+      previewTab.classList.remove('ide-tab-active');
     };
     const showProblems = (): void => {
       problemsHost.removeAttribute('hidden');
       terminalHost.setAttribute('hidden', '');
+      previewHost.setAttribute('hidden', '');
       problemsTab.classList.add('ide-tab-active');
       terminalTab?.classList.remove('ide-tab-active');
+      previewTab.classList.remove('ide-tab-active');
+    };
+    const showPreviewPanel = (): void => {
+      previewHost.removeAttribute('hidden');
+      terminalHost.setAttribute('hidden', '');
+      problemsHost.setAttribute('hidden', '');
+      previewTab.classList.add('ide-tab-active');
+      terminalTab?.classList.remove('ide-tab-active');
+      problemsTab.classList.remove('ide-tab-active');
     };
 
     // No shell, no Terminal tab: the webview backend cannot own a PTY, so
@@ -521,9 +548,12 @@ export class IdeView {
     const hasTerminal = this.options.terminal !== undefined;
     const terminalTab = hasTerminal ? this.tab('Terminal', true, showTerminal) : undefined;
     const problemsTab = this.tab('Problems', !hasTerminal, showProblems);
+    const previewTab = this.tab('Preview', false, showPreviewPanel);
     if (terminalTab) tabs.append(terminalTab);
-    tabs.append(problemsTab);
+    tabs.append(problemsTab, previewTab);
     this.problemsTab = problemsTab;
+    this.previewTab = previewTab;
+    this.showPreviewPanel = showPreviewPanel;
     if (!hasTerminal) terminalHost.setAttribute('hidden', '');
 
     if (hasTerminal && this.options.terminal) {
@@ -533,10 +563,21 @@ export class IdeView {
     return pane;
   }
 
+  /** Navigate the embedded preview iframe to a URL and bring the preview tab into focus. */
+  showPreview(url: string): void {
+    if (!this.previewFrame || !this.previewHost) return;
+    this.previewFrame.src = url;
+    this.showPreviewPanel?.();
+  }
+
   private terminal: ReturnType<typeof createTerminal> | undefined;
   private problemsHost: HTMLElement | undefined;
   private problemsTab: HTMLElement | undefined;
   private problemCount = 0;
+  private previewHost: HTMLElement | undefined;
+  private previewFrame: HTMLIFrameElement | undefined;
+  private previewTab: HTMLElement | undefined;
+  private showPreviewPanel: (() => void) | undefined;
 
   private header(text: string): HTMLElement {
     const node = document.createElement('div');
@@ -867,6 +908,139 @@ export class IdeView {
     if (this.agentStopButton) this.agentStopButton.disabled = !running;
   }
 
+  /** Render a rich card for special tool calls; plain log line otherwise. */
+  private appendToolCallCard(
+    call: { name: string; arguments: Record<string, unknown> },
+    result: { ok: boolean; content?: string } | undefined,
+  ): void {
+    const ok = result?.ok ?? true;
+
+    // invoke_subagent or define_subagent card
+    if (call.name === 'invoke_subagent' || call.name === 'define_subagent') {
+      const card = document.createElement('div');
+      card.className = 'subagent-card';
+
+      const badge = document.createElement('span');
+      badge.className = 'subagent-card-badge';
+      badge.textContent = call.name === 'define_subagent' ? 'Defined' : 'Subagent';
+      card.append(badge);
+
+      const role = document.createElement('span');
+      role.className = 'subagent-card-role';
+      const roleText = String(call.arguments['Role'] ?? call.arguments['TypeName'] ?? call.arguments['Name'] ?? '—');
+      role.textContent = roleText;
+      card.append(role);
+
+      if (call.arguments['Prompt'] || call.arguments['SystemPrompt']) {
+        const task = document.createElement('span');
+        task.className = 'subagent-card-task';
+        const raw = String(call.arguments['Prompt'] ?? call.arguments['SystemPrompt'] ?? '');
+        task.textContent = raw.length > 120 ? raw.slice(0, 120) + '…' : raw;
+        card.append(task);
+      }
+
+      const status = document.createElement('span');
+      status.className = `subagent-card-status ${ok ? 'subagent-status-ok' : 'subagent-status-failed'}`;
+      status.textContent = call.name === 'define_subagent' ? 'Registered' : (ok ? 'Dispatched' : 'Failed');
+      card.append(status);
+
+      this.agentLog?.append(card);
+      if (this.agentLog) this.agentLog.scrollTop = this.agentLog.scrollHeight;
+      return;
+    }
+
+    // host_app card
+    if (call.name === 'host_app') {
+      const card = document.createElement('div');
+      card.className = 'subagent-card server-card';
+
+      const badge = document.createElement('span');
+      badge.className = 'subagent-card-badge server-badge';
+      badge.textContent = 'Dev Server';
+      card.append(badge);
+
+      // Extract URL from result content like "URL: http://..."
+      const urlMatch = result?.content?.match(/https?:\/\/[^\s]+/);
+      const url = urlMatch?.[0] ?? '';
+      const port = String(call.arguments['port'] ?? '');
+
+      const desc = document.createElement('span');
+      desc.className = 'subagent-card-task';
+      desc.textContent = url ? `Running at ${url}` : (port ? `Starting on port ${port}…` : 'Starting server…');
+      card.append(desc);
+
+      if (url) {
+        const link = document.createElement('button');
+        link.type = 'button';
+        link.className = 'ide-agent-button server-preview-btn';
+        link.textContent = 'Open Preview';
+        link.addEventListener('click', () => this.showPreview(url));
+        card.append(link);
+      }
+
+      const status = document.createElement('span');
+      status.className = `subagent-card-status ${ok ? 'subagent-status-ok' : 'subagent-status-failed'}`;
+      status.textContent = ok ? 'Running' : 'Failed';
+      card.append(status);
+
+      this.agentLog?.append(card);
+      if (url) this.showPreview(url);
+      if (this.agentLog) this.agentLog.scrollTop = this.agentLog.scrollHeight;
+      return;
+    }
+
+    // ask_question card
+    if (call.name === 'ask_question') {
+      const card = document.createElement('div');
+      card.className = 'subagent-card question-card';
+
+      const badge = document.createElement('span');
+      badge.className = 'subagent-card-badge question-badge';
+      badge.textContent = 'Question';
+      card.append(badge);
+
+      const qText = String(call.arguments['question'] ?? call.arguments['prompt'] ?? '');
+      if (qText) {
+        const q = document.createElement('span');
+        q.className = 'subagent-card-task';
+        q.textContent = qText;
+        card.append(q);
+      }
+
+      const options = call.arguments['options'];
+      if (Array.isArray(options)) {
+        const optRow = document.createElement('div');
+        optRow.className = 'question-options';
+        for (const opt of options) {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'ide-agent-button question-option-btn';
+          btn.textContent = String(opt);
+          btn.addEventListener('click', () => {
+            optRow.querySelectorAll('button').forEach((b) => { (b as HTMLButtonElement).disabled = true; });
+            btn.classList.add('question-option-selected');
+            const bridge = (window as unknown as Record<string, unknown>)['bridge'] as Record<string, unknown> | undefined;
+            const agent = bridge?.['agent'] as Record<string, unknown> | undefined;
+            const answerFn = agent?.['answerQuestion'] as ((ans: string) => void) | undefined;
+            answerFn?.(String(opt));
+          });
+          optRow.append(btn);
+        }
+        card.append(optRow);
+      }
+
+      this.agentLog?.append(card);
+      if (this.agentLog) this.agentLog.scrollTop = this.agentLog.scrollHeight;
+      return;
+    }
+
+    // default: plain log line
+    this.agentLogLine(
+      `${call.name} (${ok ? 'ok' : 'failed'})`,
+      ok ? 'ide-agent-ok' : 'ide-agent-failed',
+    );
+  }
+
   private agentLogLine(text: string, className?: string): void {
     if (!this.agentLog) return;
     const line = document.createElement('div');
@@ -993,10 +1167,7 @@ export class IdeView {
     this.agentUnsubscribe = this.options.agent.onStep((step) => {
       for (const call of step.toolCalls) {
         const result = step.results.find((entry) => entry.name === call.name);
-        this.agentLogLine(
-          `${call.name} (${result?.ok ? 'ok' : 'failed'})`,
-          result?.ok ? 'ide-agent-ok' : 'ide-agent-failed',
-        );
+        this.appendToolCallCard(call, result);
       }
       if (step.content.trim()) this.agentLogLine(step.content.trim());
     });
