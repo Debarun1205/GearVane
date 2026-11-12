@@ -301,20 +301,24 @@ function runCommand(
   maxOutputBytes: number,
   signal?: AbortSignal,
 ): Promise<RunOutcome> {
+  const child = spawn(command, {
+    // The command string is handed to a shell, because an agent legitimately
+    // needs pipes and redirection. That is also why the gating above is
+    // load-bearing rather than advisory.
+    shell: true,
+    cwd,
+    env,
+    windowsHide: true,
+    // Makes the child a process group leader on POSIX so the whole tree can
+    // be signalled at once. Harmless on Windows.
+    detached: process.platform !== 'win32',
+    stdio: process.platform === 'win32' ? ['pipe', 'pipe', 'pipe'] : ['ignore', 'pipe', 'pipe'],
+  });
+  if (process.platform === 'win32') {
+    child.stdin?.end();
+  }
   return observe(
-    spawn(command, {
-      // The command string is handed to a shell, because an agent legitimately
-      // needs pipes and redirection. That is also why the gating above is
-      // load-bearing rather than advisory.
-      shell: true,
-      cwd,
-      env,
-      windowsHide: true,
-      // Makes the child a process group leader on POSIX so the whole tree can
-      // be signalled at once. Harmless on Windows.
-      detached: process.platform !== 'win32',
-      stdio: ['ignore', 'pipe', 'pipe'],
-    }),
+    child,
     timeoutMs,
     maxOutputBytes,
     signal,

@@ -1,6 +1,6 @@
 {
   "name": "@gearvane/cli",
-  "version": "0.4.2",
+  "version": "0.5.0",
   "description": "GearVane command line interface",
   "license": "MIT",
   "type": "module",
@@ -21,7 +21,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@gearvane/core": "0.4.2",
-    "@gearvane/harness": "0.4.2"
+    "@gearvane/core": "0.5.0",
+    "@gearvane/harness": "0.5.0"
   }
 }

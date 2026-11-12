@@ -21,6 +21,7 @@ import {
 import {
   defaultConfig,
   MODEL_BENCHMARKS,
+  setOfflineMode,
   type GearVaneConfig,
 } from '@gearvane/core';
 import {
@@ -345,6 +346,8 @@ const els = {
   send: byId<HTMLButtonElement>('send'),
   cancel: byId<HTMLButtonElement>('cancel'),
   clear: byId<HTMLButtonElement>('clear-button'),
+  offlineToggle: byId<HTMLButtonElement>('offline-toggle'),
+  exportButton: byId<HTMLButtonElement>('export-button'),
   health: byId<HTMLButtonElement>('health-button'),
   healthDialog: byId<HTMLDialogElement>('health-dialog'),
   healthBody: byId('health-body'),
@@ -2893,6 +2896,45 @@ async function main(): Promise<void> {
   // backend elsewhere — and is hidden by the mount block below only
   // where neither exists.
   const ideToggle = document.getElementById('ide-toggle');
+
+  let offlineActive = false;
+  const updateOfflineButton = () => {
+    els.offlineToggle.textContent = offlineActive ? 'Air-Gap: On' : 'Air-Gap: Off';
+    els.offlineToggle.classList.toggle('active', offlineActive);
+    els.offlineToggle.title = offlineActive
+      ? 'Air-gap offline mode active: remote network access blocked, local weights only'
+      : 'Toggle air-gap offline mode';
+  };
+  els.offlineToggle.addEventListener('click', () => {
+    offlineActive = !offlineActive;
+    setOfflineMode(offlineActive);
+    updateOfflineButton();
+    showNotice(
+      offlineActive
+        ? 'Air-gap offline mode enabled: remote network disabled, local weights only.'
+        : 'Online mode restored.'
+    );
+  });
+  updateOfflineButton();
+
+  els.exportButton.addEventListener('click', () => {
+    const md = transcriptText(state);
+    if (!md.trim()) {
+      showNotice('Nothing to export yet.');
+      return;
+    }
+    const dateStr = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    const blob = new Blob([md], { type: 'text/markdown;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `gearvane-transcript-${dateStr}.md`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showNotice('Transcript exported to Markdown.');
+  });
 
   els.clear.addEventListener('click', () => {
     controller?.cancelAll();

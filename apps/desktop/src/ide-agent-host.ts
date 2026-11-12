@@ -406,11 +406,22 @@ export async function runIdeAgent(
   // steer the agent, and the user is the one who can act on that.
   const taintWarnings: TaintWarning[] = [];
 
+  // Per-workspace instruction file (GEARVANE.md) injected into the system prompt.
+  let customInstructions = '';
+  try {
+    const customRead = await readTextFile(request.root, 'GEARVANE.md', 64 * 1024);
+    if (customRead.ok && customRead.content && customRead.content.trim()) {
+      customInstructions = `\n\nWorkspace instructions (GEARVANE.md):\n${customRead.content.trim()}`;
+    }
+  } catch {
+    // Absent or unreadable: run with default system prompt
+  }
+
   const result = await runAgent(request.prompt, {
     model: model.client,
     registry,
     context: { workspace, maxReadBytes: 256 * 1024 },
-    system: mode === 'ask' ? ASK_SYSTEM_PROMPT : VIBE_SYSTEM_PROMPT,
+    system: (mode === 'ask' ? ASK_SYSTEM_PROMPT : VIBE_SYSTEM_PROMPT) + customInstructions,
     maxIterations,
     signal,
     onStep,

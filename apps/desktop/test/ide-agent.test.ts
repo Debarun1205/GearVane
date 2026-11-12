@@ -702,6 +702,11 @@ describe('agent modes', () => {
     expect(host).toMatch(/mode === 'ask' \? ASK_SYSTEM_PROMPT : VIBE_SYSTEM_PROMPT/);
   });
 
+  it('injects GEARVANE.md instructions into the system prompt when present', () => {
+    expect(host).toContain("readTextFile(request.root, 'GEARVANE.md'");
+    expect(host).toContain('Workspace instructions (GEARVANE.md):');
+  });
+
   it('passes the selected mode and model from the prompt box to the bridge', () => {
     expect(view).toMatch(/this\.agentMode\?\.value === 'ask' \? 'ask' : 'build'/);
     expect(view).toMatch(/this\.options\.agent\.run\(prompt, \{/);

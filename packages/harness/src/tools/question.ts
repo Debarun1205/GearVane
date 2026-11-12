@@ -64,9 +64,9 @@ export const askQuestionTool: Tool = {
       return failure('At least 2 options must be provided for a choice question.');
     }
 
-    const options: QuestionOption[] = rawOptions.map((opt: any) => ({
-      label: typeof opt === 'string' ? opt : String(opt?.label ?? ''),
-      description: typeof opt === 'object' && opt?.description ? String(opt.description) : undefined,
+    const options: QuestionOption[] = rawOptions.map((opt: unknown) => ({
+      label: typeof opt === 'string' ? opt : String(typeof opt === 'object' && opt !== null && 'label' in opt ? (opt as Record<string, unknown>).label : ''),
+      description: typeof opt === 'object' && opt !== null && 'description' in opt ? String((opt as Record<string, unknown>).description) : undefined,
     }));
 
     const allowMultiple = Boolean(args['allowMultiple']);

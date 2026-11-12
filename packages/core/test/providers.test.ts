@@ -7,6 +7,8 @@ import {
   ProviderError,
   ProviderFactory,
   setFetchImpl,
+  setOfflineMode,
+  isOfflineMode,
   type FetchLike,
 } from '../src/providers.js';
 
@@ -432,5 +434,30 @@ describe('ProviderError', () => {
 
   it('carries the status code', () => {
     expect(new ProviderError('x', { statusCode: 429 }).statusCode).toBe(429);
+  });
+});
+
+describe('air-gap offline mode', () => {
+  it('blocks remote requests when enabled and allows loopback', async () => {
+    setOfflineMode(false);
+    expect(isOfflineMode()).toBe(false);
+
+    setFetchImpl(stubFetch(() => ({ response: 'ok', choices: [{ message: { content: 'ok' } }] })));
+    const factory = new ProviderFactory();
+    const remoteClient = factory.create({ name: 'openrouter', models: ['m'] });
+    const localClient = factory.create({ name: 'ollama', models: ['m'] });
+
+    // When online, remote works
+    await expect(remoteClient.complete('hello')).resolves.toBeDefined();
+
+    // When offline, remote is blocked
+    setOfflineMode(true);
+    expect(isOfflineMode()).toBe(true);
+    await expect(remoteClient.complete('hello')).rejects.toThrow(/Air-gap offline mode is active/);
+
+    // Local loopback client still works
+    await expect(localClient.complete('hello')).resolves.toBeDefined();
+
+    setOfflineMode(false);
   });
 });

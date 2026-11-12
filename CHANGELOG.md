@@ -4,6 +4,29 @@ All notable changes to GearVane are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-10-26
+
+Major capability and polish release introducing subagent delegation, app hosting dev server, interactive questioning, benchmark-backed model tiering, live web preview, workspace instructions, air-gap offline mode, and native OS assets.
+
+### Added
+- **Subagent Delegation (`invoke_subagent` / `define_subagent`)**: Spin off dedicated background subagents for specialized codebase research or task execution with scoped tool permissions, isolated tool registries, and rich visual status cards in the UI activity log.
+- **In-App App Hosting & Live Preview**: Local dev server lifecycle tool (`host_app`, `stop_server`) with port detection, embedded responsive iframe preview pane, URL navigation bar, and one-click refresh/external launch.
+- **Interactive User Questioning (`ask_question`)**: Model-invoked interactive questioning allowing agents to query the user with multiple-choice options or custom input before proceeding.
+- **Skills System & Custom Agents**: Modular `SKILL.md` bundles (`load_skill`) and custom subagent definition capabilities matching advanced agent workflows.
+- **Benchmark-Backed Capability Tiering**: Model tiering backed by public benchmarks (`MODEL_BENCHMARKS`) evaluating models on HumanEval / coding capability, grouping models into Local, Mid, and Frontier tiers.
+- **Workspace Instruction File (`GEARVANE.md`)**: Automatic detection and injection of repository-level instructions and architecture guidelines into the agent system prompt.
+- **Air-Gap Offline Mode Toggle**: Topbar toggle disabling all outbound remote network calls and enforcing local-only model execution (Ollama, embedded llama.cpp, localhost).
+- **Session Transcript Export**: Export complete multi-turn conversation transcripts directly to Markdown (`.md`) from the topbar with one click.
+- **Git Capability Tools**: Integrated git operations (`git_status`, `git_diff`, `git_log`, `git_commit`, `git_pull`, `git_push`) for repository workflows.
+- **Native OS Assets**: Generated multi-resolution Windows `.ico` and macOS `.icns` application icons alongside the standard PNG assets.
+- **Real-Time Token & Cost Savings Meter**: Dashboard spend meter displaying aggregate token consumption and cost savings achieved by using local inference, with zero caps or token limits on local models.
+
+### Fixed
+- **Harness Tool Linting & Pipeline Handling**: Resolved ESLint type warnings in `ask_question` and `subagent` tools, and fixed Windows `cmd.exe` pipeline stdin handling in shell tool execution.
+
+### Changed
+- All model picker listings now display verified benchmark accuracy badges alongside file sizes.
+
 ## [0.4.2] - 2026-10-18
 
 The first release of the 0.4 line that ships installers. v0.4.0 was published

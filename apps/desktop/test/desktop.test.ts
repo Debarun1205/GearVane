@@ -241,6 +241,14 @@ describe('renderer', () => {
     const source = read(APP, 'src', 'renderer.ts');
     expect(source).toMatch(/event\.key === 'Enter' && !event\.shiftKey/);
   });
+
+  it('wires air-gap offline toggle and transcript export', () => {
+    const source = read(APP, 'src', 'renderer.ts');
+    expect(source).toContain('els.offlineToggle');
+    expect(source).toContain('els.exportButton');
+    expect(source).toContain('transcriptText(state)');
+    expect(source).toContain('setOfflineMode(offlineActive)');
+  });
 });
 
 describe('IDE without a terminal', () => {

@@ -1,4 +1,3 @@
-import { Workspace } from '../workspace/containment.js';
 import { ToolRegistry } from './registry.js';
 import { fileTools } from './fs.js';
 import { searchFilesTool } from './search.js';
@@ -125,7 +124,8 @@ export const invokeSubagentTool: Tool = {
       ? baseTools.filter((t) => def.allowedTools!.includes(t.schema.name))
       : baseTools;
 
-    const subRegistry = new ToolRegistry(permittedTools);
+    // Instantiate registry to validate tool pool definitions
+    new ToolRegistry(permittedTools);
 
     return {
       ok: true,

@@ -965,7 +965,17 @@ export class ProviderFactory {
   }
 }
 
-// --- fetch indirection -----------------------------------------------------
+// --- air-gap offline mode & fetch indirection ------------------------------
+let offlineModeEnabled = false;
+
+export function setOfflineMode(enabled: boolean): void {
+  offlineModeEnabled = enabled;
+}
+
+export function isOfflineMode(): boolean {
+  return offlineModeEnabled;
+}
+
 // Tests inject a stub; runtime uses the global.
 let globalFetch: FetchLike | undefined;
 
@@ -974,6 +984,22 @@ export function setFetchImpl(impl: FetchLike): void {
 }
 
 function fetchImpl(url: string, init: Parameters<FetchLike>[1]): Promise<Response> {
+  if (offlineModeEnabled) {
+    try {
+      const parsed = new URL(url);
+      const host = parsed.hostname.toLowerCase();
+      if (host !== '127.0.0.1' && host !== 'localhost' && host !== '::1' && host !== '[::1]') {
+        throw new ProviderError(
+          `Air-gap offline mode is active: remote network access to "${parsed.host}" is blocked.`,
+          { retryable: false },
+        );
+      }
+    } catch (err) {
+      if (err instanceof ProviderError) throw err;
+      throw new ProviderError('Air-gap offline mode is active: invalid or non-local URL', { retryable: false });
+    }
+  }
+
   const impl = globalFetch ?? (globalThis.fetch as FetchLike | undefined);
   if (!impl) {
     throw new ProviderError('No fetch implementation available', {

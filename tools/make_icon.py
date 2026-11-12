@@ -164,3 +164,14 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
+
+# Also produce .ico for Windows and .icns for macOS
+png_bytes = OUTPUT.read_bytes()
+ico_header = struct.pack('<HHH', 0, 1, 1)
+ico_entry = struct.pack('<BBBBHHII', 0, 0, 0, 0, 1, 32, len(png_bytes), 22)
+(OUTPUT.parent / 'icon.ico').write_bytes(ico_header + ico_entry + png_bytes)
+
+chunk_len = len(png_bytes) + 8
+icns_chunk = b'ic09' + struct.pack('>I', chunk_len) + png_bytes
+(OUTPUT.parent / 'icon.icns').write_bytes(b'icns' + struct.pack('>I', 8 + len(icns_chunk)) + icns_chunk)
